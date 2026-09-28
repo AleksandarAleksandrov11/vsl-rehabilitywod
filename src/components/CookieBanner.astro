@@ -1,0 +1,292 @@
+---
+/**
+ * Banner de cookies (criterios AEPD): Aceptar, Rechazar y Configurar al mismo nivel.
+ * No es modal: no bloquea la página ni oscurece el fondo. Sin JS no se muestra
+ * (y sin JS tampoco se carga el Pixel).
+ */
+---
+
+<div
+  id="cookie-banner"
+  class="cookie-banner"
+  role="dialog"
+  aria-modal="false"
+  aria-labelledby="cookie-title"
+  aria-describedby="cookie-desc"
+  tabindex="-1"
+  data-theme="dark"
+  hidden
+>
+  <p id="cookie-title" class="sr-only">
+    Aviso de cookies
+  </p>
+  <div class="cb-main">
+    <p id="cookie-desc" class="cb-text">
+      Usamos cookies propias para que la web funcione y, si nos dejas, de Meta para medir nuestros
+      anuncios.{' '}
+      <a class="link" href="/cookies">
+        Política de cookies
+      </a>
+    </p>
+    <div class="cb-actions">
+      <button type="button" class="cb-btn cb-btn-choice" data-consent-action="accept">
+        Aceptar
+      </button>
+      <button type="button" class="cb-btn cb-btn-choice" data-consent-action="reject">
+        Rechazar
+      </button>
+      <button
+        type="button"
+        class="cb-btn cb-btn-config"
+        data-consent-action="configure"
+        aria-expanded="false"
+        aria-controls="cookie-prefs"
+      >
+        Configurar
+      </button>
+    </div>
+  </div>
+
+  <div id="cookie-prefs" class="cb-prefs" hidden>
+    <div class="cb-row">
+      <label class="cb-label" for="cb-tecnicas">
+        <span class="cb-name">Técnicas</span>
+        <span class="cb-hint" id="cb-tecnicas-hint">
+          Hacen que la web funcione. Siempre activas.
+        </span>
+      </label>
+      <input
+        id="cb-tecnicas"
+        class="cb-switch"
+        type="checkbox"
+        role="switch"
+        checked
+        disabled
+        aria-describedby="cb-tecnicas-hint"
+      />
+    </div>
+    <div class="cb-row">
+      <label class="cb-label" for="cb-marketing">
+        <span class="cb-name">Marketing (Meta)</span>
+        <span class="cb-hint" id="cb-marketing-hint">
+          Miden la eficacia de nuestros anuncios.
+        </span>
+      </label>
+      <input
+        id="cb-marketing"
+        class="cb-switch"
+        type="checkbox"
+        role="switch"
+        aria-describedby="cb-marketing-hint"
+      />
+    </div>
+    <button type="button" class="cb-btn cb-btn-choice cb-save" data-consent-action="save">
+      Guardar preferencias
+    </button>
+  </div>
+</div>
+
+<style>
+  .cookie-banner {
+    position: fixed;
+    z-index: 70;
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    margin-inline: auto;
+    max-width: 760px;
+    max-height: calc(100svh - 24px - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px;
+    border: 1px solid var(--hair-on-dark);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--ink-on-dark);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+
+  /* El foco inicial va al propio banner: anillo presente pero discreto sobre su borde. */
+  .cookie-banner:focus-visible {
+    outline: 2px solid rgba(52, 211, 153, 0.55);
+    outline-offset: -1px;
+  }
+
+  .cookie-banner.is-entering {
+    animation: cb-in 0.45s var(--ease-out) both;
+  }
+
+  @keyframes cb-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 12px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .cb-main {
+    display: grid;
+    gap: 14px;
+  }
+
+  .cb-text {
+    margin: 0;
+  }
+
+  .cb-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .cb-btn {
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    line-height: 1.2;
+    transition:
+      background-color 0.2s var(--ease-out),
+      border-color 0.2s var(--ease-out);
+  }
+
+  /* Aceptar y Rechazar: mismo tamaño y mismo peso visual. */
+  .cb-btn-choice {
+    background: var(--ink-on-dark);
+    color: var(--void);
+    border: 1px solid var(--ink-on-dark);
+  }
+
+  .cb-btn-choice:hover {
+    background: #ffffff;
+  }
+
+  .cb-btn-config {
+    grid-column: 1 / -1;
+    background: transparent;
+    color: var(--ink-on-dark);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+  }
+
+  .cb-btn-config:hover {
+    border-color: rgba(255, 255, 255, 0.6);
+  }
+
+  @media (width >= 768px) {
+    .cookie-banner {
+      padding: 16px 16px 16px 20px;
+    }
+
+    .cb-main {
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .cb-actions {
+      grid-template-columns: 7.5rem 7.5rem auto;
+    }
+
+    .cb-btn-config {
+      grid-column: auto;
+    }
+
+    .cb-btn {
+      padding-inline: 1.25rem;
+    }
+  }
+
+  .cb-prefs {
+    display: grid;
+    gap: 4px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--hair-on-dark);
+  }
+
+  .cb-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 56px;
+    padding-block: 6px;
+  }
+
+  .cb-label {
+    display: grid;
+    align-content: center;
+    gap: 2px;
+    min-height: 44px;
+    cursor: pointer;
+  }
+
+  .cb-name {
+    font-weight: 600;
+  }
+
+  .cb-hint {
+    color: var(--muted-on-dark);
+    font-size: 0.875rem;
+  }
+
+  .cb-switch {
+    appearance: none;
+    flex: none;
+    position: relative;
+    width: 48px;
+    height: 28px;
+    margin: 8px 0;
+    border-radius: 999px;
+    background: #3a3a3a;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: background-color 0.2s var(--ease-out);
+  }
+
+  .cb-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--ink-on-dark);
+    transition: transform 0.2s var(--ease-out);
+  }
+
+  .cb-switch:checked {
+    background: var(--brand-strong);
+    border-color: var(--brand-strong);
+  }
+
+  .cb-switch:checked::after {
+    transform: translateX(20px);
+  }
+
+  .cb-switch:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  .cb-save {
+    margin-top: 8px;
+    width: 100%;
+  }
+
+  @media (width >= 768px) {
+    .cb-save {
+      width: auto;
+      justify-self: end;
+      padding-inline: 1.5rem;
+    }
+  }
+</style>

@@ -1,0 +1,38 @@
+{
+  "cpuThrottling": 4,
+  "steps": [
+    {
+      "label": "Rechazar cookies (banner)",
+      "maxMs": 40
+    },
+    {
+      "label": "CTA hero → #valoracion",
+      "maxMs": 32
+    },
+    {
+      "label": "Chip \"Rodilla\"",
+      "maxMs": 80
+    },
+    {
+      "label": "Saltar paso",
+      "maxMs": 40
+    },
+    {
+      "label": "Escribir nombre",
+      "maxMs": 32
+    },
+    {
+      "label": "Continuar",
+      "maxMs": 48
+    },
+    {
+      "label": "Abrir FAQ",
+      "maxMs": 40
+    },
+    {
+      "label": "Play VSL",
+      "maxMs": 48
+    }
+  ],
+  "worstMs": 80
+}

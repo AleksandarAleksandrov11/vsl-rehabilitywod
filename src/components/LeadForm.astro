@@ -1,0 +1,649 @@
+---
+/**
+ * Formulario de valoración: un único <form>, cada paso es un <fieldset>.
+ * Sin JS se ven todos los campos a la vez y el POST va a /api/lead (que redirige a /gracias).
+ * Con JS (src/scripts/form.ts) pasa a una pregunta por pantalla.
+ */
+import CircleAlert from '@lucide/astro/icons/circle-alert';
+import { ZONAS, LIMITS } from '../lib/lead';
+---
+
+<div class="form-card" data-form-root data-theme="dark">
+  <div class="progress" data-progress hidden>
+    <div class="progress-track" aria-hidden="true">
+      <div class="progress-bar" data-progress-bar></div>
+    </div>
+    <span class="progress-text tabular" data-progress-text aria-hidden="true">
+      1 / 4
+    </span>
+  </div>
+  <p class="sr-only" aria-live="polite" data-live></p>
+  <p class="form-error form-notice" data-form-notice role="alert" hidden></p>
+
+  <form id="lead-form" class="lead-form" action="/api/lead" method="post" accept-charset="utf-8">
+    <!-- Antispam: honeypot oculto con CSS (no display:none). -->
+    <div class="hp" aria-hidden="true">
+      <label for="website">Tu web</label>
+      <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
+    </div>
+
+    <!-- Paso 1 -->
+    <fieldset class="step" data-step="1">
+      <legend class="step-legend">
+        <h3 class="step-title" id="s1-title" tabindex="-1">
+          ¿Qué te duele?
+        </h3>
+      </legend>
+      <div
+        class="chips"
+        role="radiogroup"
+        aria-labelledby="s1-title"
+        aria-required="true"
+        aria-describedby="err-zona"
+        data-chips
+      >
+        {ZONAS.map((zona, i) => (
+          <label class="chip">
+            <input
+              type="radio"
+              name="zona"
+              value={zona}
+              required={i === 0 ? true : undefined}
+              class="chip-input"
+            />
+            <span class="chip-text">{zona}</span>
+          </label>
+        ))}
+      </div>
+      <p class="field-error" id="err-zona" data-error="zona" hidden>
+        <CircleAlert size={16} stroke-width={1.5} aria-hidden="true" />
+        <span></span>
+      </p>
+    </fieldset>
+
+    <!-- Paso 2 -->
+    <fieldset class="step" data-step="2">
+      <legend class="step-legend">
+        <h3 class="step-title" id="s2-title" tabindex="-1" data-detalle-title>
+          Cuéntame un poco más.
+        </h3>
+      </legend>
+      <label class="field-label" for="detalle">
+        Tu caso <span data-optional>(opcional)</span>
+      </label>
+      <textarea
+        id="detalle"
+        name="detalle"
+        class="field textarea"
+        rows="3"
+        maxlength={LIMITS.detalleMax}
+        placeholder="Ej.: me duele el hombro en los overhead desde hace 6 meses."
+        aria-describedby="detalle-count err-detalle"
+        enterkeyhint="next"
+      ></textarea>
+      <div class="field-meta">
+        <p class="field-error" id="err-detalle" data-error="detalle" hidden>
+          <CircleAlert size={16} stroke-width={1.5} aria-hidden="true" />
+          <span></span>
+        </p>
+        <p class="field-count tabular" id="detalle-count" data-count>
+          <span data-count-value>0</span> / {LIMITS.detalleMax}
+        </p>
+      </div>
+      <button type="button" class="skip-step" data-skip data-js-only hidden>
+        Saltar este paso
+      </button>
+    </fieldset>
+
+    <!-- Paso 3 -->
+    <fieldset class="step" data-step="3">
+      <legend class="step-legend">
+        <h3 class="step-title" id="s3-title" tabindex="-1">
+          ¿Cómo te llamas?
+        </h3>
+      </legend>
+      <label class="field-label" for="nombre">
+        Nombre
+      </label>
+      <input
+        id="nombre"
+        name="nombre"
+        type="text"
+        class="field"
+        autocomplete="given-name"
+        autocapitalize="words"
+        spellcheck="false"
+        required
+        minlength={LIMITS.nombreMin}
+        maxlength={LIMITS.nombreMax}
+        enterkeyhint="next"
+        aria-describedby="err-nombre"
+      />
+      <p class="field-error" id="err-nombre" data-error="nombre" hidden>
+        <CircleAlert size={16} stroke-width={1.5} aria-hidden="true" />
+        <span></span>
+      </p>
+    </fieldset>
+
+    <!-- Paso 4 -->
+    <fieldset class="step" data-step="4">
+      <legend class="step-legend">
+        <h3 class="step-title" id="s4-title" tabindex="-1">
+          ¿A qué número te escribo?
+        </h3>
+      </legend>
+      <label class="field-label" for="telefono">
+        Teléfono móvil
+      </label>
+      <div class="phone-row">
+        <label class="sr-only" for="prefijo">
+          Prefijo internacional
+        </label>
+        <input
+          id="prefijo"
+          name="prefijo"
+          type="tel"
+          inputmode="tel"
+          class="field prefix"
+          autocomplete="tel-country-code"
+          value="+34"
+          maxlength="5"
+          aria-describedby="prefijo-hint"
+        />
+        <input
+          id="telefono"
+          name="telefono"
+          type="tel"
+          inputmode="tel"
+          class="field"
+          autocomplete="tel"
+          required
+          maxlength="22"
+          enterkeyhint="send"
+          aria-describedby="prefijo-hint err-telefono"
+        />
+      </div>
+      <p class="field-hint" id="prefijo-hint">
+        Si tu número no es español, cambia el prefijo.
+      </p>
+      <p class="field-error" id="err-telefono" data-error="telefono" hidden>
+        <CircleAlert size={16} stroke-width={1.5} aria-hidden="true" />
+        <span></span>
+      </p>
+
+      <div class="consent">
+        <input
+          id="consentimiento_salud"
+          name="consentimiento_salud"
+          type="checkbox"
+          value="1"
+          class="consent-input"
+          required
+          aria-describedby="err-consentimiento"
+        />
+        <label for="consentimiento_salud" class="consent-label">
+          He leído la{' '}
+          <a class="link" href="/privacidad" target="_blank" rel="noopener">
+            política de privacidad<span class="sr-only"> (se abre en una pestaña nueva)</span>
+          </a>{' '}
+          y consiento el tratamiento de los datos de salud que he indicado para valorar mi caso.
+        </label>
+      </div>
+      <p class="field-error" id="err-consentimiento" data-error="consentimiento" hidden>
+        <CircleAlert size={16} stroke-width={1.5} aria-hidden="true" />
+        <span></span>
+      </p>
+
+      <p class="form-error" data-form-error role="alert" hidden></p>
+    </fieldset>
+
+    <!-- Navegación común: anclada abajo de la tarjeta en modo un paso por pantalla. -->
+    <div class="form-nav">
+      <button type="button" class="step-back" data-back data-js-only hidden>
+        Atrás
+      </button>
+      <button type="button" class="btn btn-primary step-next" data-next data-js-only hidden>
+        Continuar
+      </button>
+      <button type="submit" class="btn btn-primary step-submit" data-submit>
+        <span class="spinner" aria-hidden="true" hidden></span>
+        <span data-submit-label>Enviar y valorar mi caso</span>
+      </button>
+    </div>
+    <p class="nojs-help" data-nojs-only>
+      ¿Algún problema con el formulario? Escríbeme a{' '}
+      <a class="link" href="mailto:info@rehabilitywod.com">
+        info@rehabilitywod.com
+      </a>
+      .
+    </p>
+  </form>
+</div>
+
+<style>
+  .form-card {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    margin-inline: auto;
+    padding: 24px 20px;
+    border: 1px solid var(--hair-on-dark);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    color: var(--ink-on-dark);
+  }
+
+  /* Altura estable entre pasos (solo en modo un paso por pantalla); form.ts ajusta
+     min-height al paso más alto. */
+  .form-card:global(.is-enhanced) {
+    min-height: 480px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .form-card:global(.is-enhanced) .lead-form {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .progress {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+
+  .progress-track {
+    flex: 1;
+    height: 3px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 100%;
+    background: var(--brand-bright);
+    transform-origin: left center;
+    transform: scaleX(0.25);
+    transition: transform 0.4s var(--ease-out);
+  }
+
+  .progress-text {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--muted-on-dark);
+    letter-spacing: 0.04em;
+  }
+
+  .hp {
+    position: absolute;
+    left: -10000px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+  }
+
+  .step {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+
+  .step + .step {
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid var(--hair-on-dark);
+  }
+
+  .form-card:global(.is-enhanced) .step {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .form-card:global(.is-enhanced) .step:global(.is-entering) {
+    animation: step-in 0.2s var(--ease-out) both;
+  }
+
+  @keyframes step-in {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 12px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .step-legend {
+    padding: 0;
+    margin-bottom: 20px;
+  }
+
+  .step-title {
+    margin: 0;
+    font-size: clamp(1.5rem, 1.3rem + 1vw, 1.875rem);
+    font-weight: 700;
+    line-height: 1.1;
+    outline: none;
+  }
+
+  .step-title:focus-visible {
+    outline: 2px solid var(--brand-bright);
+    outline-offset: 4px;
+  }
+
+  /* Chips */
+  .chips {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .chip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 56px;
+    padding: 10px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.02);
+    font-size: 1rem;
+    font-weight: 560;
+    line-height: 1.2;
+    cursor: pointer;
+    transition:
+      background-color 0.15s var(--ease-out),
+      border-color 0.15s var(--ease-out),
+      color 0.15s var(--ease-out);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .chip:hover {
+    border-color: rgba(255, 255, 255, 0.32);
+  }
+
+  .chip-input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  .chip:has(.chip-input:checked) {
+    background: var(--brand-soft);
+    border-color: var(--brand-bright);
+    color: var(--ink);
+  }
+
+  .chip:has(.chip-input:focus-visible) {
+    outline: 2px solid var(--brand-bright);
+    outline-offset: 3px;
+  }
+
+  /* Campos */
+  .field-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--ink-on-dark);
+  }
+
+  .field-label [data-optional] {
+    font-weight: 400;
+    color: var(--muted-on-dark);
+  }
+
+  .field {
+    display: block;
+    width: 100%;
+    min-height: 56px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 14px;
+    background: var(--void);
+    color: var(--ink-on-dark);
+    font: inherit;
+    font-size: 1.0625rem; /* ≥16 px: iOS no hace zoom */
+    line-height: 1.4;
+    transition: border-color 0.15s var(--ease-out);
+  }
+
+  .field::placeholder {
+    color: #8b8f96;
+  }
+
+  .field:hover {
+    border-color: rgba(255, 255, 255, 0.32);
+  }
+
+  .field:focus {
+    outline: none;
+    border-color: var(--brand-bright);
+  }
+
+  .field:focus-visible {
+    outline: 2px solid var(--brand-bright);
+    outline-offset: 2px;
+  }
+
+  .field[aria-invalid='true'] {
+    border-color: #ffffff;
+  }
+
+  .textarea {
+    min-height: 116px;
+    resize: vertical;
+  }
+
+  .field-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  .field-meta .field-error {
+    margin-top: 0;
+  }
+
+  .field-count {
+    margin: 0 0 0 auto;
+    font-size: 0.8125rem;
+    color: var(--muted-on-dark);
+    white-space: nowrap;
+  }
+
+  .field-hint {
+    margin: 8px 0 0;
+    font-size: 0.875rem;
+    color: var(--muted-on-dark);
+  }
+
+  .field-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 10px 0 0;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #ffffff;
+  }
+
+  .field-error[hidden] {
+    display: none;
+  }
+
+  .field-error :global(svg) {
+    flex: none;
+    margin-top: 2px;
+    color: var(--brand-bright);
+  }
+
+  .phone-row {
+    display: grid;
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .prefix {
+    text-align: center;
+    padding-inline: 8px;
+  }
+
+  .skip-step {
+    align-self: flex-start;
+    min-height: 44px;
+    margin-top: 8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ink-on-dark);
+    font: inherit;
+    font-size: 0.9375rem;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  .consent {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 12px;
+    align-items: start;
+    margin-top: 24px;
+  }
+
+  .consent-input {
+    width: 22px;
+    height: 22px;
+    margin: 1px 0 0;
+    accent-color: var(--brand-strong);
+    cursor: pointer;
+  }
+
+  .consent-label {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: rgba(245, 245, 242, 0.88);
+    cursor: pointer;
+  }
+
+  .form-notice {
+    margin: 0 0 20px !important;
+  }
+
+  .form-error {
+    margin: 20px 0 0;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    line-height: 1.45;
+    color: #ffffff;
+  }
+
+  .form-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  .form-card:global(.is-enhanced) .form-nav {
+    margin-top: auto;
+    padding-top: 28px;
+  }
+
+  .step-next {
+    min-width: 148px;
+    margin-left: auto;
+  }
+
+  .step-submit {
+    flex: 1;
+    white-space: normal;
+  }
+
+  /* Pantallas muy estrechas: el botón de envío ocupa la fila entera y "Atrás" va debajo. */
+  @media (width < 360px) {
+    .form-nav:has(.step-submit:not([hidden])) {
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .step-submit {
+      flex-basis: 100%;
+      order: -1;
+    }
+  }
+
+  .step-submit[hidden],
+  .step-next[hidden],
+  .step-back[hidden] {
+    display: none;
+  }
+
+  .step-back {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 6px;
+    border: 0;
+    background: none;
+    color: var(--muted-on-dark);
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .step-back:hover {
+    color: var(--ink-on-dark);
+  }
+
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .nojs-help {
+    margin: 16px 0 0;
+    font-size: 0.875rem;
+    color: var(--muted-on-dark);
+  }
+
+  .form-card:global(.is-enhanced) [data-nojs-only] {
+    display: none;
+  }
+
+  @media (width >= 768px) {
+    .form-card {
+      padding: 36px 40px;
+    }
+
+    .form-card:global(.is-enhanced) {
+      min-height: 500px;
+    }
+  }
+</style>

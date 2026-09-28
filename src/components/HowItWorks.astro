@@ -1,0 +1,263 @@
+---
+import { Image } from 'astro:assets';
+import SectionCta from './SectionCta.astro';
+import app1 from '../assets/images/app-1.jpg';
+import app3 from '../assets/images/app-3.jpg';
+import app4 from '../assets/images/app-4.jpg';
+
+const steps = [
+  {
+    n: '01',
+    title: 'Valoramos tu caso.',
+    text: [
+      'Rellenas el formulario y hacemos una videollamada gratuita.',
+      'Desde el primer día sabes qué hacer, qué evitar y por qué.',
+    ],
+  },
+  {
+    n: '02',
+    title: 'Tu plan, en tu móvil.',
+    text: [
+      'Ejercicio específico y las adaptaciones para que sigas entrenando, en una app sencilla.',
+      'Seguimiento diario y reajustes cada semana.',
+    ],
+  },
+  {
+    n: '03',
+    title: 'Vuelves al 100\u00a0%.',
+    text: ['Preparamos tu vuelta a tu mejor nivel y te damos herramientas para no recaer.'],
+  },
+];
+
+const shots = [
+  {
+    src: app1,
+    alt: 'Captura de la app de RehabilityWOD: plan de hoy con la sesión y las métricas personales',
+  },
+  { src: app3, alt: 'Captura de la app: registro diario de dolor, estrés y calidad del sueño' },
+  { src: app4, alt: 'Captura de la app: ejercicio con vídeo explicativo y objetivo de la serie' },
+];
+---
+
+<section id="como-funciona" class="section-y how" data-theme="light" aria-labelledby="how-title">
+  <div class="container-x">
+    <div class="how-grid">
+      <div class="how-copy">
+        <div data-reveal>
+          <p class="eyebrow">Cómo funciona</p>
+          <h2 id="how-title" class="h2-display mt-4">
+            Así de claro.
+          </h2>
+        </div>
+
+        <ol class="steps mt-10 md:mt-14" role="list">
+          {steps.map((step) => (
+            <li class="step" data-reveal>
+              <span class="step-num tabular" aria-hidden="true">
+                {step.n}
+              </span>
+              <div>
+                <h3 class="step-title">
+                  <span class="sr-only">Paso {step.n}. </span>
+                  {step.title}
+                </h3>
+                {step.text.map((line) => (
+                  <p class="step-text">{line}</p>
+                ))}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      <div class="phones-wrap" data-reveal>
+        <ul class="phones" role="list" aria-label="Capturas reales de la app" data-scroll-region>
+          {shots.map((shot) => (
+            <li class="phone">
+              <Image
+                src={shot.src}
+                alt={shot.alt}
+                widths={[240, 360, 480]}
+                sizes="(min-width: 1024px) 220px, (min-width: 768px) 200px, 62vw"
+                loading="lazy"
+                decoding="async"
+                class="phone-img"
+              />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+
+    <p class="how-note">
+      Programas de 8, 12 o 24 semanas según tu caso. El precio depende del plan y lo vemos juntos en
+      la valoración.
+    </p>
+
+    <SectionCta location="how" />
+  </div>
+</section>
+
+<style>
+  .how {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+
+  .how-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 48px;
+  }
+
+  .how-grid > * {
+    min-width: 0;
+  }
+
+  .steps {
+    display: grid;
+    margin-inline: 0;
+    margin-bottom: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--hair-on-light);
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: 2.75rem 1fr;
+    gap: 12px;
+    padding-block: 24px;
+    border-bottom: 1px solid var(--hair-on-light);
+  }
+
+  .step-num {
+    padding-top: 3px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--brand-strong);
+  }
+
+  .step-title {
+    margin: 0;
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1.15;
+  }
+
+  .step-text {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.55;
+    max-width: 34rem;
+  }
+
+  /* Capturas: en móvil, fila con scroll horizontal y snap. */
+  .phones-wrap {
+    margin-inline: calc(var(--gutter) * -1);
+  }
+
+  .phones {
+    display: flex;
+    gap: 16px;
+    margin: 0;
+    padding: 8px var(--gutter) 24px;
+    list-style: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--gutter);
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .phones::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Marco de móvil hecho en CSS: borde de 10 px en --void y radio de 36 px. */
+  .phone {
+    flex: none;
+    width: min(62vw, 240px);
+    aspect-ratio: 1080 / 2340;
+    border: 10px solid var(--void);
+    border-radius: 36px;
+    overflow: hidden;
+    background: var(--void);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 24px 48px -16px rgba(0, 0, 0, 0.35);
+    scroll-snap-align: start;
+  }
+
+  .phone :global(.phone-img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 26px;
+  }
+
+  .phones:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .how-note {
+    margin: 40px 0 0;
+    max-width: 40rem;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  @media (width >= 768px) {
+    .phones-wrap {
+      margin-inline: 0;
+    }
+
+    .phones {
+      justify-content: center;
+      padding: 8px 0 24px;
+      overflow: visible;
+    }
+
+    .phone {
+      width: 200px;
+    }
+  }
+
+  /* Escritorio: a la derecha de los pasos y ligeramente escalonadas. */
+  @media (width >= 1024px) {
+    .how-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+      align-items: center;
+      gap: 56px;
+    }
+
+    .phones {
+      justify-content: flex-end;
+      gap: 16px;
+      padding: 0;
+    }
+
+    /* Tres marcos que siempre caben en su columna (sin pisar los pasos). */
+    .phone {
+      flex: 0 1 212px;
+      width: auto;
+      min-width: 0;
+    }
+
+    .phone:nth-child(2) {
+      transform: translateY(40px);
+    }
+
+    .phone:nth-child(3) {
+      transform: translateY(80px);
+    }
+
+    .how-note {
+      margin-top: 72px;
+    }
+  }
+</style>

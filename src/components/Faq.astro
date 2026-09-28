@@ -1,0 +1,108 @@
+---
+import Plus from '@lucide/astro/icons/plus';
+
+const faqs = [
+  {
+    q: '¿Cómo me vas a ayudar si no me tratas en persona?',
+    a: 'No necesitas que te toque para recuperarte. Necesitas entender lo que te pasa, una estrategia adaptada a ti y alguien que te acompañe en todo el proceso. La mayoría de diagnósticos fiables no dependen de la palpación, sino de una buena evaluación y pruebas funcionales guiadas, también a distancia.',
+  },
+  {
+    q: '¿Cómo sé si esto es para mí?',
+    a: 'Si entrenas CrossFit, arrastras dolor desde hace tiempo y has probado de todo sin resultados duraderos, lo más probable es que sí. Lo vemos en la videollamada gratuita, y si no es para ti, te lo diré claro.',
+  },
+  {
+    q: '¿Qué garantías tengo?',
+    a: 'No te voy a prometer resultados en dos semanas ni una solución mágica. Te garantizo un proceso en el que no estás solo: probamos, ajustamos y afinamos lo que necesitas en cada fase.',
+  },
+  {
+    q: '¿Y si ya tengo pruebas o diagnóstico por imagen?',
+    a: 'Genial, las usamos como información complementaria. Una resonancia te dice qué hay a nivel estructural, pero no lo que puedes o no puedes hacer. Lo que marca el rumbo es cómo te afecta en el día a día y cómo responde tu cuerpo al esfuerzo.',
+  },
+];
+---
+
+<div class="faq" data-reveal>
+  <h3 class="faq-title">Preguntas frecuentes.</h3>
+  <div class="faq-list">
+    {faqs.map((item) => (
+      <details class="faq-item">
+        <summary class="faq-q">
+          <span>{item.q}</span>
+          <Plus size={20} stroke-width={1.5} aria-hidden="true" class="faq-icon" />
+        </summary>
+        <p class="faq-a">{item.a}</p>
+      </details>
+    ))}
+  </div>
+</div>
+
+<style>
+  .faq {
+    max-width: 760px;
+    margin: 88px auto 0;
+  }
+
+  .faq-title {
+    margin: 0 0 20px;
+    font-size: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+    font-weight: 700;
+  }
+
+  .faq-list {
+    border-top: 1px solid var(--hair-on-dark);
+  }
+
+  .faq-item {
+    border-bottom: 1px solid var(--hair-on-dark);
+  }
+
+  .faq-q {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 64px;
+    padding-block: 16px;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.35;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .faq-q::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq-q::marker {
+    content: '';
+  }
+
+  .faq-q:hover {
+    color: #ffffff;
+  }
+
+  .faq-q :global(.faq-icon) {
+    flex: none;
+    color: var(--brand-bright);
+    transition: transform 0.3s var(--ease-out);
+  }
+
+  .faq-item[open] .faq-q :global(.faq-icon) {
+    transform: rotate(45deg);
+  }
+
+  .faq-a {
+    margin: 0;
+    padding: 0 36px 22px 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--muted-on-dark);
+  }
+
+  @media (width >= 768px) {
+    .faq {
+      margin-top: 112px;
+    }
+  }
+</style>

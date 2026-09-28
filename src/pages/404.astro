@@ -1,0 +1,39 @@
+---
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Base
+  title="Página no encontrada | RehabilityWOD"
+  description="Esta página no existe."
+  path="/404"
+  noindex
+>
+  <a href="#main" class="skip-link">
+    Saltar al contenido
+  </a>
+  <Header ctaHref="/#valoracion" />
+  <main id="main" class="nf" data-theme="dark">
+    <div class="container-x">
+      <p class="eyebrow">Error 404</p>
+      <h1 class="h1-display mt-4">Esta página no existe.</h1>
+      <p class="mt-6 text-body text-muted-on-dark">Vuelve al inicio y mira el vídeo.</p>
+      <a class="btn btn-primary mt-8" href="/">
+        Ir al inicio
+      </a>
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .nf {
+    min-height: 80svh;
+    display: flex;
+    align-items: center;
+    padding-block: calc(var(--header-h) + 64px) 88px;
+    background: var(--void);
+    color: var(--ink-on-dark);
+  }
+</style>

@@ -1,0 +1,110 @@
+---
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { whatsappLink } from '../config';
+
+const waHref = whatsappLink('Hola Gerard, acabo de rellenar el formulario de valoración.');
+---
+
+<Base
+  title="Recibido | RehabilityWOD"
+  description="Solicitud de valoración recibida."
+  path="/gracias"
+  noindex
+>
+  <a href="#main" class="skip-link">
+    Saltar al contenido
+  </a>
+  <Header ctaHref="/#valoracion" />
+  <main id="main" class="thanks" data-theme="dark">
+    <div class="container-x thanks-inner">
+      <p class="eyebrow">Valoración gratuita</p>
+      <h1 class="h1-display thanks-title" data-thanks-title>
+        Recibido.
+      </h1>
+      <p class="thanks-text">
+        Te escribo por WhatsApp para agendar la videollamada de valoración. Si prefieres
+        adelantarte, escríbeme tú.
+      </p>
+      <div class="thanks-actions">
+        <a class="btn btn-primary" href={waHref} target="_blank" rel="noopener" data-whatsapp>
+          Escribir por WhatsApp<span class="sr-only"> (se abre en una pestaña nueva)</span>
+        </a>
+        <a class="thanks-link" href="/#video">
+          Volver a ver el vídeo
+        </a>
+      </div>
+    </div>
+  </main>
+  <Footer />
+</Base>
+
+<style>
+  .thanks {
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    padding-block: calc(var(--header-h) + 64px) 88px;
+    background: var(--void);
+    color: var(--ink-on-dark);
+  }
+
+  .thanks-inner {
+    max-width: 760px;
+  }
+
+  .thanks-title {
+    margin: 16px 0 0;
+    overflow-wrap: anywhere;
+  }
+
+  .thanks-text {
+    max-width: 34rem;
+    margin: 24px 0 0;
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: rgba(245, 245, 242, 0.86);
+  }
+
+  .thanks-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-top: 36px;
+  }
+
+  .thanks-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    color: var(--ink-on-dark);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  @media (width >= 640px) {
+    .thanks-actions {
+      flex-direction: row;
+      align-items: center;
+      gap: 24px;
+    }
+  }
+</style>
+
+<script>
+  import { trackEvent } from '../scripts/tracking';
+
+  // El nombre llega por sessionStorage, nunca por la URL.
+  const title = document.querySelector<HTMLElement>('[data-thanks-title]');
+  try {
+    const nombre = window.sessionStorage.getItem('rw_nombre')?.trim();
+    if (title && nombre) title.textContent = `Recibido, ${nombre.slice(0, 60)}.`;
+  } catch {
+    // sin sessionStorage: "Recibido."
+  }
+  trackEvent('lead_thankyou_view');
+</script>

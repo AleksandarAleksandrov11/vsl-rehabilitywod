@@ -1,0 +1,87 @@
+---
+import '@fontsource-variable/work-sans/wght.css';
+import '../styles/global.css';
+import workSansLatin from '@fontsource-variable/work-sans/files/work-sans-latin-wght-normal.woff2?url';
+import Analytics from '@vercel/analytics/astro';
+import SpeedInsights from '@vercel/speed-insights/astro';
+import CookieBanner from '../components/CookieBanner.astro';
+import { CONFIG, SEO } from '../config';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Ruta canónica, p. ej. "/" o "/privacidad". */
+  path?: string;
+  noindex?: boolean;
+  /** JSON-LD opcional (solo en la home). */
+  jsonLd?: Record<string, unknown>;
+}
+
+const {
+  title = SEO.title,
+  description = SEO.description,
+  path = Astro.url.pathname,
+  noindex = false,
+  jsonLd,
+} = Astro.props;
+
+const canonical =
+  `${CONFIG.siteUrl}${path === '/' ? '' : path.replace(/\/+$/, '')}` || CONFIG.siteUrl;
+const ogImage = `${CONFIG.siteUrl}/og.jpg`;
+const ogAlt =
+  'Gerard Barrantes, fisioterapeuta de RehabilityWOD. Recupérate de tu lesión sin dejar de entrenar.';
+---
+
+<!doctype html>
+<html lang="es" data-pixel-id={CONFIG.pixelId}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex ? (
+      <meta name="robots" content="noindex, nofollow" />
+    ) : (
+      <meta name="robots" content="index, follow, max-image-preview:large" />
+    )}
+    <meta name="theme-color" content="#0A0A0A" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <link rel="preload" href={workSansLatin} as="font" type="font/woff2" crossorigin="anonymous" />
+
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:site_name" content="RehabilityWOD" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content={ogAlt} />
+
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+    <CookieBanner />
+    <Analytics />
+    <SpeedInsights />
+    <script>
+      import '../scripts/boot';
+    </script>
+  </body>
+</html>

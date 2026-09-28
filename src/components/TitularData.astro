@@ -1,0 +1,25 @@
+---
+import { CONFIG } from '../config';
+const L = CONFIG.legal;
+---
+
+<dl>
+  <dt>Titular</dt>
+  <dd>{L.titular}</dd>
+  <dt>Nombre comercial</dt>
+  <dd>{L.nombreComercial}</dd>
+  <dt>NIF</dt>
+  <dd>{L.nif}</dd>
+  <dt>Domicilio</dt>
+  <dd>{L.domicilio}</dd>
+  <dt>Teléfono</dt>
+  <dd>
+    <a href={`tel:${L.telefonoE164}`}>{L.telefono}</a>
+  </dd>
+  <dt>Email</dt>
+  <dd>
+    <a href={`mailto:${L.email}`}>{L.email}</a>
+  </dd>
+  <dt>Actividad</dt>
+  <dd>{L.actividad}</dd>
+</dl>

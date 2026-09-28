@@ -1,0 +1,9 @@
+dist
+.vercel
+.astro
+node_modules
+package-lock.json
+qa/lighthouse
+qa/screenshots
+test-results
+playwright-report

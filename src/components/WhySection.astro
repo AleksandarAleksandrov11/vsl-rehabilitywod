@@ -1,0 +1,231 @@
+---
+import Dumbbell from '@lucide/astro/icons/dumbbell';
+import Activity from '@lucide/astro/icons/activity';
+import SlidersHorizontal from '@lucide/astro/icons/sliders-horizontal';
+import MessageCircle from '@lucide/astro/icons/message-circle';
+import SectionCta from './SectionCta.astro';
+
+const pains = [
+  'Evitas ejercicios que antes hacías sin pensar.',
+  'Mejoras un poco y, al volver a entrenar normal, recaes.',
+  'Empiezas a pensar que lo tuyo es crónico.',
+];
+
+const reasons = [
+  {
+    icon: Dumbbell,
+    title: 'Especialista en CrossFit.',
+    text: 'Fisioterapeuta y atleta desde 2017. Conozco el box por dentro.',
+  },
+  {
+    icon: Activity,
+    title: 'Sin dejar de entrenar.',
+    text: 'Adaptamos tu programación para que sigas entrenando de forma segura.',
+  },
+  {
+    icon: SlidersHorizontal,
+    title: 'Un plan que se ajusta.',
+    text: 'Reajustes cada semana según cómo responde tu cuerpo.',
+  },
+  {
+    icon: MessageCircle,
+    title: 'Nunca vas solo.',
+    text: 'Seguimiento diario en la app y contacto directo por WhatsApp.',
+  },
+];
+---
+
+<section id="por-que" class="section-y why" data-theme="light" aria-labelledby="why-title">
+  <div class="container-x">
+    <!-- Bloque A: identificación -->
+    <div class="max-w-3xl" data-reveal>
+      <p class="eyebrow">¿Te suena?</p>
+      <h2 id="why-title" class="h2-display mt-4">
+        Si entrenas con dolor, esto te&nbsp;suena.
+      </h2>
+    </div>
+
+    <ol class="pains mt-10 md:mt-14" role="list">
+      {pains.map((pain, i) => (
+        <li class="pain" data-reveal>
+          <span class="pain-num tabular" aria-hidden="true">
+            {i + 1}
+          </span>
+          <p class="pain-text">{pain}</p>
+        </li>
+      ))}
+    </ol>
+
+    <!-- Bloque B: el giro -->
+    <div class="turn mt-16 md:mt-24" data-theme="dark" data-reveal>
+      <h3 class="turn-title">
+        El problema no suele ser tu lesión. Suele ser{' '}
+        <span class="text-brand-bright">el&nbsp;enfoque.</span>
+      </h3>
+      <p class="turn-text">
+        Ejercicios sueltos, un tratamiento puntual cuando duele y ninguna progresión.
+      </p>
+      <p class="turn-text turn-text-next">
+        Alivia a corto plazo, pero no prepara a tu cuerpo para volver a tolerar lo que le pides
+        entrenando.
+      </p>
+    </div>
+
+    <!-- Bloque C: 4 razones -->
+    <ul class="reasons mt-16 md:mt-24" role="list">
+      {reasons.map(({ icon: Icon, title, text }) => (
+        <li class="reason" data-reveal>
+          <span class="reason-icon" aria-hidden="true">
+            <Icon size={24} stroke-width={1.5} />
+          </span>
+          <h3 class="reason-title">{title}</h3>
+          <p class="reason-text">{text}</p>
+        </li>
+      ))}
+    </ul>
+
+    <SectionCta location="why" />
+  </div>
+</section>
+
+<style>
+  .why {
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .pains {
+    display: grid;
+    gap: 0;
+    margin-inline: 0;
+    margin-bottom: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--hair-on-light);
+  }
+
+  .pain {
+    display: grid;
+    grid-template-columns: 3.25rem 1fr;
+    align-items: baseline;
+    align-content: start;
+    gap: 12px;
+    padding-block: 22px;
+    border-bottom: 1px solid var(--hair-on-light);
+  }
+
+  .pain-num {
+    font-size: 2.75rem;
+    font-weight: 740;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--brand);
+  }
+
+  .pain-text {
+    margin: 0;
+    font-size: 1.1875rem;
+    line-height: 1.4;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .turn {
+    padding: 32px 24px;
+    border-radius: var(--radius-card);
+    background: var(--void);
+    color: var(--ink-on-dark);
+  }
+
+  .turn-title {
+    margin: 0;
+    font-size: clamp(1.75rem, 1.35rem + 2vw, 3rem);
+    font-weight: 720;
+    max-width: 18em;
+  }
+
+  .turn-text-next {
+    margin-top: 10px !important;
+  }
+
+  .turn-text {
+    margin: 20px 0 0;
+    max-width: 38rem;
+    color: var(--muted-on-dark);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+  }
+
+  .reasons {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-inline: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .reason {
+    padding: 24px;
+    border: 1px solid var(--hair-on-light);
+    border-radius: var(--radius-card);
+    background: #ffffff;
+  }
+
+  .reason-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--brand-soft);
+    color: var(--brand-strong);
+  }
+
+  .reason-title {
+    margin: 18px 0 0;
+    font-size: 1.25rem;
+    line-height: 1.2;
+    font-weight: 700;
+  }
+
+  .reason-text {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.55;
+  }
+
+  @media (width >= 768px) {
+    .pains {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+      border-top: 0;
+    }
+
+    .pain {
+      grid-template-columns: 1fr;
+      gap: 14px;
+      padding-block: 24px 0;
+      border-bottom: 0;
+      border-top: 1px solid var(--hair-on-light);
+    }
+
+    .pain-num {
+      font-size: 3.5rem;
+    }
+
+    .turn {
+      padding: 56px;
+    }
+
+    .reasons {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .reason {
+      padding: 32px;
+    }
+  }
+</style>

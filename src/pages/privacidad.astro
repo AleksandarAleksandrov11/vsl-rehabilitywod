@@ -1,0 +1,154 @@
+---
+import Legal from '../layouts/Legal.astro';
+import TitularData from '../components/TitularData.astro';
+import { CONFIG } from '../config';
+const L = CONFIG.legal;
+---
+
+<Legal
+  title="Política de privacidad | RehabilityWOD"
+  description="Cómo trata RehabilityWOD tus datos personales y de salud: finalidades, legitimación, destinatarios, transferencias, conservación y derechos."
+  path="/privacidad"
+  heading={'Política de\u00a0privacidad'}
+>
+  <p>
+    Esta política explica cómo tratamos tus datos personales cuando usas esta web y, en especial,
+    cuando rellenas el formulario de valoración. Cumple el Reglamento (UE) 2016/679 (RGPD) y la Ley
+    Orgánica 3/2018 de Protección de Datos Personales y garantía de los derechos digitales
+    (LOPDGDD).
+  </p>
+
+  <h2>1. Responsable del tratamiento</h2>
+  <TitularData />
+
+  <h2>2. Qué datos tratamos</h2>
+  <p>A través del formulario de valoración tratamos:</p>
+  <ul>
+    <li>Nombre.</li>
+    <li>Teléfono (para contactarte por WhatsApp o por teléfono).</li>
+    <li>Zona de la lesión o del dolor.</li>
+    <li>La descripción de tu caso, si la escribes.</li>
+  </ul>
+  <p>
+    <strong>La zona de la lesión y la descripción son datos de salud</strong> (categoría especial
+    del artículo 9 del RGPD). Solo los tratamos con tu consentimiento explícito (artículo 9.2.a),
+    que das al marcar la casilla del formulario.
+  </p>
+  <p>
+    Además, guardamos datos técnicos del envío: fecha, origen de la visita (parámetros UTM y
+    identificador de clic de anuncios), página de llegada, tipo de dispositivo y tus preferencias de
+    consentimiento.
+  </p>
+
+  <h2>3. Para qué los usamos</h2>
+  <ol>
+    <li>
+      Gestionar tu solicitud de valoración y contactarte por WhatsApp o por teléfono para agendar la
+      videollamada.
+    </li>
+    <li>Prestarte el servicio que contrates, si decides empezar un programa.</li>
+    <li>
+      Solo si lo aceptas en el aviso de cookies, medir la eficacia de nuestros anuncios con Meta
+      Pixel. Nunca enviamos a Meta tus datos de salud (ni la zona ni la descripción), ni tu nombre o
+      tu teléfono en claro.
+    </li>
+  </ol>
+  <p>No tomamos decisiones automatizadas ni elaboramos perfiles con efectos jurídicos sobre ti.</p>
+
+  <h2>4. Legitimación</h2>
+  <ul>
+    <li>
+      <strong>Consentimiento</strong> (art. 6.1.a y 9.2.a del RGPD) para tratar tus datos de salud
+      al valorar tu caso y, por separado, para la medición publicitaria con Meta.
+    </li>
+    <li>
+      <strong>Medidas precontractuales</strong> aplicadas a petición tuya (art. 6.1.b del RGPD): la
+      valoración y el contacto que solicitas.
+    </li>
+    <li>
+      <strong>Ejecución del contrato</strong> y <strong>obligaciones legales</strong> (art. 6.1.b y
+      6.1.c; art. 9.2.h del RGPD) si contratas el servicio, incluida la historia clínica.
+    </li>
+  </ul>
+  <p>
+    Puedes retirar tu consentimiento en cualquier momento, sin que afecte a la licitud del
+    tratamiento anterior a la retirada.
+  </p>
+
+  <h2>5. Encargados del tratamiento y destinatarios</h2>
+  <p>No vendemos tus datos. Los tratan, por cuenta nuestra, estos proveedores:</p>
+  <ul>
+    <li>
+      <strong>Google LLC</strong> (Google Workspace, Google Sheets y Apps Script): almacenamiento de
+      las solicitudes y aviso por correo.
+    </li>
+    <li>
+      <strong>Vercel Inc.</strong>: alojamiento de la web y analítica agregada sin cookies (Vercel
+      Web Analytics y Speed Insights).
+    </li>
+    <li>
+      <strong>Meta Platforms Ireland Ltd.</strong>: solo si aceptas las cookies de marketing, para
+      medir los anuncios (Meta Pixel y, si está activa, la Conversions API con el teléfono cifrado
+      mediante hash).
+    </li>
+  </ul>
+  <p>Fuera de estos casos, solo comunicaremos datos cuando lo exija la ley.</p>
+
+  <h2>6. Transferencias internacionales de datos</h2>
+  <p>
+    Algunos de estos proveedores (Google LLC, Vercel Inc. y, en su caso, Meta Platforms, Inc.)
+    pueden tratar datos en Estados Unidos. Estas transferencias se amparan en el Marco de Privacidad
+    de Datos UE-EE. UU. (Data Privacy Framework), en el que están adheridos, o en las cláusulas
+    contractuales tipo aprobadas por la Comisión Europea.
+  </p>
+
+  <h2>7. Cuánto tiempo los conservamos</h2>
+  <ul>
+    <li>Mientras gestionamos tu solicitud de valoración.</li>
+    <li>
+      Si no llegas a contratar, un máximo de 12 meses desde el último contacto. Después los
+      borramos.
+    </li>
+    <li>
+      Si contratas, durante la relación y los plazos legales que correspondan (la historia clínica,
+      durante el plazo que marque la normativa sanitaria aplicable).
+    </li>
+  </ul>
+
+  <h2>8. Tus derechos</h2>
+  <p>Puedes ejercer en cualquier momento tus derechos de:</p>
+  <ul>
+    <li>Acceso a tus datos.</li>
+    <li>Rectificación de los datos inexactos.</li>
+    <li>Supresión cuando ya no sean necesarios.</li>
+    <li>Oposición al tratamiento.</li>
+    <li>Limitación del tratamiento.</li>
+    <li>Portabilidad de tus datos.</li>
+    <li>Retirada del consentimiento que hayas dado.</li>
+  </ul>
+  <p>
+    Escríbenos a <a href={`mailto:${L.email}`}>{L.email}</a> o por correo postal a {L.titular},
+    {L.domicilio}, indicando el derecho que quieres ejercer.
+  </p>
+  <p>
+    Si crees que no hemos atendido bien tu solicitud, puedes reclamar ante la Agencia Española de
+    Protección de Datos en{' '}
+    <a href="https://www.aepd.es" rel="noopener">
+      www.aepd.es
+    </a>
+    .
+  </p>
+
+  <h2>9. Seguridad</h2>
+  <p>
+    Aplicamos medidas técnicas y organizativas adecuadas para proteger tus datos: conexión cifrada
+    (HTTPS), acceso restringido a la hoja de solicitudes y un secreto compartido entre la web y el
+    sistema de almacenamiento.
+  </p>
+
+  <h2>10. Cookies</h2>
+  <p>
+    El uso de cookies y tecnologías similares se explica en la{' '}
+    <a href="/cookies">política de cookies</a>.
+  </p>
+</Legal>

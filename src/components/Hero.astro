@@ -1,0 +1,267 @@
+---
+import { Picture } from 'astro:assets';
+import Play from '@lucide/astro/icons/play';
+import CtaButton from './CtaButton.astro';
+import StatsStrip from './StatsStrip.astro';
+import heroImage from '../assets/images/gerard-hero.jpg';
+import { CONFIG } from '../config';
+
+interface Props {
+  /** Encuadre horizontal de la foto (0–1). */
+  focalX?: number;
+  /** Encuadre vertical de la foto (0–1). */
+  focalY?: number;
+}
+
+const { focalX = CONFIG.heroFocal.x, focalY = CONFIG.heroFocal.y } = Astro.props;
+const clamp = (n: number) => Math.min(1, Math.max(0, n));
+const objectPosition = `${(clamp(focalX) * 100).toFixed(1)}% ${(clamp(focalY) * 100).toFixed(1)}%`;
+---
+
+<section id="inicio" class="hero-section" data-theme="dark" aria-labelledby="hero-title">
+  <div class="hero">
+    <div class="hero-media">
+      <Picture
+        src={heroImage}
+        formats={['avif']}
+        fallbackFormat="webp"
+        widths={[640, 960, 1280, 1920]}
+        sizes="(max-width: 767px) and (orientation: portrait) 85vh, (max-aspect-ratio: 16/9) 178vh, 100vw"
+        alt="Gerard Barrantes, fisioterapeuta y atleta de CrossFit, en un box de entrenamiento"
+        loading="eager"
+        fetchpriority="high"
+        decoding="async"
+        class="hero-img"
+        style={`object-position: ${objectPosition}`}
+      />
+      <div class="hero-veil"></div>
+    </div>
+
+    <div class="hero-content container-x">
+      <p class="eyebrow rise-in">Fisioterapia online para atletas de CrossFit</p>
+      <h1 id="hero-title" class="h1-display hero-title rise-in [animation-delay:60ms]">
+        Recupérate de tu lesión <span class="text-brand-bright">sin dejar de&nbsp;entrenar.</span>
+      </h1>
+      <p class="hero-sub rise-in [animation-delay:120ms]">
+        Un plan a medida, ajustado cada semana y con seguimiento diario. Estés donde estés.
+      </p>
+      <div class="hero-ctas rise-in [animation-delay:180ms]" data-hero-cta>
+        <CtaButton location="hero" class="w-full sm:w-auto sm:px-8">
+          Quiero valorar mi caso
+        </CtaButton>
+        <CtaButton href="#video" location="hero_video" variant="ghost" class="w-full sm:w-auto">
+          <Play size={18} stroke-width={1.5} aria-hidden="true" class="play-icon" />
+          <span>Ver el vídeo · 7&nbsp;min</span>
+        </CtaButton>
+      </div>
+      <div class="hero-trust-wrap rise-in [animation-delay:240ms]">
+        <ul class="hero-trust" role="list">
+          <li>+120 atletas recuperados</li>
+          <li>100&nbsp;% online</li>
+          <li>Valoración inicial gratuita</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <StatsStrip />
+</section>
+
+<style>
+  .hero-section {
+    background: var(--void);
+    color: var(--ink-on-dark);
+  }
+
+  .hero {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 100svh;
+    padding-top: calc(var(--header-h) + env(safe-area-inset-top) + 32px);
+    padding-bottom: 40px;
+    overflow: hidden;
+  }
+
+  .hero-media {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+
+  .hero-media :global(picture) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hero-media :global(.hero-img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hero-veil {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(10, 10, 10, 0.55) 0%,
+      rgba(10, 10, 10, 0.15) 30%,
+      rgba(10, 10, 10, 0.65) 60%,
+      rgba(10, 10, 10, 0.96) 100%
+    );
+  }
+
+  .hero-content {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .hero-title {
+    max-width: 13.5em;
+    margin: 2px 0 0;
+    color: var(--ink-on-dark);
+  }
+
+  .hero-sub {
+    max-width: 34rem;
+    margin: 0;
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    color: rgba(245, 245, 242, 0.88);
+  }
+
+  .hero-ctas {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .play-icon {
+    fill: currentColor;
+  }
+
+  /* Separadores "·": cada elemento lleva uno delante y la lista se desplaza a la izquierda
+     el ancho del separador; el recorte oculta el que cae al inicio de cada línea. */
+  .hero-trust-wrap {
+    margin-top: 4px;
+    overflow: hidden;
+  }
+
+  .hero-trust {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 0;
+    margin: 0 0 0 -1.25em;
+    padding: 0;
+    list-style: none;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--muted-on-dark);
+  }
+
+  .hero-trust li {
+    white-space: nowrap;
+  }
+
+  .hero-trust li::before {
+    content: '·';
+    display: inline-block;
+    width: 1.25em;
+    text-align: center;
+    color: rgba(156, 163, 175, 0.8);
+  }
+
+  /* Legibilidad sobre la foto (sombra neutra, sin glow). */
+  .hero-content .eyebrow,
+  .hero-sub,
+  .hero-trust {
+    text-shadow: 0 1px 14px rgba(0, 0, 0, 0.55);
+  }
+
+  @media (width >= 640px) {
+    .hero-ctas {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+  }
+
+  @media (width >= 768px) {
+    .hero {
+      padding-bottom: 72px;
+    }
+
+    .hero-content {
+      gap: 22px;
+    }
+
+    .hero-sub {
+      font-size: 1.1875rem;
+    }
+  }
+
+  /*
+   * Móvil en vertical: la foto ocupa el hueco que deja el texto (y se mete 110 px por debajo,
+   * fundiéndose en negro), para que el texto no tape la cara. El CTA sigue en la primera pantalla.
+   * Con una foto vertical definitiva compuesta con aire abajo, esta regla puede quitarse.
+   */
+  @media (width < 768px) and (orientation: portrait) {
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(clamp(120px, 26svh, 280px), 1fr) auto;
+      padding-top: 0;
+    }
+
+    .hero-media {
+      position: relative;
+      inset: auto;
+      grid-row: 1;
+      grid-column: 1;
+      margin-bottom: -110px;
+      -webkit-mask-image: linear-gradient(180deg, #000 62%, transparent 100%);
+      mask-image: linear-gradient(180deg, #000 62%, transparent 100%);
+    }
+
+    .hero-content {
+      grid-row: 2;
+      grid-column: 1;
+    }
+  }
+
+  /*
+   * Pantallas bajas en horizontal (móvil apaisado): la foto se va a la derecha y se funde en
+   * negro hacia la izquierda, donde va el texto, para no tapar la cara.
+   */
+  @media (orientation: landscape) and (height < 500px) {
+    .hero {
+      padding-top: calc(var(--header-h) + 28px);
+      padding-bottom: 28px;
+    }
+
+    .hero-media {
+      left: auto;
+      width: 62%;
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
+      mask-image: linear-gradient(90deg, transparent 0%, #000 38%);
+    }
+
+    .hero-content {
+      gap: 12px;
+    }
+
+    .hero-title {
+      max-width: 11em;
+      font-size: 2.625rem;
+    }
+
+    .hero-sub {
+      max-width: 26rem;
+    }
+  }
+</style>

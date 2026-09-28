@@ -1,0 +1,226 @@
+---
+/**
+ * Sección 2: VSL con fachada ligera.
+ * La miniatura de YouTube se descarga y optimiza en build (AVIF/WebP servidos desde /_astro),
+ * así que antes del clic no hay iframe ni ninguna petición a YouTube. Al hacer clic se carga
+ * el iframe de youtube-nocookie con autoplay.
+ */
+import { getImage, inferRemoteSize } from 'astro:assets';
+import Play from '@lucide/astro/icons/play';
+import SectionCta from './SectionCta.astro';
+import { CONFIG } from '../config';
+
+const id = CONFIG.vslYoutubeId;
+const embedSrc = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
+const fallbackThumb = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+
+type Poster = { avif: string; webp: string; src: string; width: number; height: number };
+
+async function buildPoster(): Promise<Poster | null> {
+  for (const quality of ['maxresdefault', 'hqdefault']) {
+    const url = `https://i.ytimg.com/vi/${id}/${quality}.jpg`;
+    try {
+      const { width, height } = await inferRemoteSize(url);
+      if (!width || !height || width <= 120) continue; // 120x90 = "no existe"
+      const widths = [480, 800, 1280].filter((w) => w < width).concat(width);
+      const common = { src: url, width, height, widths: [...new Set(widths)] };
+      const [avif, webp] = await Promise.all([
+        getImage({ ...common, format: 'avif' }),
+        getImage({ ...common, format: 'webp' }),
+      ]);
+      return {
+        avif: avif.srcSet.attribute,
+        webp: webp.srcSet.attribute,
+        src: webp.src,
+        width,
+        height,
+      };
+    } catch {
+      // Probar con la siguiente calidad.
+    }
+  }
+  return null;
+}
+
+const poster = await buildPoster();
+const sizes =
+  '(min-width: 1200px) 1136px, (min-width: 768px) calc(100vw - 64px), calc(100vw - 40px)';
+---
+
+<section id="video" class="section-y vsl" data-theme="dark" aria-labelledby="vsl-title">
+  <div class="container-x">
+    <div class="max-w-3xl" data-reveal>
+      <p class="eyebrow">El vídeo</p>
+      <h2 id="vsl-title" class="h2-display mt-4">
+        Si llevas tiempo con dolor, este vídeo es para&nbsp;ti.
+      </h2>
+      <p class="text-body mt-5 max-w-xl text-muted-on-dark">
+        En 7 minutos vas a entender por qué no has mejorado y qué puedes hacer a partir de ahora.
+      </p>
+    </div>
+
+    <div class="vsl-frame mt-10 md:mt-14" data-vsl data-embed={embedSrc} data-reveal>
+      <button
+        type="button"
+        class="vsl-facade"
+        data-vsl-play
+        aria-label="Reproducir el vídeo de Gerard (7 minutos)"
+      >
+        {poster ? (
+          <picture>
+            <source type="image/avif" srcset={poster.avif} sizes={sizes} />
+            <source type="image/webp" srcset={poster.webp} sizes={sizes} />
+            <img
+              src={poster.src}
+              width={poster.width}
+              height={poster.height}
+              alt="Gerard Barrantes explicando en el box por qué no mejora tu lesión"
+              loading="lazy"
+              decoding="async"
+              class="vsl-poster"
+            />
+          </picture>
+        ) : (
+          <img
+            src={fallbackThumb}
+            width="480"
+            height="360"
+            alt="Gerard Barrantes explicando en el box por qué no mejora tu lesión"
+            loading="lazy"
+            decoding="async"
+            class="vsl-poster"
+            data-yt-thumb
+          />
+        )}
+        <span class="vsl-shade" aria-hidden="true"></span>
+        <span class="vsl-play" aria-hidden="true">
+          <Play size={30} stroke-width={1.5} class="vsl-play-icon" />
+        </span>
+        <span class="vsl-duration" aria-hidden="true">
+          7 min
+        </span>
+      </button>
+      <noscript>
+        <a class="link vsl-noscript" href={`https://www.youtube.com/watch?v=${id}`}>
+          Ver el vídeo en YouTube
+        </a>
+      </noscript>
+    </div>
+
+    <SectionCta location="vsl" note="Te escribo yo por WhatsApp. Sin compromiso." />
+  </div>
+</section>
+
+<style>
+  .vsl {
+    background: var(--void);
+    color: var(--ink-on-dark);
+    border-top: 1px solid var(--hair-on-dark);
+  }
+
+  .vsl-frame {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--hair-on-dark);
+  }
+
+  .vsl-facade {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #fff;
+  }
+
+  .vsl-facade:focus-visible {
+    outline-offset: -4px;
+    border-radius: var(--radius-card);
+  }
+
+  .vsl-facade picture,
+  .vsl-poster {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .vsl-poster {
+    object-fit: cover;
+  }
+
+  .vsl-shade {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.18);
+    transition: background-color 0.3s var(--ease-out);
+  }
+
+  .vsl-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    place-items: center;
+    width: 76px;
+    height: 76px;
+    margin: -38px 0 0 -38px;
+    border-radius: 50%;
+    background: var(--brand-strong);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    transition: transform 0.3s var(--ease-out);
+  }
+
+  .vsl-play :global(.vsl-play-icon) {
+    fill: currentColor;
+    margin-left: 3px;
+  }
+
+  .vsl-duration {
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(10, 10, 10, 0.72);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .vsl-facade:hover .vsl-play {
+    transform: scale(1.06);
+  }
+
+  .vsl-facade:hover .vsl-shade {
+    background: rgba(10, 10, 10, 0.08);
+  }
+
+  .vsl-frame :global(iframe) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  .vsl-noscript {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+  }
+
+  @media (width >= 768px) {
+    .vsl-play {
+      width: 92px;
+      height: 92px;
+      margin: -46px 0 0 -46px;
+    }
+  }
+</style>
