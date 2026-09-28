@@ -1,24 +1,17 @@
 ---
+/** CTA de cierre de sección: siempre centrado y sin microtexto. */
 import CtaButton from './CtaButton.astro';
 import type { CtaLocation } from '../scripts/tracking';
 
 interface Props {
   location: CtaLocation;
-  note?: string;
-  align?: 'left' | 'center';
+  label?: string;
   class?: string;
 }
 
-const { location, note, align = 'left', class: className = '' } = Astro.props;
+const { location, label, class: className = '' } = Astro.props;
 ---
 
-<div
-  class:list={[
-    'mt-12 flex flex-col gap-3 md:mt-16',
-    align === 'center' ? 'items-center text-center' : 'items-stretch sm:items-start',
-    className,
-  ]}
->
-  <CtaButton location={location} class="w-full sm:w-auto sm:px-8" />
-  {note && <p class="text-secondary text-muted [[data-theme=dark]_&]:text-muted-on-dark">{note}</p>}
+<div class:list={['section-cta', 'reveal', className]} data-reveal>
+  <CtaButton location={location}>{label ?? 'Quiero valorar mi caso'}</CtaButton>
 </div>

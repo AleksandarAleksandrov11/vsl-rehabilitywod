@@ -1,0 +1,125 @@
+---
+/**
+ * Animación inicial "pulso a movimiento" (≤ 1,1 s, una vez por sesión).
+ * CSS puro: solo se muestra si el script en línea de Base.astro marca <html data-intro="play">
+ * (primera visita de la sesión y sin prefers-reduced-motion). Nunca recibe clics
+ * (pointer-events: none) y no retrasa la imagen del hero, que se precarga en paralelo.
+ *
+ * 0–0,55 s   la línea (pulso de electrocardiograma que acaba en recta) se dibuja.
+ * 0,3–0,6 s  aparecen los dos discos: la recta pasa a ser una barra.
+ * 0,35 s     el wordmark sube con fade.
+ * 0,65–1,1 s el panel se abre hacia arriba con clip-path y revela el hero.
+ */
+---
+
+<div class="intro" aria-hidden="true">
+  <div class="intro-mark">
+    <svg class="intro-svg" viewBox="0 0 320 72" width="320" height="72" focusable="false">
+      <path
+        class="intro-line"
+        d="M4 36 H70 L84 36 L94 12 L108 62 L118 22 L126 36 H316"
+        pathLength="1"
+      ></path>
+      <rect class="intro-plate intro-plate-l" x="150" y="18" width="9" height="36" rx="3"></rect>
+      <rect class="intro-plate intro-plate-r" x="292" y="18" width="9" height="36" rx="3"></rect>
+    </svg>
+    <p class="intro-word">RehabilityWOD</p>
+  </div>
+</div>
+
+<style>
+  .intro {
+    display: none;
+  }
+
+  :global(html[data-intro='play']) .intro {
+    position: fixed;
+    z-index: 400;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: var(--void);
+    pointer-events: none;
+    clip-path: inset(0 0 0 0);
+    animation: intro-open 0.45s cubic-bezier(0.7, 0, 0.2, 1) 0.65s forwards;
+  }
+
+  .intro-mark {
+    display: grid;
+    justify-items: center;
+    gap: 18px;
+    width: min(320px, 78vw);
+  }
+
+  .intro-svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .intro-line {
+    fill: none;
+    stroke: var(--brand-bright);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: intro-draw 0.55s cubic-bezier(0.45, 0, 0.2, 1) forwards;
+  }
+
+  .intro-plate {
+    fill: var(--brand-bright);
+    transform-box: fill-box;
+    transform-origin: center;
+    transform: scaleY(0);
+    animation: intro-plate 0.2s var(--ease) forwards;
+  }
+
+  .intro-plate-l {
+    animation-delay: 0.3s;
+  }
+
+  .intro-plate-r {
+    animation-delay: 0.42s;
+  }
+
+  .intro-word {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 14px;
+    line-height: 1;
+    letter-spacing: 0.4em;
+    margin-right: -0.4em;
+    text-transform: uppercase;
+    color: #ffffff;
+    opacity: 0;
+    animation: fade-up 0.3s var(--ease) 0.35s forwards;
+  }
+
+  @keyframes intro-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes intro-plate {
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  @keyframes intro-open {
+    to {
+      clip-path: inset(0 0 100% 0);
+      visibility: hidden;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(html[data-intro='play']) .intro {
+      display: none;
+    }
+  }
+</style>

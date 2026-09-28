@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import Intro from '../components/Intro.astro';
 import Header from '../components/Header.astro';
 import Hero from '../components/Hero.astro';
 import VslSection from '../components/VslSection.astro';
@@ -7,9 +8,13 @@ import WhySection from '../components/WhySection.astro';
 import HowItWorks from '../components/HowItWorks.astro';
 import Testimonials from '../components/Testimonials.astro';
 import ValoracionSection from '../components/ValoracionSection.astro';
+import ClosingBand from '../components/ClosingBand.astro';
 import Footer from '../components/Footer.astro';
 import StickyCta from '../components/StickyCta.astro';
+import { heroSources, HERO_MEDIA } from '../lib/hero';
 import { CONFIG, SEO } from '../config';
+
+const hero = await heroSources();
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -39,10 +44,31 @@ const jsonLd = {
 };
 ---
 
-<Base path="/" jsonLd={jsonLd}>
+<Base path="/" jsonLd={jsonLd} intro>
+  <Fragment slot="preload">
+    <link
+      rel="preload"
+      as="image"
+      type="image/avif"
+      imagesrcset={hero.mobile.avif}
+      imagesizes="100vw"
+      media={HERO_MEDIA.mobile}
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="image"
+      type="image/avif"
+      imagesrcset={hero.desktop.avif}
+      imagesizes="100vw"
+      media={HERO_MEDIA.desktop}
+      fetchpriority="high"
+    />
+  </Fragment>
   <a href="#valoracion" class="skip-link">
     Saltar al formulario
   </a>
+  <Intro />
   <Header overlay />
   <main id="main">
     <Hero />
@@ -51,6 +77,7 @@ const jsonLd = {
     <HowItWorks />
     <Testimonials />
     <ValoracionSection />
+    <ClosingBand />
   </main>
   <Footer withStickyGap />
   <StickyCta />

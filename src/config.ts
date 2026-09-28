@@ -22,13 +22,9 @@ export const CONFIG = {
   // TODO(Gerard): crear el Apps Script y poner GOOGLE_SCRIPT_URL y LEAD_SECRET en Vercel
   // (pasos en apps-script/README-apps-script.md). Sin ellos, /api/lead funciona en modo mock.
 
-  // TODO(Gerard): sustituir src/assets/images/gerard-about.jpg por una foto definitiva
-  // (vertical 4:5, 1000 px de ancho como mínimo). La actual es un fotograma de la VSL.
-
-  // Encuadre de la foto del hero sin reexportarla (0 = izquierda/arriba, 1 = derecha/abajo).
-  // TODO(Gerard): sustituir src/assets/images/gerard-hero.jpg por la foto definitiva
-  // (horizontal, 1920 px de ancho como mínimo) y ajustar estos valores si hace falta.
-  heroFocal: { x: 0.44, y: 0.3 },
+  // TODO(Gerard): sustituir src/assets/photos/gerard.jpg por su foto definitiva (retrato 4:5,
+  // 1600 px de ancho o más). La actual es un recorte provisional de la web antigua (150x188 px)
+  // y el bloque "Quién está detrás" se ve pequeño hasta que se cambie (ver AboutGerard.astro).
 
   legal: {
     titular: 'GERARD BARRANTES BAUTISTA',
@@ -51,7 +47,7 @@ export const CONFIG = {
 export const SEO = {
   title: 'Fisioterapia online para atletas de CrossFit | RehabilityWOD',
   description:
-    'Recupérate de tu lesión sin dejar de entrenar. Plan a medida, seguimiento diario y valoración inicial gratuita. +120 atletas recuperados.',
+    'Recupérate de tu lesión sin dejar de entrenar. Plan a medida, seguimiento diario y videollamada de valoración. +120 atletas recuperados.',
 } as const;
 
 export const whatsappLink = (text?: string) =>

@@ -1,92 +1,378 @@
 ---
-import { Image } from 'astro:assets';
-import aboutImage from '../assets/images/gerard-about.jpg';
+/**
+ * 5B: quién está detrás. La foto es SIEMPRE de Gerard (nunca stock).
+ *
+ * TODO(Gerard): sustituir src/assets/photos/gerard.jpg por la foto definitiva (retrato 4:5,
+ * cara en el tercio superior, 1600 px de ancho o más). La actual es un recorte provisional de
+ * https://rehabilitywod.com/collage.png (150x188 px).
+ *
+ * El diseño se adapta solo a la resolución de la foto, para que siempre se vea nítida en retina:
+ * - 1600 px de ancho o más: foto grande (hasta 480 px CSS), a la izquierda en escritorio, con el
+ *   chip flotante encima.
+ * - Menos: como máximo la mitad de su ancho natural, en un marco junto a la frase grande.
+ */
+import { getImage } from 'astro:assets';
+import Users from '@lucide/astro/icons/users';
+import GraduationCap from '@lucide/astro/icons/graduation-cap';
+import Dumbbell from '@lucide/astro/icons/dumbbell';
+import Target from '@lucide/astro/icons/target';
+import CtaButton from './CtaButton.astro';
+import SplitWords from './SplitWords.astro';
+import gerard from '../assets/photos/gerard.jpg';
+import { QUALITY } from '../lib/images';
+
+const large = gerard.width >= 1600;
+const displayWidth = large ? 480 : Math.floor(gerard.width / 2);
+const displayHeight = Math.round((displayWidth * gerard.height) / gerard.width);
+
+// srcset hasta 2x del tamaño mostrado, sin pasar nunca del tamaño natural.
+const widths = [...new Set([displayWidth, displayWidth * 2].map((w) => Math.min(w, gerard.width)))];
+const [avif, webp] = await Promise.all([
+  getImage({ src: gerard, widths, format: 'avif', quality: QUALITY.avif }),
+  getImage({ src: gerard, widths, format: 'webp', quality: QUALITY.webp }),
+]);
+const sizes = large
+  ? '(min-width: 768px) 420px, min(calc(100vw - 40px), 480px)'
+  : `${displayWidth}px`;
+const alt = 'Gerard Barrantes, fisioterapeuta y fundador de RehabilityWOD, entrenando en un box';
+
+const facts = [
+  { Icon: GraduationCap, text: 'Fisioterapeuta titulado' },
+  { Icon: Dumbbell, text: 'Atleta desde 2017' },
+  { Icon: Target, text: 'Especialista en CrossFit' },
+];
+const phrase = ['Conozco el box', { br: 'always' as const }, { text: 'por dentro.', accent: true }];
 ---
 
-<div class="about" data-reveal>
-  <div class="about-photo">
-    <Image
-      src={aboutImage}
-      alt="Retrato de Gerard Barrantes, fisioterapeuta y fundador de RehabilityWOD"
-      widths={[360, 480, 576]}
-      sizes="(min-width: 1024px) 420px, (min-width: 768px) 40vw, calc(100vw - 40px)"
-      loading="lazy"
-      decoding="async"
-      class="about-img"
-    />
+<div class:list={['about section-y', large ? 'about-large' : 'about-compact']} data-theme="dark">
+  <div class="container-x about-grid">
+    {large && (
+      <div class="about-photo-col">
+        <figure
+          class="about-photo reveal-clip"
+          data-reveal
+          style={`aspect-ratio:${gerard.width} / ${gerard.height};`}
+        >
+          <picture>
+            <source type="image/avif" srcset={avif.srcSet.attribute} sizes={sizes} />
+            <source type="image/webp" srcset={webp.srcSet.attribute} sizes={sizes} />
+            <img
+              src={webp.src}
+              width={displayWidth}
+              height={displayHeight}
+              alt={alt}
+              loading="lazy"
+              decoding="async"
+              class="about-img"
+            />
+          </picture>
+        </figure>
+        <p class="about-chip about-chip-float">
+          <Users size={18} stroke-width={1.75} aria-hidden="true" />
+          +120 atletas recuperados
+        </p>
+      </div>
+    )}
+
+    <div class="about-copy">
+      <p class="eyebrow reveal" data-reveal>
+        Quién está detrás
+      </p>
+
+      {large ? (
+        <SplitWords as="p" class="about-phrase" parts={phrase} />
+      ) : (
+        <div class="about-duo">
+          <figure
+            class="about-photo about-photo-small reveal-clip"
+            data-reveal
+            style={`width:${displayWidth}px; height:${displayHeight}px;`}
+          >
+            <picture>
+              <source type="image/avif" srcset={avif.srcSet.attribute} sizes={sizes} />
+              <source type="image/webp" srcset={webp.srcSet.attribute} sizes={sizes} />
+              <img
+                src={webp.src}
+                width={displayWidth}
+                height={displayHeight}
+                alt={alt}
+                loading="lazy"
+                decoding="async"
+                class="about-img"
+              />
+            </picture>
+          </figure>
+          <div class="about-duo-text">
+            <SplitWords as="p" class="about-phrase" parts={phrase} />
+            <p class="about-chip reveal" data-reveal style="--i:1">
+              <Users size={18} stroke-width={1.75} aria-hidden="true" />
+              +120 atletas recuperados
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div class="about-text reveal" data-reveal style="--i:2">
+        <p>Soy Gerard Barrantes, fisioterapeuta y atleta de CrossFit desde 2017.</p>
+        <p>He trabajado en clínicas privadas y en la red sanitaria de Tarragona.</p>
+      </div>
+
+      <ul class="about-facts" role="list">
+        {facts.map(({ Icon, text }, i) => (
+          <li class="about-fact reveal" data-reveal style={`--i:${i + 3}`}>
+            <span class="icon-ring" aria-hidden="true">
+              <Icon size={20} stroke-width={1.75} />
+            </span>
+            <span>{text}</span>
+          </li>
+        ))}
+      </ul>
+
+      <p class="about-sign reveal" data-reveal style="--i:6">
+        Gerard Barrantes · Fundador de RehabilityWOD
+      </p>
+    </div>
   </div>
-  <div class="about-copy">
-    <p class="eyebrow">Quién está detrás</p>
-    <h3 class="about-title">Soy Gerard Barrantes.</h3>
-    <p class="about-text">
-      Fisioterapeuta y atleta de CrossFit desde 2017, y fundador de RehabilityWOD.
-    </p>
-    <p class="about-text">He trabajado en clínicas privadas y en la red sanitaria de Tarragona.</p>
-    <p class="about-text">
-      Hoy me dedico a que atletas como tú vuelvan a entrenar sin dolor y con confianza en su cuerpo.
-    </p>
-    <p class="about-sign">Gerard Barrantes · Fisioterapeuta</p>
+
+  <div class="container-x">
+    <div class="section-cta reveal" data-reveal>
+      <CtaButton location="about">Quiero valorar mi caso</CtaButton>
+    </div>
   </div>
 </div>
 
 <style>
   .about {
-    display: grid;
-    gap: 32px;
-    margin-top: 88px;
-    padding-top: 56px;
-    border-top: 1px solid var(--hair-on-dark);
+    background: var(--void);
+    color: var(--ink-on-dark);
+    text-align: center;
+  }
+
+  .about-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .about-photo {
-    max-width: 440px;
-  }
-
-  .about-photo :global(.about-img) {
-    display: block;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 4 / 5;
-    object-fit: cover;
-    object-position: 50% 30%;
-    border-radius: var(--radius-card);
+    position: relative;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--hair-on-dark);
     background: var(--surface);
   }
 
-  .about-title {
-    margin: 14px 0 18px;
-    font-size: clamp(1.875rem, 1.5rem + 1.9vw, 3rem);
-    font-weight: 720;
+  .about-photo picture,
+  .about-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .about-img {
+    object-fit: cover;
+    object-position: 50% 25%;
+  }
+
+  .about-phrase {
+    font-family: var(--font-display);
+    font-weight: 800;
+    line-height: 0.9;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    text-wrap: balance;
+    color: var(--ink-on-dark);
+  }
+
+  .about-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 16px 0 12px;
+    border: 1px solid var(--hair-on-dark);
+    border-radius: 999px;
+    background: rgba(18, 18, 18, 0.92);
+    box-shadow: 0 14px 30px -14px rgba(0, 0, 0, 0.7);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .about-chip :global(svg) {
+    color: var(--brand-bright);
   }
 
   .about-text {
-    margin: 12px 0 0;
-    max-width: 36rem;
-    font-size: 1.0625rem;
-    line-height: 1.6;
-    color: rgba(245, 245, 242, 0.86);
-  }
-
-  .about-sign {
-    margin: 24px 0 0;
-    font-size: 0.9375rem;
+    display: grid;
+    gap: 4px;
+    max-width: 24rem;
+    margin-top: 14px;
     color: var(--muted-on-dark);
   }
 
+  .about-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+    max-width: 30rem;
+    margin: 16px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .about-fact {
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .about-sign {
+    margin-top: 14px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--ink-on-dark);
+  }
+
+  /* ---------- Foto pequeña: marco junto a la frase grande ---------- */
+  .about-duo {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 12px;
+    text-align: left;
+  }
+
+  .about-photo-small {
+    flex: none;
+    border-radius: 16px;
+    box-shadow:
+      0 0 0 5px var(--surface),
+      0 0 0 6px var(--hair-on-dark);
+  }
+
+  .about-duo-text {
+    display: grid;
+    justify-items: start;
+    gap: 12px;
+  }
+
+  .about-compact .about-phrase {
+    font-size: clamp(2.375rem, 11vw, 3rem);
+  }
+
+  .about-compact .about-chip {
+    min-height: 36px;
+    font-size: 0.875rem;
+  }
+
+  .about-fact :global(.icon-ring) {
+    width: 36px;
+    height: 36px;
+  }
+
   @media (width >= 768px) {
-    .about {
-      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
-      align-items: center;
-      gap: 56px;
-      margin-top: 112px;
-      padding-top: 80px;
+    .about-duo {
+      gap: 28px;
+      margin-top: 20px;
+    }
+
+    .about-compact .about-phrase {
+      font-size: clamp(3.75rem, 1.5rem + 4vw, 5.5rem);
+    }
+
+    .about-text {
+      max-width: 36rem;
+      margin-top: 28px;
+      font-size: 1.125rem;
+    }
+
+    .about-facts {
+      gap: 24px;
+      margin-top: 32px;
+    }
+
+    .about-fact {
+      font-size: 0.9375rem;
     }
   }
 
-  @media (width >= 1024px) {
-    .about {
-      grid-template-columns: 420px minmax(0, 1fr);
-      gap: 80px;
+  /* ---------- Foto grande (1600 px o más) ---------- */
+  .about-large .about-photo-col {
+    position: relative;
+    width: min(100%, 480px);
+    margin-inline: auto;
+  }
+
+  .about-large .about-photo {
+    border-radius: var(--radius);
+  }
+
+  .about-chip-float {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+  }
+
+  .about-large .about-copy {
+    margin-top: 32px;
+  }
+
+  .about-large .about-phrase {
+    margin-top: 14px;
+    font-size: clamp(3rem, 12.5vw, 3.5rem);
+  }
+
+  @media (width >= 768px) {
+    .about-large .about-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+      column-gap: 64px;
+      align-items: center;
+      text-align: left;
+    }
+
+    .about-large .about-photo-col {
+      width: 100%;
+      margin: 0;
+    }
+
+    .about-large .about-copy {
+      align-items: flex-start;
+      margin-top: 0;
+    }
+
+    .about-large .about-phrase {
+      font-size: clamp(3.75rem, 1.5rem + 4vw, 6rem);
+    }
+  }
+
+  /* Pantallas muy estrechas: los mini datos en una columna y el chip más compacto. */
+  @media (width < 360px) {
+    .about-facts {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      gap: 8px;
+    }
+
+    .about-fact {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .about-duo {
+      gap: 12px;
+    }
+
+    .about-compact .about-chip {
+      padding: 0 12px 0 10px;
+      font-size: 0.8125rem;
     }
   }
 </style>

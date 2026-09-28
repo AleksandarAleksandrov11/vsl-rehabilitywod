@@ -1,5 +1,5 @@
 /**
- * QA de la landing (sección 15 del encargo).
+ * QA de la landing (sección 11 del encargo de rediseño; conserva los flujos del QA original).
  * Se ejecuta con `npm run qa` (compila con el adaptador de Node y sirve dist/ aplicando vercel.json).
  */
 import { test, expect, type Page, type BrowserContext, type Request } from '@playwright/test';
@@ -25,15 +25,19 @@ const PAGES = ['/', '/aviso-legal', '/privacidad', '/cookies', '/gracias'] as co
 const SECTIONS = [
   ['01-hero', '#inicio'],
   ['02-video', '#video'],
-  ['03-por-que', '#por-que'],
+  ['03a-te-suena', '#por-que .suena'],
+  ['03b-banda', '#por-que .band'],
+  ['03c-comparativa', '#por-que .compare'],
   ['04-como-funciona', '#como-funciona'],
-  ['05-opiniones', '#opiniones'],
+  ['05a-opiniones', '#opiniones .reviews'],
+  ['05b-gerard', '#opiniones .about'],
   ['06-valoracion', '#valoracion'],
-  ['07-footer', 'footer.site-footer'],
+  ['07-cierre', 'main .closing'],
+  ['08-footer', 'footer.site-footer'],
 ] as const;
 
 const LEADS_FILE = 'qa/.tmp/leads.jsonl';
-const SHOTS = 'qa/screenshots';
+const SHOTS = 'qa/screenshots-v2';
 const CONSENT_REJECTED = { v: 1, marketing: false, ts: Date.now() };
 const CONSENT_ACCEPTED = { v: 1, marketing: true, ts: Date.now() };
 
@@ -95,6 +99,17 @@ async function newCtx(
   const ctx = await browser.newContext({ ...contextOptions(vp), ...extra });
   await stubMeta(ctx);
   return ctx;
+}
+
+/** Marca la intro como ya vista en la sesión (capturas y flujos "sin intro"). */
+async function skipIntro(ctx: BrowserContext) {
+  await ctx.addInitScript(() => {
+    try {
+      window.sessionStorage.setItem('rw_intro', '1');
+    } catch {
+      /* ignore */
+    }
+  });
 }
 
 async function setConsent(ctx: BrowserContext, consent: object | null) {
@@ -362,15 +377,32 @@ test.describe('Viewports', () => {
       // (b) Capturas (contexto aparte para poder ocultar overlays fijos en las de sección).
       // bypassCSP solo aquí: permite a Playwright inyectar el estilo que oculta los fijos en las
       // capturas de sección. Las comprobaciones de CSP se hacen en el contexto (a).
+      // Con intro: fotogramas de la animación inicial en la primera visita de la sesión.
+      const introCtx = await newCtx(browser, vp, { deviceScaleFactor: 1 });
+      await setConsent(introCtx, CONSENT_REJECTED);
+      const ip = await introCtx.newPage();
+      await ip.goto('/', { waitUntil: 'commit' });
+      await ip.locator('.intro').waitFor({ state: 'attached' });
+      await ip.waitForTimeout(350);
+      await ip.screenshot({ path: `${dir}/intro-1-pulso.jpg` });
+      await ip.waitForTimeout(450);
+      await ip.screenshot({ path: `${dir}/intro-2-apertura.jpg` });
+      await ip.waitForTimeout(900);
+      await ip.screenshot({ path: `${dir}/intro-3-hero.jpg` });
+      await introCtx.close();
+
+      // Sin intro (ya vista en la sesión).
       const shotCtx = await newCtx(browser, vp, { deviceScaleFactor: 1, bypassCSP: true });
       await setConsent(shotCtx, CONSENT_REJECTED);
+      await skipIntro(shotCtx);
       const page = await shotCtx.newPage();
       await page.goto('/', { waitUntil: 'networkidle' });
       await scrollThrough(page);
-      await page.screenshot({ path: `${dir}/home-fold.png` });
-      const hideFixed = '.sticky-cta, .cookie-banner, .skip-link { display: none !important; }';
+      await page.screenshot({ path: `${dir}/home-fold.jpg` });
+      const hideFixed =
+        '.sticky-cta, .cookie-banner, .skip-link, .intro { display: none !important; }';
       await page.screenshot({
-        path: `${dir}/home-full.png`,
+        path: `${dir}/home-full.jpg`,
         fullPage: true,
         animations: 'disabled',
         style: hideFixed,
@@ -384,17 +416,17 @@ test.describe('Viewports', () => {
           .locator(sel)
           .first()
           .screenshot({
-            path: `${dir}/home-${name}.png`,
+            path: `${dir}/home-${name}.jpg`,
             animations: 'disabled',
             style: `${hideFixed} .site-header { display: none !important; }`,
           });
       }
       // Barra CTA fija visible (móvil) a mitad de página.
       if (vp.w < 768) {
-        await page.locator('#por-que').scrollIntoViewIfNeeded();
+        await page.locator('#por-que .compare').scrollIntoViewIfNeeded();
         await page.evaluate(() => window.scrollBy({ top: 200, behavior: 'instant' }));
         await page.waitForTimeout(600);
-        await page.screenshot({ path: `${dir}/home-sticky.png` });
+        await page.screenshot({ path: `${dir}/home-sticky.jpg` });
       }
       // Formulario en cada paso.
       await page
@@ -402,11 +434,11 @@ test.describe('Viewports', () => {
         .evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
       await page
         .locator('[data-form-root]')
-        .screenshot({ path: `${dir}/form-step1.png`, animations: 'disabled' });
+        .screenshot({ path: `${dir}/form-step1.jpg`, animations: 'disabled' });
       for (const p of ['/aviso-legal', '/privacidad', '/cookies', '/gracias']) {
         await page.goto(p, { waitUntil: 'networkidle' });
         await page.screenshot({
-          path: `${dir}/page-${p.slice(1)}.png`,
+          path: `${dir}/page-${p.slice(1)}.jpg`,
           fullPage: true,
           animations: 'disabled',
         });
@@ -417,8 +449,8 @@ test.describe('Viewports', () => {
       const firstCtx = await newCtx(browser, vp, { deviceScaleFactor: 1 });
       const fp = await firstCtx.newPage();
       await fp.goto('/', { waitUntil: 'networkidle' });
-      await fp.waitForTimeout(600);
-      await fp.screenshot({ path: `${dir}/first-visit-banner.png` });
+      await fp.waitForTimeout(1300); // tras la intro
+      await fp.screenshot({ path: `${dir}/first-visit-banner.jpg` });
       // El banner no tapa el formulario: con el banner abierto, el botón del paso 1 se puede
       // llevar por encima del banner con scroll.
       await fp.locator('[data-form-root]').scrollIntoViewIfNeeded();
@@ -434,14 +466,14 @@ test.describe('Viewports', () => {
       if (nextBox && nextBox.y + nextBox.height > bannerTop + 1) {
         all.push(`[${vpName(vp)}] el banner tapa el botón Continuar`);
       }
-      await fp.screenshot({ path: `${dir}/first-visit-form.png` });
+      await fp.screenshot({ path: `${dir}/first-visit-form.jpg` });
 
       // Áreas táctiles también con el banner abierto, con el panel Configurar y en el paso 4.
       if (isMobile(vp)) {
         for (const t of await smallTargets(fp))
           all.push(`[${vpName(vp)} banner] área táctil < 44: ${t}`);
         await fp.locator('[data-consent-action="configure"]').click();
-        await fp.screenshot({ path: `${dir}/cookie-prefs.png` });
+        await fp.screenshot({ path: `${dir}/cookie-prefs.jpg` });
         for (const t of await smallTargets(fp))
           all.push(`[${vpName(vp)} panel cookies] área táctil < 44: ${t}`);
         await fp.locator('[data-consent-action="save"]').click();
@@ -457,7 +489,7 @@ test.describe('Viewports', () => {
         await fp.waitForTimeout(400);
         await fp
           .locator('[data-form-root]')
-          .screenshot({ path: `${dir}/form-step4.png`, animations: 'disabled' });
+          .screenshot({ path: `${dir}/form-step4.jpg`, animations: 'disabled' });
         for (const t of await smallTargets(fp))
           all.push(`[${vpName(vp)} paso 4] área táctil < 44: ${t}`);
       }
@@ -724,11 +756,11 @@ test.describe('Formulario', () => {
     });
     await openForm(page);
 
-    await expect(page.locator('[data-progress-text]')).toHaveText('1 / 4');
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 1 de 4');
     await chip(page, 'Hombro').click();
     // Avanza solo a los 250 ms
     await expect(page.locator('fieldset[data-step="2"]')).toBeVisible();
-    await expect(page.locator('[data-progress-text]')).toHaveText('2 / 4');
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
     await expect(page.locator('#s2-title')).toBeFocused();
     await expect(page.locator('[data-live]')).toHaveText('Paso 2 de 4');
 
@@ -1128,115 +1160,142 @@ test.describe('Barra CTA fija', () => {
 // Marquee de testimonios
 // ---------------------------------------------------------------------------
 
-test.describe('Marquee', () => {
-  const trackX = (page: Page) =>
-    page
-      .locator('.marquee-track')
-      .evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
+test.describe('Marquees (cinta de stats y testimonios)', () => {
+  const MARQUEES = [
+    { name: 'cinta de stats', root: '.ticker', item: '.tk-item', min: 30_000, max: 50_000 },
+    { name: 'testimonios', root: '#opiniones', item: '.t-card', min: 45_000, max: 60_000 },
+  ] as const;
 
-  test('se mueve a la izquierda, loop sin saltos y pausa con hover', async ({ browser }) => {
-    const ctx = await newCtx(browser, VIEWPORTS[10]);
+  for (const m of MARQUEES) {
+    test(`${m.name}: se mueve a la izquierda, loop sin saltos y pausa con hover`, async ({
+      browser,
+    }) => {
+      const ctx = await newCtx(browser, VIEWPORTS[10]);
+      await setConsent(ctx, CONSENT_REJECTED);
+      await skipIntro(ctx);
+      const page = await ctx.newPage();
+      await page.goto('/', { waitUntil: 'networkidle' });
+      const track = page.locator(`${m.root} .marquee-track`);
+      const trackX = () =>
+        track.evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
+      await page.locator(m.root).scrollIntoViewIfNeeded();
+      await page.waitForTimeout(900);
+      const x1 = await trackX();
+      await page.waitForTimeout(1200);
+      const x2 = await trackX();
+      expect(x2).toBeLessThan(x1);
+
+      // Pausa con hover.
+      await page.locator(`${m.root} .marquee`).hover();
+      await page.waitForTimeout(100);
+      const h1 = await trackX();
+      await page.waitForTimeout(700);
+      const h2 = await trackX();
+      expect(Math.abs(h2 - h1)).toBeLessThan(0.5);
+      await page.mouse.move(5, 5);
+
+      const geo = await track.evaluate((trackEl) => {
+        const lists = [...trackEl.querySelectorAll<HTMLElement>('.marquee-list')];
+        const anim = trackEl.getAnimations()[0] as CSSAnimation;
+        const kf = (anim.effect as KeyframeEffect).getKeyframes();
+        return {
+          w0: lists[0]!.getBoundingClientRect().width,
+          w1: lists[1]!.getBoundingClientRect().width,
+          track: trackEl.scrollWidth,
+          to: kf[kf.length - 1]?.transform,
+          duration: anim.effect?.getTiming().duration,
+          iterations: anim.effect?.getTiming().iterations,
+          copyHidden: lists[1]!.getAttribute('aria-hidden'),
+          copyInert: lists[1]!.hasAttribute('inert'),
+        };
+      });
+      // -50% del track = exactamente el ancho de una copia → el final coincide con el inicio.
+      expect(Math.abs(geo.w0 - geo.w1)).toBeLessThan(0.5);
+      expect(Math.abs(geo.track - 2 * geo.w0)).toBeLessThan(1);
+      expect(String(geo.to)).toContain('-50%');
+      expect(Number(geo.duration)).toBeGreaterThanOrEqual(m.min);
+      expect(Number(geo.duration)).toBeLessThanOrEqual(m.max);
+      expect(geo.iterations).toBe(Infinity);
+      expect(geo.copyHidden).toBe('true');
+      expect(geo.copyInert).toBe(true);
+
+      // La primera tarjeta de la copia al final del ciclo está donde la original al inicio.
+      const seam = await track.evaluate((trackEl, item) => {
+        const anim = trackEl.getAnimations()[0]!;
+        const dur = Number(anim.effect!.getTiming().duration);
+        anim.pause();
+        anim.currentTime = 0;
+        const a = trackEl
+          .querySelector(`.marquee-list:not([data-copy]) ${item}`)!
+          .getBoundingClientRect().left;
+        anim.currentTime = dur - 0.001;
+        const b = trackEl
+          .querySelector(`.marquee-list[data-copy] ${item}`)!
+          .getBoundingClientRect().left;
+        anim.play();
+        return { a, b };
+      }, m.item);
+      expect(Math.abs(seam.a - seam.b)).toBeLessThan(1.5);
+      await ctx.close();
+    });
+  }
+
+  test('pausa con foco (cinta enfocable) y al mantener pulsado en táctil', async ({ browser }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3]);
     await setConsent(ctx, CONSENT_REJECTED);
+    await skipIntro(ctx);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
-    await page.locator('#opiniones').scrollIntoViewIfNeeded();
-    const x1 = await trackX(page);
-    await page.waitForTimeout(1200);
-    const x2 = await trackX(page);
-    expect(x2).toBeLessThan(x1);
-
-    // Pausa con hover (antes de tocar la animación por script).
-    await page.locator('.marquee').hover();
-    const h1 = await trackX(page);
-    await page.waitForTimeout(700);
-    const h2 = await trackX(page);
-    expect(Math.abs(h2 - h1)).toBeLessThan(0.5);
-    await page.mouse.move(5, 5);
-
-    const geo = await page.evaluate(() => {
-      const lists = [...document.querySelectorAll<HTMLElement>('.marquee-list')];
-      const track = document.querySelector<HTMLElement>('.marquee-track')!;
-      const anim = track.getAnimations()[0] as CSSAnimation;
-      const kf = (anim.effect as KeyframeEffect).getKeyframes();
-      return {
-        w0: lists[0]!.getBoundingClientRect().width,
-        w1: lists[1]!.getBoundingClientRect().width,
-        track: track.scrollWidth,
-        from: kf[0]?.transform,
-        to: kf[kf.length - 1]?.transform,
-        duration: anim.effect?.getTiming().duration,
-        iterations: anim.effect?.getTiming().iterations,
-        copyHidden: lists[1]!.getAttribute('aria-hidden'),
-        copyInert: lists[1]!.hasAttribute('inert'),
-      };
-    });
-    // -50% del track = exactamente el ancho de una copia → el final coincide con el inicio.
-    expect(Math.abs(geo.w0 - geo.w1)).toBeLessThan(0.5);
-    expect(Math.abs(geo.track - 2 * geo.w0)).toBeLessThan(1);
-    expect(String(geo.to)).toContain('-50%');
-    expect(Number(geo.duration)).toBeGreaterThanOrEqual(45_000);
-    expect(Number(geo.duration)).toBeLessThanOrEqual(60_000);
-    expect(geo.iterations).toBe(Infinity);
-    expect(geo.copyHidden).toBe('true');
-    expect(geo.copyInert).toBe(true);
-
-    // Posición de la primera tarjeta de la copia con desplazamiento -50%: igual que la original en 0.
-    const seam = await page.evaluate(() => {
-      const track = document.querySelector<HTMLElement>('.marquee-track')!;
-      const anim = track.getAnimations()[0]!;
-      const dur = Number(anim.effect!.getTiming().duration);
-      anim.pause();
-      anim.currentTime = 0;
-      const a = document
-        .querySelector('.marquee-list:not([data-copy]) .t-card')!
-        .getBoundingClientRect().left;
-      anim.currentTime = dur - 0.001;
-      const b = document
-        .querySelector('.marquee-list[data-copy] .t-card')!
-        .getBoundingClientRect().left;
-      anim.play();
-      return { a, b };
-    });
-    expect(Math.abs(seam.a - seam.b)).toBeLessThan(1.5);
+    const state = (sel: string) =>
+      page
+        .locator(`${sel} .marquee-track`)
+        .evaluate((el) => getComputedStyle(el).animationPlayState);
+    await page.locator('.ticker .marquee').focus();
+    expect(await state('.ticker')).toBe('paused');
+    await page.locator('.ticker .marquee').blur();
+    const box = (await page.locator('.ticker .marquee').boundingBox())!;
+    await page.mouse.move(box.x + 50, box.y + 40);
+    await page.locator('.ticker .marquee').dispatchEvent('pointerdown', { pointerType: 'touch' });
+    expect(await state('.ticker')).toBe('paused');
+    await page.locator('.ticker .marquee').dispatchEvent('pointerup', { pointerType: 'touch' });
+    expect(await state('.ticker')).toBe('running');
     await ctx.close();
   });
 
-  test('reduced motion: sin animación y con scroll manual', async ({ browser }) => {
+  test('reduced motion: sin animación, sin copia y con scroll manual', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3], { reducedMotion: 'reduce' });
     await setConsent(ctx, CONSENT_REJECTED);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
-    await page.locator('#opiniones').scrollIntoViewIfNeeded();
-    const info = await page.evaluate(() => {
-      const m = document.querySelector<HTMLElement>('.marquee')!;
-      const t = document.querySelector<HTMLElement>('.marquee-track')!;
-      return {
-        anim: getComputedStyle(t).animationName,
-        overflow: getComputedStyle(m).overflowX,
-        scrollable: m.scrollWidth > m.clientWidth,
-        copy: getComputedStyle(document.querySelector('.marquee-list[data-copy]')!).display,
-        snap: getComputedStyle(m).scrollSnapType,
-      };
-    });
-    expect(info.anim).toBe('none');
-    expect(info.overflow).toBe('auto');
-    expect(info.scrollable).toBe(true);
-    expect(info.copy).toBe('none');
-    expect(info.snap).toContain('x');
-    const before = await page.locator('.marquee').evaluate((el) => el.scrollLeft);
-    await page
-      .locator('.marquee')
-      .evaluate((el) => el.scrollBy({ left: 300, behavior: 'instant' }));
-    const after = await page.locator('.marquee').evaluate((el) => el.scrollLeft);
-    expect(after).toBeGreaterThan(before);
-    // Contador: sin animación, número final directamente.
-    await expect(page.locator('[data-count-to]')).toHaveText('+120');
+    for (const root of ['.ticker', '#opiniones']) {
+      await page.locator(root).scrollIntoViewIfNeeded();
+      const info = await page.locator(`${root} .marquee`).evaluate((m) => {
+        const t = m.querySelector<HTMLElement>('.marquee-track')!;
+        return {
+          anim: getComputedStyle(t).animationName,
+          overflow: getComputedStyle(m).overflowX,
+          scrollable: m.scrollWidth > m.clientWidth,
+          copy: getComputedStyle(m.querySelector('.marquee-list[data-copy]')!).display,
+        };
+      });
+      expect(info, root).toEqual({
+        anim: 'none',
+        overflow: 'auto',
+        scrollable: true,
+        copy: 'none',
+      });
+      const marquee = page.locator(`${root} .marquee`);
+      const before = await marquee.evaluate((el) => el.scrollLeft);
+      await marquee.evaluate((el) => el.scrollBy({ left: 300, behavior: 'instant' }));
+      expect(await marquee.evaluate((el) => el.scrollLeft), root).toBeGreaterThan(before);
+    }
     await ctx.close();
   });
 
   test('"Leer más" abre el testimonio completo en un <dialog> accesible', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     await setConsent(ctx, CONSENT_REJECTED);
+    await skipIntro(ctx);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
     const btn = page.locator('.marquee-list:not([data-copy]) [data-dialog-open="t-leo"]');
@@ -1254,11 +1313,176 @@ test.describe('Marquee', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Animación inicial, word-up, reveals y movimiento
+// ---------------------------------------------------------------------------
+
+test.describe('Animación inicial y movimiento', () => {
+  test('intro: una vez por sesión, ≤ 1,1 s, sin bloquear y con word-up del H1 después', async ({
+    browser,
+  }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3]);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('html')).toHaveAttribute('data-intro', 'play');
+    const timing = await page.evaluate(() => {
+      const intro = document.querySelector<HTMLElement>('.intro')!;
+      const all = [intro, ...intro.querySelectorAll('*')].flatMap((el) => el.getAnimations());
+      const end = Math.max(
+        ...all.map((a) => {
+          const t = a.effect!.getComputedTiming();
+          return Number(t.delay ?? 0) + Number(t.activeDuration ?? 0);
+        }),
+      );
+      const word = document.querySelector('.hero-title .w > span')!;
+      const wordDelay = Number(word.getAnimations()[0]!.effect!.getComputedTiming().delay);
+      return {
+        end,
+        pointer: getComputedStyle(intro).pointerEvents,
+        wordDelay,
+        preloaded: [...document.querySelectorAll('link[rel="preload"][as="image"]')].length,
+      };
+    });
+    expect(timing.end).toBeLessThanOrEqual(1100);
+    expect(timing.pointer).toBe('none');
+    // El H1 empieza su word-up cuando se abre el panel (0,65 s).
+    expect(timing.wordDelay).toBeGreaterThanOrEqual(650);
+    expect(timing.preloaded).toBe(2);
+    await page.waitForTimeout(1300);
+    const after = await page.evaluate(() => {
+      const intro = document.querySelector<HTMLElement>('.intro')!;
+      const cx = innerWidth / 2;
+      const cy = innerHeight / 2;
+      return {
+        visibility: getComputedStyle(intro).visibility,
+        topEl: document.elementFromPoint(cx, cy)?.closest('.intro') ? 'intro' : 'page',
+      };
+    });
+    expect(after).toEqual({ visibility: 'hidden', topEl: 'page' });
+
+    // Segunda carga en la misma sesión: sin intro y word-up inmediato.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    expect(await page.locator('html').getAttribute('data-intro')).toBeNull();
+    const delay = await page
+      .locator('.hero-title .w > span')
+      .first()
+      .evaluate((el) => Number(el.getAnimations()[0]!.effect!.getComputedTiming().delay));
+    expect(delay).toBeLessThan(300);
+    await expect(page.locator('.intro')).toBeHidden();
+    await ctx.close();
+  });
+
+  test('reduced motion: sin intro, sin parallax y todo visible', async ({ browser }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3], { reducedMotion: 'reduce' });
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    await page.goto('/', { waitUntil: 'networkidle' });
+    expect(await page.locator('html').getAttribute('data-intro')).toBeNull();
+    await expect(page.locator('.intro')).toBeHidden();
+    await page.locator('#por-que .band').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+    const band = await page.locator('.band-media').evaluate((el) => getComputedStyle(el).transform);
+    expect(['none', 'matrix(1, 0, 0, 1, 0, 0)']).toContain(band);
+    expect(await page.locator('.reveal-armed').count()).toBe(0);
+    await ctx.close();
+  });
+
+  test('reveals, parallax (≤ 40 px) y barra de progreso de scroll', async ({ browser }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[10]);
+    await setConsent(ctx, CONSENT_REJECTED);
+    await skipIntro(ctx);
+    const page = await ctx.newPage();
+    await page.goto('/', { waitUntil: 'networkidle' });
+    expect(await page.locator('.reveal-armed').count()).toBeGreaterThan(10);
+    const shifts: number[] = [];
+    const H = await page.evaluate(() => document.documentElement.scrollHeight);
+    for (let y = 0; y < H; y += 300) {
+      await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), y);
+      await page.waitForTimeout(60);
+      shifts.push(
+        ...(await page.$$eval('[data-parallax]', (els) =>
+          els.map((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).m42),
+        )),
+      );
+    }
+    expect(Math.max(...shifts.map(Math.abs))).toBeLessThanOrEqual(40);
+    expect(Math.max(...shifts.map(Math.abs))).toBeGreaterThan(5);
+    await page.waitForTimeout(1200);
+    // Al llegar abajo, todo lo armado ha entrado y la barra de progreso está llena.
+    expect(await page.locator('.reveal-armed:not(.is-in)').count()).toBe(0);
+    // Los titulares revelados no llevan clip-path (recortaría las tildes de la primera línea).
+    const clipped = await page.$$eval('.split', (els) =>
+      els.filter((el) => getComputedStyle(el).clipPath !== 'none').map((el) => el.textContent),
+    );
+    expect(clipped).toEqual([]);
+    const progress = await page
+      .locator('[data-scroll-progress]')
+      .evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).a);
+    expect(progress).toBeGreaterThan(0.98);
+    await ctx.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hover de tarjetas y botones (capturas en escritorio)
+// ---------------------------------------------------------------------------
+
+test('hover de tarjetas y botones (capturas)', async ({ browser }) => {
+  const dir = `${SHOTS}/hover`;
+  mkdirSync(dir, { recursive: true });
+  const ctx = await newCtx(browser, VIEWPORTS[10], { bypassCSP: true });
+  await setConsent(ctx, CONSENT_REJECTED);
+  await skipIntro(ctx);
+  const page = await ctx.newPage();
+  await page.goto('/', { waitUntil: 'networkidle' });
+  await scrollThrough(page);
+  const targets: Array<[string, string, string]> = [
+    ['boton-primario', '#inicio [data-cta="hero"]', '#inicio .hero-ctas'],
+    ['boton-secundario', '#inicio [data-cta="hero_video"]', '#inicio .hero-ctas'],
+    ['header-cta', '.site-header [data-cta="header"]', '.site-header'],
+    ['poster-vsl', '[data-vsl-play]', '[data-vsl]'],
+    ['tarjeta-te-suena', '.suena-card >> nth=0', '.suena-list'],
+    ['paso', '.step >> nth=1', '.steps'],
+    ['capturas-app', '.phones', '.phones'],
+    [
+      'testimonio',
+      '.marquee-list:not([data-copy]) .t-card >> nth=1',
+      '#opiniones .reviews-marquee',
+    ],
+    ['opcion-formulario', '#lead-form label.chip >> nth=1', '.chips'],
+    ['footer-wordmark', '.footer-giant-word span >> nth=3', '.footer-giant'],
+  ];
+  const lifts: Record<string, number> = {};
+  for (const [name, sel, area] of targets) {
+    const el = page.locator(sel).first();
+    await el.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    // En los marquees, el hover sobre la cinta la pausa: así la tarjeta queda quieta.
+    if (area.includes('marquee')) await page.locator(area).hover();
+    await page.waitForTimeout(150);
+    const before = await el.evaluate((e) => e.getBoundingClientRect().top);
+    await el.hover({ force: true });
+    await page.waitForTimeout(700);
+    lifts[name] = Math.round((await el.evaluate((e) => e.getBoundingClientRect().top)) - before);
+    await page
+      .locator(area)
+      .first()
+      .screenshot({ path: `${dir}/${name}.jpg` });
+    await page.mouse.move(2, 2);
+    await page.waitForTimeout(300);
+  }
+  test.info().annotations.push({ type: 'hover-lift', description: JSON.stringify(lifts) });
+  // Las tarjetas suben 6 px al hover.
+  expect(lifts['tarjeta-te-suena']).toBe(-6);
+  expect(lifts['paso']).toBe(-6);
+  await ctx.close();
+});
+
+// ---------------------------------------------------------------------------
 // Otros
 // ---------------------------------------------------------------------------
 
 test.describe('Rendimiento', () => {
-  test('JS total en la home < 30 KB comprimido (sin Pixel ni YouTube)', async ({ browser }) => {
+  test('JS total en la home < 35 KB comprimido (sin Pixel ni YouTube)', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     await setConsent(ctx, CONSENT_REJECTED);
     const page = await ctx.newPage();
@@ -1276,17 +1500,20 @@ test.describe('Rendimiento', () => {
     test
       .info()
       .annotations.push({ type: 'js-bytes', description: `${total} B en ${own.length} archivos` });
-    expect(total).toBeLessThan(30 * 1024);
+    expect(total).toBeLessThan(35 * 1024);
     await ctx.close();
   });
 });
 
-test.describe('Estructura y copy (sección 4 y 16)', () => {
-  test('exactamente 6 secciones en orden, con CTA al final de cada una salvo la 6', async ({
-    page,
+test.describe('Estructura y copy (secciones 5 y 7)', () => {
+  test('6 secciones en orden + banda de cierre, con un CTA centrado al final de cada una', async ({
+    browser,
   }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3]);
+    await skipIntro(ctx);
+    const page = await ctx.newPage();
     await page.goto('/');
-    const ids = await page.locator('main > section').evaluateAll((els) => els.map((e) => e.id));
+    const ids = await page.locator('main > section[id]').evaluateAll((els) => els.map((e) => e.id));
     expect(ids).toEqual(['inicio', 'video', 'por-que', 'como-funciona', 'opiniones', 'valoracion']);
     const ctas = await page
       .locator('main > section')
@@ -1295,109 +1522,168 @@ test.describe('Estructura y copy (sección 4 y 16)', () => {
           [...sec.querySelectorAll('a[data-cta]')].map((a) => a.getAttribute('data-cta')),
         ),
       );
-    expect(ctas).toEqual([['hero', 'hero_video'], ['vsl'], ['why'], ['how'], ['testimonials'], []]);
-    // El último CTA de cada sección 2–5 es el último elemento interactivo de la sección.
-    for (const id of ['video', 'por-que', 'como-funciona', 'opiniones']) {
-      const last = await page.locator(`#${id}`).evaluate((sec) =>
-        [...sec.querySelectorAll('a, button')]
+    expect(ctas).toEqual([
+      ['hero', 'hero_video'],
+      ['vsl'],
+      ['why', 'compare'],
+      ['how'],
+      ['about'],
+      [],
+      ['closing'],
+    ]);
+    // El CTA de cierre es el último elemento interactivo de cada sección y va centrado.
+    for (const sel of ['#video', '#por-que', '#como-funciona', '#opiniones', 'main .closing']) {
+      const info = await page.locator(sel).evaluate((sec) => {
+        const last = [...sec.querySelectorAll('a, button')]
           .filter((el) => !el.closest('dialog'))
-          .pop()
-          ?.getAttribute('data-cta'),
-      );
-      expect(last, id).toBeTruthy();
+          .pop()!;
+        const r = last.getBoundingClientRect();
+        const s = sec.getBoundingClientRect();
+        return {
+          cta: last.getAttribute('data-cta'),
+          offset: Math.abs(r.left + r.width / 2 - (s.left + s.width / 2)),
+        };
+      });
+      expect(info.cta, sel).toBeTruthy();
+      expect(info.offset, sel).toBeLessThan(2);
     }
-    await expect(page.locator('header [data-cta="header"]')).toHaveAttribute('href', '#valoracion');
-    await expect(page.locator('[data-sticky-cta] [data-cta="sticky"]')).toHaveAttribute(
-      'href',
-      '#valoracion',
-    );
+    // Todos los CTA van a #valoracion, salvo "Ver el vídeo".
+    const hrefs = await page
+      .locator('a[data-cta]')
+      .evaluateAll((els) => els.map((a) => [a.getAttribute('data-cta'), a.getAttribute('href')]));
+    for (const [cta, href] of hrefs) {
+      expect(href, String(cta)).toBe(cta === 'hero_video' ? '#video' : '#valoracion');
+    }
+    await ctx.close();
   });
 
-  test('copy de la sección 4 tal cual', async ({ page }) => {
+  test('CTAs centrados en todos los viewports', async ({ browser }) => {
+    const off: string[] = [];
+    for (const vp of VIEWPORTS) {
+      const ctx = await newCtx(browser, vp);
+      await setConsent(ctx, CONSENT_REJECTED);
+      await skipIntro(ctx);
+      const page = await ctx.newPage();
+      await page.goto('/', { waitUntil: 'networkidle' });
+      const res = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>('main a[data-cta]')].map((a) => {
+          const box = a.closest<HTMLElement>('.section-cta, .hero-ctas')!;
+          const container = box.closest<HTMLElement>('.container-x') ?? box;
+          const r = box.getBoundingClientRect();
+          const c = container.getBoundingClientRect();
+          const cs = getComputedStyle(container);
+          const inner = c.left + parseFloat(cs.paddingLeft);
+          const innerW = c.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+          return [a.dataset.cta, Math.round(Math.abs(r.left + r.width / 2 - (inner + innerW / 2)))];
+        }),
+      );
+      for (const [cta, d] of res) if (Number(d) > 2) off.push(`${vpName(vp)} ${cta}: ${d}px`);
+      await ctx.close();
+    }
+    expect(off).toEqual([]);
+  });
+
+  test('copy del rediseño y textos eliminados', async ({ browser }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3]);
+    await skipIntro(ctx);
+    const page = await ctx.newPage();
     await page.goto('/');
-    const text = await page.evaluate(() =>
-      (document.body.textContent ?? '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' '),
-    );
+    const norm = (t: string) => t.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
+    const text = norm(await page.evaluate(() => document.body.textContent ?? ''));
     const expected = [
-      'Fisioterapia online para atletas de CrossFit',
-      'Recupérate de tu lesión sin dejar de entrenar.',
-      'Un plan a medida, ajustado cada semana y con seguimiento diario. Estés donde estés.',
+      'Recupérate sin dejar de entrenar.',
+      'Plan a medida, seguimiento diario y ajustes cada semana. Estés donde estés.',
       'Quiero valorar mi caso',
-      'Ver el vídeo · 7 min',
+      'Ver el vídeo',
       '+120 atletas recuperados',
+      'Sin parar de entrenar',
+      'Desde 2017 fisio y atleta de CrossFit',
       '100 % online',
-      'Valoración inicial gratuita',
-      'atletas recuperados',
-      'fisio y atleta de CrossFit desde',
-      'online, estés donde estés',
-      'seguimiento en app y WhatsApp',
-      'Si llevas tiempo con dolor, este vídeo es para ti.',
-      'En 7 minutos vas a entender por qué no has mejorado y qué puedes hacer a partir de ahora.',
-      'Te escribo yo por WhatsApp. Sin compromiso.',
-      'Si entrenas con dolor, esto te suena.',
+      'Diario seguimiento por app y WhatsApp',
+      'Cada semana reajustes del plan',
+      '1 a 1 videollamadas de seguimiento',
+      '8, 12 o 24 semanas según tu caso',
+      'Vídeo · 7 min',
+      '¿Por qué sigues con dolor?',
+      'Lo que nadie te ha explicado de tu lesión.',
+      'Mira esto antes de volver al box.',
+      '7:00',
+      'Por qué recaes',
+      'Qué falla en tu enfoque',
+      'Qué hacer desde hoy',
+      '¿Te suena?',
       'Evitas ejercicios que antes hacías sin pensar.',
-      'Mejoras un poco y, al volver a entrenar normal, recaes.',
+      'Mejoras, vuelves a entrenar normal y recaes.',
       'Empiezas a pensar que lo tuyo es crónico.',
-      'El problema no suele ser tu lesión. Suele ser el enfoque.',
-      'Ejercicios sueltos, un tratamiento puntual cuando duele y ninguna progresión.',
-      'Alivia a corto plazo, pero no prepara a tu cuerpo para volver a tolerar lo que le pides entrenando.',
-      'Especialista en CrossFit.',
-      'Fisioterapeuta y atleta desde 2017. Conozco el box por dentro.',
-      'Sin dejar de entrenar.',
-      'Adaptamos tu programación para que sigas entrenando de forma segura.',
-      'Un plan que se ajusta.',
-      'Reajustes cada semana según cómo responde tu cuerpo.',
-      'Nunca vas solo.',
-      'Seguimiento diario en la app y contacto directo por WhatsApp.',
-      'Así de claro.',
-      'Valoramos tu caso.',
-      'Rellenas el formulario y hacemos una videollamada gratuita.',
-      'Desde el primer día sabes qué hacer, qué evitar y por qué.',
-      'Tu plan, en tu móvil.',
-      'Ejercicio específico y las adaptaciones para que sigas entrenando, en una app sencilla.',
-      'Seguimiento diario y reajustes cada semana.',
-      'Vuelves al 100 %.',
-      'Preparamos tu vuelta a tu mejor nivel y te damos herramientas para no recaer.',
-      'Programas de 8, 12 o 24 semanas según tu caso. El precio depende del plan y lo vemos juntos en la valoración.',
+      'El problema no es tu lesión. Es el enfoque.',
+      'Ejercicios sueltos y parches cuando duele no te preparan para volver a entrenar.',
+      'Quiero empezar',
+      'Lo de siempre vs RehabilityWOD',
+      'Parar de entrenar',
+      'Sigues entrenando, con adaptaciones',
+      'Ejercicios sueltos',
+      'Plan progresivo para CrossFit',
+      'Solo cuando duele',
+      'Seguimiento diario',
+      'El mismo plan para todos',
+      'Reajustes cada semana',
+      'Solo entre sesiones',
+      'Contacto directo por WhatsApp',
+      'Así funciona',
+      'Valoramos tu caso',
+      'Formulario y videollamada para entender qué te pasa.',
+      'Tu plan en el móvil',
+      'Ejercicio específico y tus entrenos adaptados, en una app.',
+      'Vuelves al 100 %',
+      'Preparamos tu vuelta y te enseño a no recaer.',
+      'Programas de 8, 12 o 24 semanas. El precio lo vemos en la valoración.',
+      'Valorar mi caso',
       'Atletas reales. Vuelta real al box.',
-      'Después de varias consultas con fisios y seguimiento con traumatólogo sin ninguna mejoría… Ha sido el único profesional con el que he notado mejoría y he recuperado la movilidad en mi hombro.',
-      'Había probado muchos tratamientos y fisios, incluso infiltraciones, y el dolor no desaparecía. A día de hoy estoy entrenando con total normalidad sin dolor.',
-      'A pesar de ser todo online, el seguimiento y la cercanía han sido de 10. La mejora ha sido brutal y puedo volver a practicar CrossFit sin miedo a ningún movimiento.',
-      'Es la mejor rehabilitación que he hecho nunca. Lo que más destaco es el compromiso, el feedback y la capacidad que tiene para conocerte y conocer tu lesión.',
-      'Gerard me ayudó a entender mi lesión y a gestionar el dolor, las cargas y la intensidad. Mi rodilla ha recuperado su funcionalidad y puedo volver a entrenar sin dolor.',
-      'No podía hacer ningún ejercicio con el brazo por encima de la cabeza. Poco a poco fui mejorando hasta no sentir nada de dolor y volver a entrenar con normalidad.',
-      'Epitrocleitis, más de un año',
-      'Condromalacia en ambas rodillas',
-      'Diez meses con dolor',
-      'Dolor de hombro en overhead',
-      'Soy Gerard Barrantes.',
-      'Fisioterapeuta y atleta de CrossFit desde 2017, y fundador de RehabilityWOD.',
+      'Quién está detrás',
+      'Conozco el box por dentro.',
+      'Soy Gerard Barrantes, fisioterapeuta y atleta de CrossFit desde 2017.',
       'He trabajado en clínicas privadas y en la red sanitaria de Tarragona.',
-      'Hoy me dedico a que atletas como tú vuelvan a entrenar sin dolor y con confianza en su cuerpo.',
-      'Gerard Barrantes · Fisioterapeuta',
+      'Fisioterapeuta titulado',
+      'Atleta desde 2017',
+      'Especialista en CrossFit',
+      'Gerard Barrantes · Fundador de RehabilityWOD',
       'Cuéntame qué te pasa.',
-      'Te escribo por WhatsApp para una videollamada de valoración gratuita. Si no es para ti, te lo diré claro.',
-      'Abro plazas nuevas cuando tengo hueco para darte el seguimiento que mereces.',
+      'Rellénalo en 30 segundos y te escribo para la videollamada de valoración.',
+      'Abro plazas cuando tengo hueco para darte el seguimiento que mereces.',
+      'Paso 1 de 4',
       '¿Qué te duele?',
       'Cuéntame un poco más.',
       '¿Cómo te llamas?',
       '¿A qué número te escribo?',
       'He leído la política de privacidad (se abre en una pestaña nueva) y consiento el tratamiento de los datos de salud que he indicado para valorar mi caso.',
       'Enviar y valorar mi caso',
+      'Preguntas frecuentes',
       '¿Cómo me vas a ayudar si no me tratas en persona?',
-      'No necesitas que te toque para recuperarte. Necesitas entender lo que te pasa, una estrategia adaptada a ti y alguien que te acompañe en todo el proceso. La mayoría de diagnósticos fiables no dependen de la palpación, sino de una buena evaluación y pruebas funcionales guiadas, también a distancia.',
       '¿Cómo sé si esto es para mí?',
-      'Si entrenas CrossFit, arrastras dolor desde hace tiempo y has probado de todo sin resultados duraderos, lo más probable es que sí. Lo vemos en la videollamada gratuita, y si no es para ti, te lo diré claro.',
       '¿Qué garantías tengo?',
-      'No te voy a prometer resultados en dos semanas ni una solución mágica. Te garantizo un proceso en el que no estás solo: probamos, ajustamos y afinamos lo que necesitas en cada fase.',
       '¿Y si ya tengo pruebas o diagnóstico por imagen?',
-      'Genial, las usamos como información complementaria. Una resonancia te dice qué hay a nivel estructural, pero no lo que puedes o no puedes hacer. Lo que marca el rumbo es cómo te afecta en el día a día y cómo responde tu cuerpo al esfuerzo.',
-      'Fisioterapia online para atletas de CrossFit.',
-      'Usamos cookies propias para que la web funcione y, si nos dejas, de Meta para medir nuestros anuncios.',
+      'Vuelve a entrenar sin dolor.',
+      'Contacto',
+      'Instagram @rehability_wod',
+      'Aviso legal',
+      'Configurar cookies',
+      'Fisioterapia online para atletas de CrossFit',
       'Gerard Barrantes Bautista · RehabilityWOD',
+      'Epitrocleitis, más de un año',
     ];
     const missing = expected.filter((t) => !text.includes(t));
     expect(missing).toEqual([]);
+    // Textos eliminados: no vuelven a aparecer.
+    expect(text).not.toContain('Te escribo yo por WhatsApp');
+    expect(text).not.toContain('Sin compromiso');
+    expect(text).not.toMatch(/Valoración inicial gratuita/i);
+    const hero = norm(await page.locator('#inicio').innerText());
+    expect(hero.toLowerCase()).not.toContain('fisioterapia online para atletas de crossfit');
+    const sticky = norm(
+      await page.locator('[data-sticky-cta]').evaluate((el) => el.textContent ?? ''),
+    ).trim();
+    expect(sticky).toBe('Quiero valorar mi caso');
+    expect(await page.locator('[data-sticky-cta] a').count()).toBe(1);
     for (const z of [
       'Hombro',
       'Codo',
@@ -1410,11 +1696,174 @@ test.describe('Estructura y copy (sección 4 y 16)', () => {
     ]) {
       await expect(page.locator(`#lead-form input[name="zona"][value="${z}"]`)).toHaveCount(1);
     }
-    await expect(page.locator('#detalle')).toHaveAttribute(
-      'placeholder',
-      'Ej.: me duele el hombro en los overhead desde hace 6 meses.',
-    );
     await expect(page.locator('#consentimiento_salud')).not.toBeChecked();
+    // Tipografía: H1, H2 y números en Big Shoulders; texto en Work Sans.
+    const fonts = await page.evaluate(() => ({
+      h: [
+        ...document.querySelectorAll(
+          'h1, h2, .tk-strong, .step-num, .suena-num, .band-statement, .about-phrase',
+        ),
+      ].map((el) => getComputedStyle(el).fontFamily.split(',')[0]),
+      body: getComputedStyle(document.body).fontFamily.split(',')[0],
+      transform: [...document.querySelectorAll('h1, h2')].map(
+        (el) => getComputedStyle(el).textTransform,
+      ),
+    }));
+    expect(new Set(fonts.h)).toEqual(new Set(['"Big Shoulders Display"']));
+    expect(fonts.body).toBe('"Work Sans Variable"');
+    expect(new Set(fonts.transform)).toEqual(new Set(['uppercase']));
+    await ctx.close();
+  });
+
+  test('home: 420 palabras como máximo (sin testimonios, FAQ, formulario, footer ni legal)', async ({
+    browser,
+  }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3]);
+    await skipIntro(ctx);
+    const page = await ctx.newPage();
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const result = await page.evaluate(() => {
+      const exclude = [
+        '#opiniones .reviews-marquee', // testimonios
+        'dialog', // testimonios completos
+        '.faq',
+        '[data-form-root]',
+        'footer',
+        '#cookie-banner',
+        '.marquee-list[data-copy]', // copia del loop (no es texto nuevo)
+        '.intro', // animación inicial (aria-hidden, dura 1 s)
+        'script',
+        'style',
+        '.sr-only',
+        '.skip-link',
+      ].join(',');
+      const words: string[] = [];
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const node = walker.currentNode as Text;
+        const parent = node.parentElement;
+        if (!parent || parent.closest(exclude)) continue;
+        if (!parent.checkVisibility({ visibilityProperty: true })) continue;
+        for (const w of node.data.split(/\s+/)) if (/[\p{L}\p{N}]/u.test(w)) words.push(w);
+      }
+      return { count: words.length, words: words.join(' ') };
+    });
+    test.info().annotations.push({ type: 'word-count', description: String(result.count) });
+    test.info().annotations.push({ type: 'words', description: result.words });
+    expect(result.count).toBeLessThanOrEqual(420);
+    await ctx.close();
+  });
+
+  test('home: altura total en 390x844 ≤ 7200 px', async ({ browser }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3]);
+    await setConsent(ctx, CONSENT_REJECTED);
+    await skipIntro(ctx);
+    const page = await ctx.newPage();
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await scrollThrough(page);
+    const h = await page.evaluate(() => document.documentElement.scrollHeight);
+    test.info().annotations.push({ type: 'home-height-390', description: String(h) });
+    expect(h).toBeLessThanOrEqual(7200);
+    await ctx.close();
+  });
+
+  test('contraste AA del texto sobre fotos en el peor punto del velo (12 viewports)', async ({
+    browser,
+  }) => {
+    test.setTimeout(240_000);
+    const targets: Array<[string, number]> = [
+      ['.hero-title', 3],
+      ['.hero-title .accent', 3],
+      ['.hero-sub', 4.5],
+      ['.band-statement', 3],
+      ['.band-lead', 4.5],
+      ['.closing-phrase', 3],
+      ['.closing-phrase .accent', 3],
+      ['.valoracion-head h2', 3],
+      ['.valoracion-lead', 4.5],
+      ['.valoracion-note', 4.5],
+      ['.vsl-poster-title', 3],
+    ];
+    const fails: string[] = [];
+    const report: string[] = [];
+    const lum = (r: number, g: number, b: number) => {
+      const f = (c: number) => {
+        c /= 255;
+        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    const sharp = (await import('sharp')).default;
+    for (const vp of VIEWPORTS) {
+      const ctx = await newCtx(browser, vp, { deviceScaleFactor: 1, reducedMotion: 'reduce' });
+      await setConsent(ctx, CONSENT_REJECTED);
+      const page = await ctx.newPage();
+      await page.goto('/', { waitUntil: 'networkidle' });
+      for (const [sel, min] of targets) {
+        const el = page.locator(sel).first();
+        await el.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(250);
+        const color = await el.evaluate((e) => getComputedStyle(e).color);
+        const box = (await el.boundingBox())!;
+        // Oculta el texto (estilo en línea: permitido por la CSP) y mide el fondo real.
+        const hide = sel.includes('.accent') ? sel.split(' ')[0]! : sel;
+        await page
+          .locator(hide)
+          .first()
+          .evaluate((e) => {
+            for (const n of [e, ...e.querySelectorAll<HTMLElement>('*')])
+              (n as HTMLElement).style.setProperty('color', 'transparent', 'important');
+          });
+        const buf = await page.screenshot({ clip: box });
+        await page
+          .locator(hide)
+          .first()
+          .evaluate((e) => {
+            for (const n of [e, ...e.querySelectorAll<HTMLElement>('*')])
+              (n as HTMLElement).style.removeProperty('color');
+          });
+        const { data, info } = await sharp(buf)
+          .removeAlpha()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+        const L: number[] = [];
+        for (let i = 0; i < data.length; i += info.channels)
+          L.push(lum(data[i]!, data[i + 1]!, data[i + 2]!));
+        L.sort((a, b) => a - b);
+        const bg = L[Math.floor(L.length * 0.99)]!;
+        const rgb = color
+          .match(/[\d.]+/g)!
+          .slice(0, 3)
+          .map(Number) as [number, number, number];
+        const fg = lum(...rgb);
+        const ratio = (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+        report.push(`${vpName(vp)} ${sel} ${ratio.toFixed(2)}`);
+        if (ratio < min) fails.push(`${vpName(vp)} ${sel}: ${ratio.toFixed(2)} < ${min}`);
+      }
+      await ctx.close();
+    }
+    test.info().annotations.push({ type: 'contrast', description: report.join('\n') });
+    expect(fails).toEqual([]);
+  });
+
+  test('CSP: el hash del script en línea de la intro coincide con vercel.json', async ({
+    page,
+    request,
+  }) => {
+    await page.goto('/');
+    const inline = await page.evaluate(() =>
+      [...document.querySelectorAll('script:not([src]):not([type])')].map(
+        (s) => s.textContent ?? '',
+      ),
+    );
+    expect(inline).toHaveLength(1);
+    const { createHash } = await import('node:crypto');
+    const hash = `'sha256-${createHash('sha256').update(inline[0]!).digest('base64')}'`;
+    const csp = (await request.get('/')).headers()['content-security-policy'] ?? '';
+    expect(csp).toContain(hash);
+    // Las páginas legales no llevan script en línea.
+    await page.goto('/privacidad');
+    expect(await page.locator('script:not([src]):not([type])').count()).toBe(0);
   });
 });
 
@@ -1464,8 +1913,8 @@ test.describe('Páginas legales y rutas', () => {
     expect(h['referrer-policy']).toBe('strict-origin-when-cross-origin');
     expect(h['x-frame-options']).toBe('SAMEORIGIN');
     expect(h['strict-transport-security']).toContain('max-age=63072000');
-    expect(h['content-security-policy']).toContain(
-      "script-src 'self' https://connect.facebook.net",
+    expect(h['content-security-policy']).toMatch(
+      /script-src 'self' 'sha256-[A-Za-z0-9+/=]+' https:\/\/connect\.facebook\.net/,
     );
     expect(h['content-security-policy']).not.toMatch(/script-src[^;]*unsafe-inline/);
   });

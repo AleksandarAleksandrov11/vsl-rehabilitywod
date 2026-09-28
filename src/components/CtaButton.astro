@@ -1,4 +1,10 @@
 ---
+/**
+ * Botón de la landing. Primario por defecto: píldora --brand-strong con flecha, brillo al hover
+ * y scale(.97) al pulsar. Siempre apunta a #valoracion salvo que se indique otro destino.
+ */
+import ArrowRight from '@lucide/astro/icons/arrow-right';
+import Play from '@lucide/astro/icons/play';
 import type { CtaLocation } from '../scripts/tracking';
 
 interface Props {
@@ -6,9 +12,12 @@ interface Props {
   location: CtaLocation;
   variant?: 'primary' | 'ghost';
   size?: 'md' | 'sm';
+  icon?: 'arrow' | 'play' | 'none';
   class?: string;
   full?: boolean;
   id?: string;
+  tabindex?: number;
+  [key: `data-${string}`]: string | undefined;
 }
 
 const {
@@ -16,9 +25,12 @@ const {
   location,
   variant = 'primary',
   size = 'md',
+  icon = variant === 'primary' ? 'arrow' : 'none',
   class: className = '',
   full = false,
   id,
+  tabindex,
+  ...rest
 } = Astro.props;
 ---
 
@@ -26,13 +38,21 @@ const {
   id={id}
   href={href}
   data-cta={location}
+  tabindex={tabindex}
   class:list={[
     'btn',
     variant === 'primary' ? 'btn-primary' : 'btn-ghost',
     size === 'sm' && 'btn-sm',
-    full && 'w-full',
+    full && 'btn-block',
     className,
   ]}
+  {...rest}
 >
-  <slot>Quiero valorar mi caso</slot>
+  {icon === 'play' && <Play size={18} stroke-width={1.75} aria-hidden="true" class="btn-icon" />}
+  <span>
+    <slot>Quiero valorar mi caso</slot>
+  </span>
+  {icon === 'arrow' && (
+    <ArrowRight size={20} stroke-width={1.75} aria-hidden="true" class="btn-icon btn-icon-arrow" />
+  )}
 </a>

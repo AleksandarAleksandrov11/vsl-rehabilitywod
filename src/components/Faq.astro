@@ -1,59 +1,83 @@
 ---
+/**
+ * Preguntas frecuentes: acordeón con separadores --hair, "+" que rota 45° y altura animada con
+ * grid-template-rows (0fr → 1fr). Sin JS (sin la clase .js en <html>) las respuestas se ven.
+ */
 import Plus from '@lucide/astro/icons/plus';
 
 const faqs = [
   {
     q: '¿Cómo me vas a ayudar si no me tratas en persona?',
-    a: 'No necesitas que te toque para recuperarte. Necesitas entender lo que te pasa, una estrategia adaptada a ti y alguien que te acompañe en todo el proceso. La mayoría de diagnósticos fiables no dependen de la palpación, sino de una buena evaluación y pruebas funcionales guiadas, también a distancia.',
+    a: 'No necesitas que te toque. Necesitas una buena evaluación, un plan adaptado a ti y alguien que te acompañe en todo el proceso.',
   },
   {
     q: '¿Cómo sé si esto es para mí?',
-    a: 'Si entrenas CrossFit, arrastras dolor desde hace tiempo y has probado de todo sin resultados duraderos, lo más probable es que sí. Lo vemos en la videollamada gratuita, y si no es para ti, te lo diré claro.',
+    a: 'Si entrenas CrossFit y arrastras un dolor que no se va, seguramente sí. Lo vemos en la videollamada y, si no, te lo digo claro.',
   },
   {
     q: '¿Qué garantías tengo?',
-    a: 'No te voy a prometer resultados en dos semanas ni una solución mágica. Te garantizo un proceso en el que no estás solo: probamos, ajustamos y afinamos lo que necesitas en cada fase.',
+    a: 'No te prometo resultados en dos semanas. Te garantizo un proceso en el que no estás solo: probamos, ajustamos y afinamos.',
   },
   {
     q: '¿Y si ya tengo pruebas o diagnóstico por imagen?',
-    a: 'Genial, las usamos como información complementaria. Una resonancia te dice qué hay a nivel estructural, pero no lo que puedes o no puedes hacer. Lo que marca el rumbo es cómo te afecta en el día a día y cómo responde tu cuerpo al esfuerzo.',
+    a: 'Genial, las usamos como apoyo. Pero lo que marca el rumbo es cómo te afecta y cómo responde tu cuerpo al esfuerzo.',
   },
 ];
 ---
 
-<div class="faq" data-reveal>
-  <h3 class="faq-title">Preguntas frecuentes.</h3>
+<div class="faq" data-faq>
+  <h3 class="faq-title">Preguntas frecuentes</h3>
   <div class="faq-list">
-    {faqs.map((item) => (
-      <details class="faq-item">
-        <summary class="faq-q">
-          <span>{item.q}</span>
-          <Plus size={20} stroke-width={1.5} aria-hidden="true" class="faq-icon" />
-        </summary>
-        <p class="faq-a">{item.a}</p>
-      </details>
+    {faqs.map((item, i) => (
+      <div class="faq-item">
+        <h4 class="faq-h">
+          <button
+            type="button"
+            class="faq-q"
+            id={`faq-q-${i}`}
+            aria-expanded="false"
+            aria-controls={`faq-a-${i}`}
+            data-faq-toggle
+          >
+            <span>{item.q}</span>
+            <Plus size={22} stroke-width={1.75} aria-hidden="true" class="faq-icon" />
+          </button>
+        </h4>
+        <div class="faq-panel" id={`faq-a-${i}`} role="region" aria-labelledby={`faq-q-${i}`}>
+          <div class="faq-inner">
+            <p class="faq-a">{item.a}</p>
+          </div>
+        </div>
+      </div>
     ))}
   </div>
 </div>
 
 <style>
   .faq {
-    max-width: 760px;
-    margin: 88px auto 0;
+    max-width: 720px;
+    margin: 26px auto 0;
+    text-align: left;
   }
 
   .faq-title {
-    margin: 0 0 20px;
-    font-size: clamp(1.5rem, 1.3rem + 1vw, 2rem);
-    font-weight: 700;
-  }
-
-  .faq-list {
-    border-top: 1px solid var(--hair-on-dark);
+    margin-bottom: 8px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 2rem; /* 32 px */
+    line-height: 0.9;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    text-align: center;
   }
 
   .faq-item {
     border-bottom: 1px solid var(--hair-on-dark);
+  }
+
+  .faq-h {
+    margin: 0;
+    font: inherit;
   }
 
   .faq-q {
@@ -61,48 +85,73 @@ const faqs = [
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    min-height: 64px;
-    padding-block: 16px;
-    font-size: 1.0625rem;
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 0;
+    border: 0;
+    background: none;
+    color: var(--ink-on-dark);
+    font: inherit;
+    font-size: 1rem;
     font-weight: 600;
     line-height: 1.35;
-    cursor: pointer;
-    list-style: none;
-  }
-
-  .faq-q::-webkit-details-marker {
-    display: none;
-  }
-
-  .faq-q::marker {
-    content: '';
-  }
-
-  .faq-q:hover {
-    color: #ffffff;
+    text-align: left;
   }
 
   .faq-q :global(.faq-icon) {
     flex: none;
     color: var(--brand-bright);
-    transition: transform 0.3s var(--ease-out);
+    transition: transform 0.4s var(--ease);
   }
 
-  .faq-item[open] .faq-q :global(.faq-icon) {
+  .faq-q[aria-expanded='true'] :global(.faq-icon) {
     transform: rotate(45deg);
   }
 
+  .faq-q:focus-visible {
+    outline-offset: 2px;
+  }
+
+  .faq-panel {
+    display: grid;
+    grid-template-rows: 1fr;
+  }
+
+  :global(html.js) .faq-panel {
+    grid-template-rows: 0fr;
+    visibility: hidden;
+    transition:
+      grid-template-rows 0.45s var(--ease),
+      visibility 0s linear 0.45s;
+  }
+
+  :global(html.js) .faq-panel.is-open {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    transition:
+      grid-template-rows 0.45s var(--ease),
+      visibility 0s linear 0s;
+  }
+
+  .faq-inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
   .faq-a {
-    margin: 0;
-    padding: 0 36px 22px 0;
+    padding: 0 38px 20px 0;
     font-size: 1rem;
-    line-height: 1.6;
+    line-height: 1.55;
     color: var(--muted-on-dark);
   }
 
   @media (width >= 768px) {
     .faq {
-      margin-top: 112px;
+      margin-top: 96px;
+    }
+
+    .faq-title {
+      margin-bottom: 20px;
     }
   }
 </style>

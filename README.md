@@ -3,7 +3,11 @@
 Landing de captación para **RehabilityWOD** (fisioterapia online para atletas de CrossFit).
 Un solo objetivo: que el atleta rellene el formulario de valoración.
 
-- 6 secciones (hero + stats, VSL, por qué, cómo funciona, opiniones + quién está detrás, valoración + FAQ).
+- **Rediseño v2** (septiembre de 2026): animación inicial "pulso a movimiento", titulares en
+  mayúsculas con Big Shoulders Display, fotos de box a sangre, texturas, cinta de stats en loop,
+  reveals y parallax sutil. Informe en [`qa/REPORT-v2.md`](qa/REPORT-v2.md).
+- 6 secciones (hero + cinta de stats, VSL, por qué, cómo funciona, opiniones + quién está detrás,
+  valoración + FAQ), banda de cierre y footer.
 - Formulario de 4 pasos, uno por pantalla, que funciona también sin JavaScript.
 - Leads a Google Sheets vía `/api/lead` → Google Apps Script, con aviso por email.
 - Meta Pixel solo tras el consentimiento de cookies (criterios AEPD).
@@ -15,8 +19,8 @@ Un solo objetivo: que el atleta rellene el formulario de valoración.
 | Framework     | Astro 5.18 (TypeScript `strict`), salida estática + `/api/lead` serverless |
 | Estilos       | Tailwind CSS v4 (`@tailwindcss/vite`), tokens en `src/styles/global.css`   |
 | Adaptador     | `@astrojs/vercel` (producción) · `@astrojs/node` (solo QA/preview local)   |
-| JS en cliente | TypeScript vanilla, ~11 KB comprimidos en la home                          |
-| Fuente        | Work Sans variable autoalojada (`@fontsource-variable/work-sans`)          |
+| JS en cliente | TypeScript vanilla, ~12 KB con gzip en la home (animación: 1,3 KB)         |
+| Fuentes       | Big Shoulders Display 800 (titulares) y Work Sans variable, autoalojadas   |
 | Imágenes      | `astro:assets` (AVIF/WebP, `srcset`, dimensiones explícitas)               |
 | Calidad       | ESLint, Prettier, `astro check`, Playwright + axe-core, Lighthouse         |
 
@@ -26,14 +30,15 @@ Un solo objetivo: que el atleta rellene el formulario de valoración.
 
 Lo único que falta para publicar. Cada punto está marcado en el código con `TODO(Gerard)`.
 
-1. **Fotos definitivas.** Sustituir, con estos mismos nombres, en `src/assets/images/`:
-   - `gerard-hero.jpg`: foto horizontal, **1920 px de ancho como mínimo**. Si la cara no queda bien
-     encuadrada, ajustar `heroFocal` en `src/config.ts` (0 = izquierda/arriba, 1 = derecha/abajo).
-   - `gerard-about.jpg`: retrato vertical 4:5, 1000 px de ancho como mínimo.
-   - Opcional: `app-1.jpg` … `app-5.jpg` si hay capturas más recientes de la app (1080x2340).
-   - Ahora mismo son **fotogramas reales de la VSL de Gerard** (1280x720) porque el collage de la web
-     actual tiene muy poca resolución (unos 220 px por foto) y se veía pixelado a pantalla completa.
-     La imagen Open Graph (`/og.jpg`) se regenera sola en cada despliegue a partir de `gerard-hero.jpg`.
+1. **IMPORTANTE: FOTO DE GERARD PENDIENTE.** No llegó ninguna foto adjunta con el encargo de
+   rediseño. El bloque "Quién está detrás" usa de forma provisional un recorte de
+   `https://rehabilitywod.com/collage.png` (**150x188 px**, se muestra a 75 px para que se vea nítido).
+   **Sustituir `src/assets/photos/gerard.jpg`** por una foto real de Gerard (retrato 4:5, cara en el
+   tercio superior, **1600 px de ancho o más**), sin filtros. Con una foto de 1600 px o más el bloque
+   cambia solo al diseño grande (foto de hasta 480 px a la izquierda con el chip "+120 atletas
+   recuperados" encima). **Nunca una foto de stock de otra persona.**
+   - Opcional: `src/assets/images/app-1.jpg`, `app-3.jpg`, `app-4.jpg` si hay capturas más recientes
+     de la app (1080x2340).
 2. **Número de WhatsApp** (`src/config.ts`, `whatsapp`). La web actual enlaza `wa.me/640995494`
    (sin prefijo 34, no funciona) y el aviso legal da el 636 748 147. Ahora está `34640995494`.
 3. **URL del script de Google.** Crear el Apps Script y poner `GOOGLE_SCRIPT_URL` y `LEAD_SECRET` en
@@ -44,6 +49,31 @@ Lo único que falta para publicar. Cada punto está marcado en el código con `T
 5. **Dominio.** Apuntar `rehabilitywod.com` a Vercel y confirmar `SITE_URL` (ver más abajo).
 
 ---
+
+## Fotos y créditos de imágenes
+
+Las 6 fotos de ambiente son de **Unsplash**, con la [Unsplash License](https://unsplash.com/license)
+(uso comercial permitido, sin atribución obligatoria; ninguna es Unsplash+). La licencia de cada una
+se comprobó en su página. Se eligieron con una hoja de miniaturas por hueco (8 a 12 candidatas cada
+una) que está en [`qa/photo-sheets/`](qa/photo-sheets/), y la hoja final de la serie en
+[`qa/photo-sheets/final-series.jpg`](qa/photo-sheets/final-series.jpg).
+
+| Hueco              | Archivo (`src/assets/photos/`)                | Foto                                                                       | Autor                             | Por qué esta                                                                                                                |
+| ------------------ | --------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 1 Hero móvil       | `hero-mobile.jpg` (2000x2999)                 | [unsplash.com/photos/03b61PY89hs](https://unsplash.com/photos/03b61PY89hs) | Ambitious Studio\* · Rick Barrett | Rig, barra y discos de un box real, sin personas; mitad inferior oscura para el texto.                                      |
+| 2 Hero escritorio  | `hero-desktop.jpg` (3200x2134)                | [unsplash.com/photos/w7jYaN7GqyA](https://unsplash.com/photos/w7jYaN7GqyA) | Ambitious Studio\* · Rick Barrett | Mismo box y misma sesión que la 1 (misma luz y revelado); suelo oscuro abajo y centro limpio.                               |
+| 3 Banda 3B         | `band-statement.jpg` + `band-statement-m.jpg` | [unsplash.com/photos/gNvNsHIckSc](https://unsplash.com/photos/gNvNsHIckSc) | HamZa NOUASRIA                    | Mano con magnesio agarrando la barra, poca luz, sin logos; admite el recorte vertical para móvil.                           |
+| 4 Póster VSL       | `vsl-poster.jpg` (2560x1440)                  | [unsplash.com/photos/9dzWZQWZMdE](https://unsplash.com/photos/9dzWZQWZMdE) | Anastase Maragos                  | Box oscuro, atleta preparando un peso muerto sin cara visible; recortada para dejar el motivo a la derecha.                 |
+| 5 Fondo formulario | `form-bg.jpg` (2400x1800)                     | [unsplash.com/photos/uH8JDWuxFX8](https://unsplash.com/photos/uH8JDWuxFX8) | Julien Dumas                      | Anillas bajo la estructura del box: textura tranquila y neutra que aguanta el velo al 88 %.                                 |
+| 6 Cierre           | `closing.jpg` + `closing-m.jpg`               | [unsplash.com/photos/h4i9G-de7Po](https://unsplash.com/photos/h4i9G-de7Po) | John Arano                        | Atleta de espaldas en posición de press bajo el rig: vuelta al rendimiento, sin cara. El rótulo del rig queda bajo el velo. |
+
+- Descargadas del original a máxima resolución y reducidas (sin filtros ni retoques). Los archivos
+  `-m` son recortes verticales de la misma foto para móvil; el póster es un recorte 16:9.
+- En la web se sirven por `astro:assets` en AVIF (calidad 60) y WebP (78): verticales a 480, 768,
+  1080 y 1440 px y horizontales a 768, 1280, 1920 y 2560 px, nunca por encima del tamaño natural.
+  El hero pesa 89 KB en AVIF a 1080 px.
+- Solo se aplica `contrast(1.03) saturate(.95)` en CSS para unificar la serie.
+- La foto de Gerard **no es de stock**: es el recorte provisional de su web (ver `TODO(Gerard)`).
 
 ## 1. Instalar y arrancar en local
 
@@ -154,25 +184,32 @@ Guardar. Se borran `_fbp` y `_fbc` y no salen más eventos.
 
 ```
 src/
-  config.ts              IDs, WhatsApp, email, datos legales, encuadre del hero, TODO(Gerard)
-  layouts/Base.astro     <head>, fuente, SEO, analytics, banner de cookies
+  config.ts              IDs, WhatsApp, email, datos legales, TODO(Gerard)
+  layouts/Base.astro     <head>, fuentes y precargas, SEO, analytics, banner de cookies,
+                         script en línea de la intro (solo la home)
   layouts/Legal.astro    Plantilla de las páginas legales
   pages/                 index, gracias (noindex), aviso-legal, privacidad, cookies, 404,
                          og.jpg (imagen OG generada en build), robots.txt, api/lead.ts
-  components/            Header, Hero, StatsStrip, VslSection, WhySection, HowItWorks,
-                         Testimonials, AboutGerard, ValoracionSection, LeadForm, Faq, Footer,
-                         StickyCta, CookieBanner, CtaButton, SectionCta, Wordmark, TitularData
-  scripts/               boot, consent, cookie-banner, pixel, tracking, utm, form, vsl,
-                         marquee, counter, sticky, home
-  lib/lead.ts            Validación compartida cliente/servidor (teléfono E.164, etc.)
+  components/            Intro, Header, Hero, StatsTicker, VslSection, WhySection (3A/3B/3C),
+                         HowItWorks, Testimonials, AboutGerard, ValoracionSection, LeadForm,
+                         ZoneIcon, Faq, ClosingBand, Footer, StickyCta, CookieBanner,
+                         CtaButton, SectionCta, SplitWords (word-up en build), Wordmark, TitularData
+  scripts/               boot, reveal, motion, marquee, dialogs, faq, consent, cookie-banner,
+                         pixel, tracking, utm, form, vsl, sticky, home
+  lib/                   lead.ts (validación compartida), images.ts (AVIF/WebP), hero.ts,
+                         intro.ts (script en línea de la intro y su hash)
   data/testimonials.ts   Testimonios (recorte + texto completo)
-  styles/global.css      Tokens de diseño
-  assets/images/         Fotos (ver TODO)
-  og/                    Work Sans estática para generar la imagen OG
+  styles/global.css      Tokens, tipografía, botones, texturas, reveals y marquees
+  assets/photos/         Fotos de ambiente (ver créditos) y gerard.jpg (ver TODO)
+  assets/images/         Capturas de la app
+  og/                    Fuentes estáticas para generar la imagen OG
 apps-script/             Code.gs + instrucciones para Gerard
 tests/qa.spec.ts         QA con Playwright + axe-core
-scripts/                 qa.mjs, qa-server.mjs, preview.mjs, lighthouse.mjs, inp.mjs
-qa/                      REPORT.md, screenshots/, lighthouse/
+scripts/                 qa.mjs, qa-server.mjs, preview.mjs, lighthouse.mjs, inp.mjs,
+                         anim-size.mjs (peso del JS de animación), csp-hash.mjs
+qa/                      REPORT-v2.md, screenshots-v2/, lighthouse-v2/, photo-sheets/
+                         (y el QA de la primera versión: REPORT.md, screenshots/, lighthouse/)
+public/textures/         grain.svg (grano con feTurbulence)
 vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
 .env.example
 ```
@@ -182,9 +219,12 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
 - **`astro preview` no existe con `@astrojs/vercel`.** QA y preview usan `@astrojs/node` con el
   mismo código (ver sección 1). Es un bloqueo técnico del adaptador, no del código.
 - **CSP sin `'unsafe-inline'` en `script-src`.** Astro está configurado para no incrustar scripts
-  (`vite.build.assetsInlineLimit: 0`), así que no hay scripts en línea y no hacen falta hashes. El
-  JSON-LD no es ejecutable y la CSP no lo bloquea. Única concesión: `style-src-attr 'unsafe-inline'`
-  para el atributo `style` del encuadre del hero (`object-position` configurable).
+  (`vite.build.assetsInlineLimit: 0`). La única excepción es el script mínimo de la intro en el
+  `<head>` de la home (decide antes del primer pintado si se muestra la animación), permitido por su
+  **hash sha256** en `vercel.json`. Si se cambia `src/lib/intro.ts`, hay que actualizar el hash con
+  `node scripts/csp-hash.mjs --write` (un test lo comprueba). El JSON-LD no es ejecutable y la CSP no
+  lo bloquea. `style-src-attr 'unsafe-inline'` se mantiene para los atributos `style` (escalonado
+  `--i` de las animaciones y tamaño de la foto de Gerard).
 - **Barra de Vercel en previews.** Si usas despliegues _Preview_ con la barra de comentarios de
   Vercel (`vercel.live`), la CSP la bloquea. Desactívala en Settings → General → Vercel Toolbar, o
   añade `https://vercel.live` a la CSP solo para previews.
@@ -196,16 +236,19 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
   adelantado. Sin JS no se puede medir y solo se aplica el honeypot.
 - **Prefijo telefónico** en un campo aparte (+34 por defecto, editable). Si el número empieza por
   `+` se ignora el prefijo.
-- **Miniatura de la VSL** descargada y optimizada en build desde `i.ytimg.com` (`maxresdefault`,
-  con `hqdefault` como alternativa): así no hay ninguna petición a YouTube antes del clic.
-- **Hero en móvil.** Con la foto temporal (horizontal) el texto tapaba la cara. En móvil vertical la
-  foto ocupa la parte de arriba y se funde en negro bajo el texto; en móvil apaisado va a la
-  derecha. Con una foto vertical compuesta con aire abajo, esas reglas (en `Hero.astro`) se pueden
-  quitar.
-- **`srcset` del hero**: 640/960/1280 ahora; el ancho 1920 aparece solo cuando la foto fuente lo
-  tenga (Astro no amplía imágenes).
-- **Carrusel**: la copia del bucle lleva `aria-hidden` e `inert`; como `inert` también bloquea los
-  clics, un clic en "Leer más" de la copia abre el mismo testimonio.
+- **Póster propio de la VSL** (foto de ambiente, no la miniatura de YouTube): antes del clic no hay
+  ninguna petición a YouTube; al hacer clic se carga `youtube-nocookie` con un fundido de 250 ms.
+- **Hero con dirección de arte**: foto vertical hasta 1023 px y horizontal desde 1024 px, con
+  precarga responsive (`imagesrcset` + `media`) de la AVIF. En pantallas bajas y en tablet el velo es
+  algo más denso que el del encargo para mantener el contraste AA en el peor punto (el texto sube
+  hacia las ventanas claras de la foto).
+- **Animación inicial**: CSS puro (≤ 1,1 s, una vez por sesión con `sessionStorage`, nunca con
+  `prefers-reduced-motion`, `pointer-events: none`). Sin JS no se muestra.
+- **Marquees** (cinta de stats y testimonios): la copia del bucle lleva `aria-hidden` e `inert`;
+  como `inert` también bloquea los clics, un clic en "Leer más" de la copia abre el mismo testimonio.
+- **Altura de la home**: el límite de 7200 px en 390x844 obliga a espaciados compactos en móvil
+  (secciones de 34 px de padding vertical, citas de 3 líneas en las tarjetas). En escritorio el aire
+  es mayor.
 - **Textos añadidos** (no son copy de venta): etiquetas de campos ("Nombre", "Teléfono móvil",
   "Tu caso (opcional)"), el título "Preguntas frecuentes.", las descripciones del panel de cookies y
   una línea de ayuda con el email en el formulario sin JavaScript.
@@ -222,7 +265,7 @@ pide Astro 5). Se han revisado:
 - _Server islands_, `base` y páginas de error prerenderizadas con cabecera `Host`: no se usan
   server islands ni `base`; `/api/lead` responde siempre JSON o redirección propia.
 - RCE en la optimización AVIF: las imágenes se optimizan en build a partir de archivos propios; el
-  endpoint `/_image` solo acepta imágenes locales y de `i.ytimg.com`.
+  endpoint `/_image` solo acepta imágenes locales.
 - `x-astro-path` del adaptador de Vercel: afecta al enrutado del render serverless; aquí la única
   ruta dinámica es `/api/lead`.
 
@@ -233,10 +276,13 @@ que cambien de forma relevante).
 ## QA
 
 `npm run qa` compila, levanta el servidor de QA con `LEAD_MOCK=1` y ejecuta `tests/qa.spec.ts`:
-12 viewports, capturas, scroll horizontal, consola y CSP, enlaces, imágenes, áreas táctiles, H1,
-viudas en H1/H2, axe-core, flujos de consentimiento y Pixel, VSL, formulario (camino feliz, casos
-límite, sin JS), barra fija, marquee, páginas legales, cabeceras y presupuesto de JS.
-Resultados en [`qa/REPORT.md`](qa/REPORT.md).
+12 viewports, capturas con y sin intro, scroll horizontal, consola y CSP, enlaces, imágenes, áreas
+táctiles, H1, viudas en H1/H2, axe-core, contraste AA del texto sobre fotos, CTAs centrados y a
+`#valoracion`, recuento de palabras, altura de la home, intro, marquees, reveals y parallax, hovers,
+flujos de consentimiento y Pixel, VSL, formulario (camino feliz, casos límite, sin JS), barra fija,
+páginas legales, cabeceras y presupuesto de JS. `npm run qa:lighthouse` guarda los informes en
+`qa/lighthouse-v2/` y `node scripts/inp.mjs` mide la latencia de interacción.
+Resultados en [`qa/REPORT-v2.md`](qa/REPORT-v2.md).
 
 ## Contacto del titular
 

@@ -38,10 +38,6 @@ export default defineConfig({
     // /api/lead hace su propia comprobación de origen (ver sameOrigin en src/pages/api/lead.ts).
     checkOrigin: false,
   },
-  image: {
-    // La miniatura de la VSL se descarga y optimiza en build (sin peticiones a YouTube en la página).
-    domains: ['i.ytimg.com'],
-  },
   env: {
     schema: {
       GOOGLE_SCRIPT_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
@@ -55,6 +51,8 @@ export default defineConfig({
     build: {
       // Nunca incrustar scripts ni recursos como data:/inline: así la CSP no necesita 'unsafe-inline'.
       assetsInlineLimit: 0,
+      // Un solo CSS para todo el sitio (≈ 17 KB comprimido): una petición bloqueante en vez de dos.
+      cssCodeSplit: false,
     },
   },
 });

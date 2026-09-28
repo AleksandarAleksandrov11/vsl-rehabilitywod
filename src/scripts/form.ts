@@ -18,6 +18,7 @@ import { trackEvent } from './tracking';
 
 const NAME_KEY = 'rw_nombre';
 const AUTO_ADVANCE_MS = 250;
+const LEAVE_MS = 280;
 
 type ErrorKey = 'zona' | 'detalle' | 'nombre' | 'telefono' | 'consentimiento';
 
@@ -81,6 +82,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   let submitting = false;
   let arrowNav = false;
   let advanceTimer = 0;
+  let leaveTimer = 0;
 
   const zonaValue = (): string =>
     form.querySelector<HTMLInputElement>('input[name="zona"]:checked')?.value ?? '';
@@ -162,27 +164,54 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   }
 
   // ---------- Navegación ----------
+  const nav = form.querySelector<HTMLElement>('.form-nav');
   function applyNav(step: number): void {
     if (backBtn) backBtn.hidden = step === 1;
     if (nextBtn) nextBtn.hidden = step === total;
     if (submitBtn) submitBtn.hidden = step !== total;
+    // Último paso: la barra se reorganiza en móvil (envío a fila completa y "Atrás" debajo).
+    nav?.classList.toggle('is-final', step === total);
   }
 
   function showStep(step: number, { focus = true, announce = true } = {}): void {
+    const previous = steps[current - 1];
+    const dir = step >= current ? 1 : -1;
+    const animate = announce && !reduceMotion() && previous !== undefined && step !== current;
+    // Posición del paso que sale, antes de mostrar el nuevo (al ir hacia atrás lo desplazaría).
+    const previousTop = previous?.offsetTop ?? 0;
     current = step;
     for (const fs of steps) {
       const isCurrent = Number(fs.dataset.step) === step;
-      fs.hidden = !isCurrent;
       fs.classList.remove('is-entering');
-      if (isCurrent && announce && !reduceMotion()) {
-        // Reinicia la animación de entrada (fade + 12 px, 200 ms).
+      if (fs === previous && animate) continue;
+      fs.hidden = !isCurrent;
+      if (isCurrent && animate) {
+        // Entra desde +28 px (o -28 px hacia atrás) en 280 ms.
+        fs.style.setProperty('--dir', String(dir));
         void fs.offsetWidth;
         fs.classList.add('is-entering');
       }
     }
+    if (animate && previous) {
+      // El paso anterior sale hacia el lado contrario, superpuesto, y luego se oculta.
+      window.clearTimeout(leaveTimer);
+      steps.forEach((fs) => {
+        if (fs === previous) return;
+        fs.classList.remove('is-leaving');
+        fs.style.top = '';
+      });
+      previous.style.setProperty('--dir', String(dir));
+      previous.style.top = `${previousTop}px`;
+      previous.classList.add('is-leaving');
+      leaveTimer = window.setTimeout(() => {
+        previous.classList.remove('is-leaving');
+        previous.style.top = '';
+        previous.hidden = Number(previous.dataset.step) !== current;
+      }, LEAVE_MS);
+    }
     applyNav(step);
     if (bar) bar.style.transform = `scaleX(${step / total})`;
-    if (progressText) progressText.textContent = `${step} / ${total}`;
+    if (progressText) progressText.textContent = `Paso ${step} de ${total}`;
     if (announce && live) live.textContent = `Paso ${step} de ${total}`;
     if (focus) {
       const title = steps[step - 1]?.querySelector<HTMLElement>('.step-title');
@@ -246,24 +275,30 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   syncOtro();
 
   // Altura estable: la tarjeta mide lo que el paso más alto (se recalcula al cambiar el ancho).
+  // Se mide de forma intrínseca (paso + su barra de navegación + partes fijas de la tarjeta):
+  // el <form> se estira con flex y su alto no sirve para comparar pasos.
   function fitHeight(): void {
-    root.style.minHeight = '';
+    const fixed = root.getBoundingClientRect().height - form.getBoundingClientRect().height;
     let max = 0;
     for (const fs of steps) {
       for (const other of steps) other.hidden = other !== fs;
       applyNav(Number(fs.dataset.step));
-      max = Math.max(max, root.getBoundingClientRect().height);
+      const h = fs.getBoundingClientRect().height + (nav?.getBoundingClientRect().height ?? 0);
+      max = Math.max(max, h);
     }
     for (const fs of steps) fs.hidden = Number(fs.dataset.step) !== current;
     applyNav(current);
-    root.style.minHeight = `${Math.ceil(max)}px`;
+    root.style.minHeight = `${Math.ceil(fixed + max)}px`;
   }
   fitHeight();
-  void document.fonts?.ready.then(() => {
-    const keep = current;
-    fitHeight();
-    current = keep;
-  });
+  // Las fuentes cambian la altura de los pasos: se vuelve a medir cuando terminan de cargar
+  // (fonts.ready puede resolverse antes de que empiecen a cargarse) y al final de la carga.
+  const refit = () => {
+    if (!root.querySelector('.is-leaving')) fitHeight();
+  };
+  void document.fonts?.ready.then(refit);
+  document.fonts?.addEventListener('loadingdone', refit);
+  window.addEventListener('load', refit, { once: true });
   let lastWidth = window.innerWidth;
   window.addEventListener(
     'resize',

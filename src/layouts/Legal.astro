@@ -45,8 +45,12 @@ const { title, description, path, heading } = Astro.props;
 
   .legal-title {
     margin: 14px 0 0;
-    font-size: clamp(2.25rem, 1.8rem + 2.2vw, 3.5rem);
-    font-weight: 740;
+    font-family: var(--font-display);
+    font-size: clamp(3rem, 2rem + 4vw, 5rem);
+    font-weight: 800;
+    line-height: 0.9;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
   }
 
   .prose {
@@ -58,8 +62,12 @@ const { title, description, path, heading } = Astro.props;
 
   .prose :global(h2) {
     margin: 48px 0 12px;
-    font-size: 1.5rem;
-    line-height: 1.2;
+    font-family: var(--font-display);
+    font-size: clamp(1.625rem, 8vw, 2rem);
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
   }
 
   .prose :global(h3) {

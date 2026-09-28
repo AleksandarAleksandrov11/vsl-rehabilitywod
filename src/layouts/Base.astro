@@ -1,11 +1,14 @@
 ---
 import '@fontsource-variable/work-sans/wght.css';
+import '@fontsource/big-shoulders-display/latin-800';
 import '../styles/global.css';
 import workSansLatin from '@fontsource-variable/work-sans/files/work-sans-latin-wght-normal.woff2?url';
+import bigShouldersLatin from '@fontsource/big-shoulders-display/files/big-shoulders-display-latin-800-normal.woff2?url';
 import Analytics from '@vercel/analytics/astro';
 import SpeedInsights from '@vercel/speed-insights/astro';
 import CookieBanner from '../components/CookieBanner.astro';
 import { CONFIG, SEO } from '../config';
+import { INTRO_SCRIPT } from '../lib/intro';
 
 interface Props {
   title?: string;
@@ -15,6 +18,8 @@ interface Props {
   noindex?: boolean;
   /** JSON-LD opcional (solo en la home). */
   jsonLd?: Record<string, unknown>;
+  /** Solo la home: script en línea que decide si se muestra la animación inicial. */
+  intro?: boolean;
 }
 
 const {
@@ -23,13 +28,14 @@ const {
   path = Astro.url.pathname,
   noindex = false,
   jsonLd,
+  intro = false,
 } = Astro.props;
 
 const canonical =
   `${CONFIG.siteUrl}${path === '/' ? '' : path.replace(/\/+$/, '')}` || CONFIG.siteUrl;
 const ogImage = `${CONFIG.siteUrl}/og.jpg`;
 const ogAlt =
-  'Gerard Barrantes, fisioterapeuta de RehabilityWOD. Recupérate de tu lesión sin dejar de entrenar.';
+  'RehabilityWOD. Recupérate sin dejar de entrenar. Fisioterapia online para atletas de CrossFit.';
 ---
 
 <!doctype html>
@@ -38,6 +44,7 @@ const ogAlt =
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
+    {intro && <script is:inline set:html={INTRO_SCRIPT} />}
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {noindex ? (
@@ -48,6 +55,14 @@ const ogAlt =
     <meta name="theme-color" content="#0A0A0A" />
     <meta name="format-detection" content="telephone=no" />
 
+    <slot name="preload" />
+    <link
+      rel="preload"
+      href={bigShouldersLatin}
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
     <link rel="preload" href={workSansLatin} as="font" type="font/woff2" crossorigin="anonymous" />
 
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
