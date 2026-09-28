@@ -1,0 +1,38 @@
+---
+import type { CtaLocation } from '../scripts/tracking';
+
+interface Props {
+  href?: string;
+  location: CtaLocation;
+  variant?: 'primary' | 'ghost';
+  size?: 'md' | 'sm';
+  class?: string;
+  full?: boolean;
+  id?: string;
+}
+
+const {
+  href = '#valoracion',
+  location,
+  variant = 'primary',
+  size = 'md',
+  class: className = '',
+  full = false,
+  id,
+} = Astro.props;
+---
+
+<a
+  id={id}
+  href={href}
+  data-cta={location}
+  class:list={[
+    'btn',
+    variant === 'primary' ? 'btn-primary' : 'btn-ghost',
+    size === 'sm' && 'btn-sm',
+    full && 'w-full',
+    className,
+  ]}
+>
+  <slot>Quiero valorar mi caso</slot>
+</a>

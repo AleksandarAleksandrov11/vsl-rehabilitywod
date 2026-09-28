@@ -1,0 +1,171 @@
+---
+import Wordmark from './Wordmark.astro';
+import { CONFIG } from '../config';
+
+interface Props {
+  /** En la home deja hueco para la barra CTA fija en móvil. */
+  withStickyGap?: boolean;
+}
+
+const { withStickyGap = false } = Astro.props;
+const year = new Date().getFullYear();
+---
+
+<footer class:list={['site-footer', withStickyGap && 'has-sticky-gap']} data-theme="dark">
+  <div class="container-x">
+    <div class="footer-top">
+      <div>
+        <a href="/" class="footer-brand" aria-label="RehabilityWOD, ir al inicio">
+          <Wordmark class="text-[1.5rem]" />
+        </a>
+        <p class="footer-tag">Fisioterapia online para atletas de CrossFit.</p>
+      </div>
+      <ul class="footer-contact" role="list">
+        <li>
+          <a class="footer-link" href={`mailto:${CONFIG.email}`}>
+            {CONFIG.email}
+          </a>
+        </li>
+        <li>
+          <a class="footer-link" href={CONFIG.instagram} target="_blank" rel="noopener me">
+            Instagram {CONFIG.instagramHandle}
+            <span class="sr-only"> (se abre en una pestaña nueva)</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="footer-bottom">
+      <nav aria-label="Legal">
+        <ul class="footer-legal" role="list">
+          <li>
+            <a class="footer-link" href="/aviso-legal">
+              Aviso legal
+            </a>
+          </li>
+          <li>
+            <a class="footer-link" href="/privacidad">
+              Privacidad
+            </a>
+          </li>
+          <li>
+            <a class="footer-link" href="/cookies">
+              Cookies
+            </a>
+          </li>
+          <li>
+            <button type="button" class="footer-link footer-button" data-open-cookie-settings>
+              Configurar cookies
+            </button>
+          </li>
+        </ul>
+      </nav>
+      <p class="footer-copy">© {year} Gerard Barrantes Bautista&nbsp;· RehabilityWOD</p>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    padding-block: 64px 40px;
+    padding-bottom: calc(40px + env(safe-area-inset-bottom));
+    background: var(--void);
+    color: var(--ink-on-dark);
+    border-top: 1px solid var(--hair-on-dark);
+  }
+
+  /* Hueco para que la barra CTA fija (móvil) no tape el footer. */
+  @media (width < 768px) {
+    .site-footer.has-sticky-gap {
+      padding-bottom: calc(136px + env(safe-area-inset-bottom));
+    }
+  }
+
+  .footer-top {
+    display: grid;
+    gap: 28px;
+  }
+
+  .footer-brand {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    text-decoration: none;
+  }
+
+  .footer-tag {
+    margin: 6px 0 0;
+    font-size: 0.9375rem;
+    color: var(--muted-on-dark);
+  }
+
+  .footer-contact,
+  .footer-legal {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .footer-contact {
+    display: grid;
+    gap: 2px;
+  }
+
+  .footer-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--ink-on-dark);
+    font-size: 0.9375rem;
+    text-decoration: none;
+  }
+
+  .footer-link:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  .footer-button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 0.9375rem;
+  }
+
+  .footer-bottom {
+    display: grid;
+    gap: 16px;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--hair-on-dark);
+  }
+
+  .footer-legal {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 22px;
+  }
+
+  .footer-copy {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted-on-dark);
+  }
+
+  @media (width >= 768px) {
+    .footer-top {
+      grid-template-columns: 1fr auto;
+      align-items: start;
+    }
+
+    .footer-contact {
+      justify-items: end;
+    }
+
+    .footer-bottom {
+      grid-template-columns: 1fr auto;
+      align-items: center;
+    }
+  }
+</style>

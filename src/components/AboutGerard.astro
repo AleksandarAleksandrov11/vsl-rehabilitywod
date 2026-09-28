@@ -1,0 +1,92 @@
+---
+import { Image } from 'astro:assets';
+import aboutImage from '../assets/images/gerard-about.jpg';
+---
+
+<div class="about" data-reveal>
+  <div class="about-photo">
+    <Image
+      src={aboutImage}
+      alt="Retrato de Gerard Barrantes, fisioterapeuta y fundador de RehabilityWOD"
+      widths={[360, 480, 576]}
+      sizes="(min-width: 1024px) 420px, (min-width: 768px) 40vw, calc(100vw - 40px)"
+      loading="lazy"
+      decoding="async"
+      class="about-img"
+    />
+  </div>
+  <div class="about-copy">
+    <p class="eyebrow">Quién está detrás</p>
+    <h3 class="about-title">Soy Gerard Barrantes.</h3>
+    <p class="about-text">
+      Fisioterapeuta y atleta de CrossFit desde 2017, y fundador de RehabilityWOD.
+    </p>
+    <p class="about-text">He trabajado en clínicas privadas y en la red sanitaria de Tarragona.</p>
+    <p class="about-text">
+      Hoy me dedico a que atletas como tú vuelvan a entrenar sin dolor y con confianza en su cuerpo.
+    </p>
+    <p class="about-sign">Gerard Barrantes · Fisioterapeuta</p>
+  </div>
+</div>
+
+<style>
+  .about {
+    display: grid;
+    gap: 32px;
+    margin-top: 88px;
+    padding-top: 56px;
+    border-top: 1px solid var(--hair-on-dark);
+  }
+
+  .about-photo {
+    max-width: 440px;
+  }
+
+  .about-photo :global(.about-img) {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    object-position: 50% 30%;
+    border-radius: var(--radius-card);
+    background: var(--surface);
+  }
+
+  .about-title {
+    margin: 14px 0 18px;
+    font-size: clamp(1.875rem, 1.5rem + 1.9vw, 3rem);
+    font-weight: 720;
+  }
+
+  .about-text {
+    margin: 12px 0 0;
+    max-width: 36rem;
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: rgba(245, 245, 242, 0.86);
+  }
+
+  .about-sign {
+    margin: 24px 0 0;
+    font-size: 0.9375rem;
+    color: var(--muted-on-dark);
+  }
+
+  @media (width >= 768px) {
+    .about {
+      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
+      align-items: center;
+      gap: 56px;
+      margin-top: 112px;
+      padding-top: 80px;
+    }
+  }
+
+  @media (width >= 1024px) {
+    .about {
+      grid-template-columns: 420px minmax(0, 1fr);
+      gap: 80px;
+    }
+  }
+</style>

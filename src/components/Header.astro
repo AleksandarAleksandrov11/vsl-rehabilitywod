@@ -1,0 +1,78 @@
+---
+import Wordmark from './Wordmark.astro';
+import CtaButton from './CtaButton.astro';
+
+interface Props {
+  /** En la home el header es transparente sobre el hero; en el resto, sólido. */
+  overlay?: boolean;
+  ctaHref?: string;
+}
+
+const { overlay = false, ctaHref = '#valoracion' } = Astro.props;
+---
+
+<div class="top-sentinel" data-top-sentinel aria-hidden="true"></div>
+<header class:list={['site-header', !overlay && 'is-solid']} data-header data-theme="dark">
+  <div class="container-x flex h-full items-center justify-between gap-4">
+    <a href="/" class="header-brand" aria-label="RehabilityWOD, ir al inicio">
+      <Wordmark class="text-[1.25rem] md:text-[1.375rem]" />
+    </a>
+    <CtaButton href={ctaHref} location="header" size="sm" class="header-cta">
+      Valorar mi caso
+    </CtaButton>
+  </div>
+</header>
+
+<style>
+  .top-sentinel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 24px;
+    pointer-events: none;
+  }
+
+  .site-header {
+    position: fixed;
+    z-index: 50;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: calc(var(--header-h) + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+    color: var(--ink-on-dark);
+    background-color: rgba(10, 10, 10, 0);
+    border-bottom: 1px solid transparent;
+    transition:
+      background-color 0.3s var(--ease-out),
+      border-color 0.3s var(--ease-out),
+      backdrop-filter 0.3s var(--ease-out);
+  }
+
+  .site-header:global(.is-scrolled),
+  .site-header.is-solid {
+    background-color: rgba(10, 10, 10, 0.85);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    backdrop-filter: blur(14px) saturate(1.2);
+    border-bottom-color: var(--hair-on-dark);
+  }
+
+  @media (width < 360px) {
+    .header-brand :global(.wordmark) {
+      font-size: 1.125rem;
+    }
+
+    .site-header :global(.header-cta) {
+      padding-inline: 0.875rem;
+      font-size: 0.875rem;
+    }
+  }
+
+  .header-brand {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    text-decoration: none;
+  }
+</style>

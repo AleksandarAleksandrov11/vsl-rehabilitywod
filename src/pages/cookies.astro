@@ -1,0 +1,143 @@
+---
+import Legal from '../layouts/Legal.astro';
+import TitularData from '../components/TitularData.astro';
+---
+
+<Legal
+  title="Política de cookies | RehabilityWOD"
+  description="Qué cookies y almacenamiento usa RehabilityWOD, para qué sirven y cómo cambiar tu elección."
+  path="/cookies"
+  heading={'Política de\u00a0cookies'}
+>
+  <p>
+    Una cookie es un pequeño archivo que la web guarda en tu navegador. Aquí te contamos cuáles
+    usamos, para qué y cómo cambiar tu elección en cualquier momento.
+  </p>
+
+  <h2>1. Responsable</h2>
+  <TitularData />
+
+  <h2>2. Qué usamos</h2>
+  <div class="table-wrap" role="region" aria-label="Tabla de cookies" tabindex="0">
+    <table>
+      <caption class="sr-only">Cookies y almacenamiento de esta web</caption>
+      <thead>
+        <tr>
+          <th scope="col">Nombre</th>
+          <th scope="col">Proveedor</th>
+          <th scope="col">Finalidad</th>
+          <th scope="col">Duración</th>
+          <th scope="col">Tipo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <code>rw_consent</code> (localStorage)
+          </td>
+          <td>Propia</td>
+          <td>Guardar tu elección</td>
+          <td>12 meses</td>
+          <td>Técnica</td>
+        </tr>
+        <tr>
+          <td>
+            <code>_fbp</code>
+          </td>
+          <td>Meta</td>
+          <td>Medición de anuncios</td>
+          <td>90 días</td>
+          <td>Marketing</td>
+        </tr>
+        <tr>
+          <td>
+            <code>_fbc</code>
+          </td>
+          <td>Meta</td>
+          <td>Atribución de clics en anuncios</td>
+          <td>90 días</td>
+          <td>Marketing</td>
+        </tr>
+        <tr>
+          <td>
+            <code>fr</code>
+          </td>
+          <td>Meta (dominio facebook.com)</td>
+          <td>Publicidad</td>
+          <td>90 días</td>
+          <td>Marketing</td>
+        </tr>
+        <tr>
+          <td>Vercel Analytics</td>
+          <td>Vercel</td>
+          <td>Estadística agregada</td>
+          <td>No aplica</td>
+          <td>No usa cookies</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Técnicas</h3>
+  <p>
+    Son necesarias para que la web funcione y no requieren consentimiento. Solo guardamos tu
+    elección sobre las cookies (<code>rw_consent</code>, en el almacenamiento local del navegador).
+    Además, la web guarda durante la sesión, sin cookies, el origen de tu visita y tu nombre para
+    mostrártelo en la página de confirmación; se borran al cerrar la pestaña.
+  </p>
+
+  <h3>Marketing (Meta)</h3>
+  <p>
+    Solo se activan si pulsas «Aceptar» o las activas en «Configurar». Hasta entonces no se carga el
+    Pixel de Meta ni se hace ninguna petición a Meta. Nunca enviamos a Meta datos de salud.
+  </p>
+
+  <h3>Vercel Web Analytics y Speed Insights</h3>
+  <p>
+    Miden visitas y rendimiento de forma agregada y anónima. No usan cookies ni identifican a
+    personas, por eso funcionan sin necesidad de consentimiento.
+  </p>
+
+  <h3>Vídeo</h3>
+  <p>
+    El vídeo se muestra con una vista previa propia. YouTube (en su modo de privacidad mejorada,
+    youtube-nocookie.com) solo se carga cuando pulsas reproducir.
+  </p>
+
+  <h2>3. Cómo cambiar tu elección</h2>
+  <p>
+    Puedes cambiarla cuando quieras desde el enlace «Configurar cookies» del pie de página o con
+    este botón. Si retiras el consentimiento, borramos las cookies <code>_fbp</code> y{' '}
+    <code>_fbc</code>
+    de este dominio y dejamos de enviar eventos a Meta. Te volveremos a preguntar pasados 12 meses.
+  </p>
+  <button type="button" class="prose-button" data-open-cookie-settings>
+    Configurar cookies
+  </button>
+
+  <h2>4. Cómo borrar las cookies en tu navegador</h2>
+  <p>También puedes bloquear o borrar las cookies desde la configuración de tu navegador:</p>
+  <ul>
+    <li>
+      <strong>Chrome</strong>: Configuración › Privacidad y seguridad › Cookies de terceros o Borrar
+      datos de navegación.
+    </li>
+    <li>
+      <strong>Safari (iPhone)</strong>: Ajustes › Apps › Safari › Avanzado › Datos de sitios web.
+    </li>
+    <li>
+      <strong>Safari (Mac)</strong>: Safari › Ajustes › Privacidad › Gestionar datos de sitios web.
+    </li>
+    <li>
+      <strong>Firefox</strong>: Ajustes › Privacidad y seguridad › Cookies y datos del sitio.
+    </li>
+    <li>
+      <strong>Edge</strong>: Configuración › Cookies y permisos del sitio › Administrar y eliminar
+      cookies.
+    </li>
+  </ul>
+  <p>
+    La cookie <code>fr</code> pertenece al dominio facebook.com y se gestiona desde tu cuenta de
+    Facebook o Instagram (Configuración › Centro de cuentas › Tu información y permisos).
+  </p>
+</Legal>

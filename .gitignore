@@ -1,0 +1,24 @@
+# build
+dist/
+.vercel/
+.astro/
+
+# dependencias
+node_modules/
+
+# entorno
+.env
+.env.*
+!.env.example
+
+# logs
+npm-debug.log*
+*.log
+
+# QA (se versionan capturas, informes y el REPORT)
+test-results/
+playwright-report/
+qa/.tmp/
+
+# sistema
+.DS_Store

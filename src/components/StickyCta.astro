@@ -1,0 +1,61 @@
+---
+/**
+ * Barra CTA fija abajo en móvil (< 768 px).
+ * Aparece cuando el CTA del hero sale de pantalla, se oculta con #valoracion en pantalla
+ * y nunca coincide con el banner de cookies.
+ */
+---
+
+<div class="sticky-cta" data-sticky-cta data-theme="dark" aria-hidden="true">
+  <p class="sticky-note">Valoración inicial gratuita</p>
+  <a href="#valoracion" class="btn btn-primary sticky-btn" data-cta="sticky" tabindex="-1">
+    Quiero valorar mi caso
+  </a>
+</div>
+
+<style>
+  .sticky-cta {
+    position: fixed;
+    z-index: 40;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 10px max(16px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+    background: rgba(10, 10, 10, 0.92);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid var(--hair-on-dark);
+    text-align: center;
+    transform: translate3d(0, 110%, 0);
+    visibility: hidden;
+    transition:
+      transform 0.35s var(--ease-out),
+      visibility 0s linear 0.35s;
+  }
+
+  .sticky-cta:global(.is-visible) {
+    transform: none;
+    visibility: visible;
+    transition:
+      transform 0.35s var(--ease-out),
+      visibility 0s linear 0s;
+  }
+
+  .sticky-note {
+    margin: 0 0 8px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--muted-on-dark);
+  }
+
+  .sticky-btn {
+    width: 100%;
+  }
+
+  @media (width >= 768px) {
+    .sticky-cta {
+      display: none;
+    }
+  }
+</style>
