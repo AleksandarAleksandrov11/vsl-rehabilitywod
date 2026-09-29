@@ -106,8 +106,8 @@ const copies = [false, true] as const; // la segunda copia es el duplicado del l
   }
 
   .reviews-marquee {
-    margin-top: 18px;
-    padding-block: 6px 14px;
+    margin-top: var(--title-gap);
+    padding-block: 6px 18px;
     --marquee-duration: 60s;
   }
 
@@ -123,7 +123,7 @@ const copies = [false, true] as const; // la segunda copia es el duplicado del l
     display: flex;
     flex-direction: column;
     width: min(84vw, 360px);
-    padding: 24px 28px 20px;
+    padding: 28px 28px 24px;
     border: 1px solid var(--hair-on-light);
     border-radius: var(--radius);
     background: #ffffff;
@@ -162,14 +162,14 @@ const copies = [false, true] as const; // la segunda copia es el duplicado del l
 
   .t-quote {
     flex: 1;
-    margin: 14px 0 0;
+    margin: 18px 0 0;
   }
 
   .t-quote p {
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
     overflow: hidden;
     font-size: 1rem;
     line-height: 1.55;
@@ -180,8 +180,8 @@ const copies = [false, true] as const; // la segunda copia es el duplicado del l
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-top: 16px;
-    padding-top: 14px;
+    margin-top: 20px;
+    padding-top: 18px;
     border-top: 1px solid var(--hair-on-light);
   }
 
@@ -251,12 +251,6 @@ const copies = [false, true] as const; // la segunda copia es el duplicado del l
 
     .t-more:hover {
       text-decoration-thickness: 2px;
-    }
-  }
-
-  @media (width >= 768px) {
-    .reviews-marquee {
-      margin-top: 56px;
     }
   }
 

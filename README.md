@@ -6,6 +6,10 @@ Un solo objetivo: que el atleta rellene el formulario de valoración.
 - **Rediseño v2** (septiembre de 2026): animación inicial "pulso a movimiento", titulares en
   mayúsculas con Big Shoulders Display, fotos de box a sangre, texturas, cinta de stats en loop,
   reveals y parallax sutil. Informe en [`qa/REPORT-v2.md`](qa/REPORT-v2.md).
+- **Ajustes v3** (a petición del cliente): más aire entre secciones y textos, capturas de la app
+  grandes y sin tapar, "Quién está detrás" con la foto de Gerard en grande y 4 datos iguales,
+  formulario con figuras detalladas y opciones iguales, portada real del vídeo con el play
+  centrado, footer reordenado con redes y el nombre grande animado.
 - 6 secciones (hero + cinta de stats, VSL, por qué, cómo funciona, opiniones + quién está detrás,
   valoración + FAQ), banda de cierre y footer.
 - Formulario de 4 pasos, uno por pantalla, que funciona también sin JavaScript.
@@ -30,14 +34,12 @@ Un solo objetivo: que el atleta rellene el formulario de valoración.
 
 Lo único que falta para publicar. Cada punto está marcado en el código con `TODO(Gerard)`.
 
-1. **IMPORTANTE: FOTO DE GERARD PENDIENTE.** No llegó ninguna foto adjunta con el encargo de
-   rediseño. El bloque "Quién está detrás" usa de forma provisional un recorte de
-   `https://rehabilitywod.com/collage.png` (**150x188 px**, se muestra a 75 px para que se vea nítido).
-   **Sustituir `src/assets/photos/gerard.jpg`** por una foto real de Gerard (retrato 4:5, cara en el
-   tercio superior, **1600 px de ancho o más**), sin filtros. Con una foto de 1600 px o más el bloque
-   cambia solo al diseño grande (foto de hasta 480 px a la izquierda con el chip "+120 atletas
-   recuperados" encima). **Nunca una foto de stock de otra persona.**
-   - Opcional: `src/assets/images/app-1.jpg`, `app-3.jpg`, `app-4.jpg` si hay capturas más recientes
+1. **Foto profesional de Gerard (recomendado).** "Quién está detrás" usa ahora en grande un
+   fotograma real de su VSL (Gerard en el box, recorte 4:5 de **576x720 px**), que se ve bien pero
+   algo blando en pantallas retina a más de 400 px. Si hay una foto profesional, **sustituir
+   `src/assets/photos/gerard.jpg`** (retrato 4:5, cara en el tercio superior, **1600 px de ancho o
+   más**, sin filtros); el `srcset` se genera solo. **Nunca una foto de stock de otra persona.**
+   - Opcional: `src/assets/images/app-1.jpg` a `app-4.jpg` si hay capturas más recientes
      de la app (1080x2340).
 2. **Número de WhatsApp** (`src/config.ts`, `whatsapp`). La web actual enlaza `wa.me/640995494`
    (sin prefijo 34, no funciona) y el aviso legal da el 636 748 147. Ahora está `34640995494`.
@@ -52,7 +54,7 @@ Lo único que falta para publicar. Cada punto está marcado en el código con `T
 
 ## Fotos y créditos de imágenes
 
-Las 6 fotos de ambiente son de **Unsplash**, con la [Unsplash License](https://unsplash.com/license)
+Las fotos de ambiente son de **Unsplash**, con la [Unsplash License](https://unsplash.com/license)
 (uso comercial permitido, sin atribución obligatoria; ninguna es Unsplash+). La licencia de cada una
 se comprobó en su página. Se eligieron con una hoja de miniaturas por hueco (8 a 12 candidatas cada
 una) que está en [`qa/photo-sheets/`](qa/photo-sheets/), y la hoja final de la serie en
@@ -63,17 +65,21 @@ una) que está en [`qa/photo-sheets/`](qa/photo-sheets/), y la hoja final de la 
 | 1 Hero móvil       | `hero-mobile.jpg` (2000x2999)                 | [unsplash.com/photos/03b61PY89hs](https://unsplash.com/photos/03b61PY89hs) | Ambitious Studio\* · Rick Barrett | Rig, barra y discos de un box real, sin personas; mitad inferior oscura para el texto.                                      |
 | 2 Hero escritorio  | `hero-desktop.jpg` (3200x2134)                | [unsplash.com/photos/w7jYaN7GqyA](https://unsplash.com/photos/w7jYaN7GqyA) | Ambitious Studio\* · Rick Barrett | Mismo box y misma sesión que la 1 (misma luz y revelado); suelo oscuro abajo y centro limpio.                               |
 | 3 Banda 3B         | `band-statement.jpg` + `band-statement-m.jpg` | [unsplash.com/photos/gNvNsHIckSc](https://unsplash.com/photos/gNvNsHIckSc) | HamZa NOUASRIA                    | Mano con magnesio agarrando la barra, poca luz, sin logos; admite el recorte vertical para móvil.                           |
-| 4 Póster VSL       | `vsl-poster.jpg` (2560x1440)                  | [unsplash.com/photos/9dzWZQWZMdE](https://unsplash.com/photos/9dzWZQWZMdE) | Anastase Maragos                  | Box oscuro, atleta preparando un peso muerto sin cara visible; recortada para dejar el motivo a la derecha.                 |
 | 5 Fondo formulario | `form-bg.jpg` (2400x1800)                     | [unsplash.com/photos/uH8JDWuxFX8](https://unsplash.com/photos/uH8JDWuxFX8) | Julien Dumas                      | Anillas bajo la estructura del box: textura tranquila y neutra que aguanta el velo al 88 %.                                 |
 | 6 Cierre           | `closing.jpg` + `closing-m.jpg`               | [unsplash.com/photos/h4i9G-de7Po](https://unsplash.com/photos/h4i9G-de7Po) | John Arano                        | Atleta de espaldas en posición de press bajo el rig: vuelta al rendimiento, sin cara. El rótulo del rig queda bajo el velo. |
 
 - Descargadas del original a máxima resolución y reducidas (sin filtros ni retoques). Los archivos
-  `-m` son recortes verticales de la misma foto para móvil; el póster es un recorte 16:9.
+  `-m` son recortes verticales de la misma foto para móvil.
+- En v3 el póster de Unsplash (Anastase Maragos) se sustituyó por la **portada real del vídeo**, a
+  petición del cliente.
+- **Fotos propias de RehabilityWOD** (de su VSL en YouTube, sin retoques): `vsl-cover.jpg` es la
+  portada del vídeo (1280x720) y `gerard.jpg` un recorte 4:5 (576x720) de otro fotograma del mismo
+  vídeo. Se sirven desde la web, así que antes del clic no hay ninguna petición a YouTube.
 - En la web se sirven por `astro:assets` en AVIF (calidad 60) y WebP (78): verticales a 480, 768,
   1080 y 1440 px y horizontales a 768, 1280, 1920 y 2560 px, nunca por encima del tamaño natural.
   El hero pesa 89 KB en AVIF a 1080 px.
 - Solo se aplica `contrast(1.03) saturate(.95)` en CSS para unificar la serie.
-- La foto de Gerard **no es de stock**: es el recorte provisional de su web (ver `TODO(Gerard)`).
+- La foto de Gerard **no es de stock**: es un fotograma de su propio vídeo (ver `TODO(Gerard)`).
 
 ## 1. Instalar y arrancar en local
 
@@ -236,8 +242,9 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
   adelantado. Sin JS no se puede medir y solo se aplica el honeypot.
 - **Prefijo telefónico** en un campo aparte (+34 por defecto, editable). Si el número empieza por
   `+` se ignora el prefijo.
-- **Póster propio de la VSL** (foto de ambiente, no la miniatura de YouTube): antes del clic no hay
-  ninguna petición a YouTube; al hacer clic se carga `youtube-nocookie` con un fundido de 250 ms.
+- **Portada de la VSL**: la del propio vídeo, servida desde la web con el play centrado; antes del
+  clic no hay ninguna petición a YouTube; al hacer clic se carga `youtube-nocookie` con un fundido
+  de 250 ms.
 - **Hero con dirección de arte**: foto vertical hasta 1023 px y horizontal desde 1024 px, con
   precarga responsive (`imagesrcset` + `media`) de la AVIF. En pantallas bajas y en tablet el velo es
   algo más denso que el del encargo para mantener el contraste AA en el peor punto (el texto sube
@@ -246,12 +253,19 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
   `prefers-reduced-motion`, `pointer-events: none`). Sin JS no se muestra.
 - **Marquees** (cinta de stats y testimonios): la copia del bucle lleva `aria-hidden` e `inert`;
   como `inert` también bloquea los clics, un clic en "Leer más" de la copia abre el mismo testimonio.
-- **Altura de la home**: el límite de 7200 px en 390x844 obliga a espaciados compactos en móvil
-  (secciones de 34 px de padding vertical, citas de 3 líneas en las tarjetas). En escritorio el aire
-  es mayor.
-- **Textos añadidos** (no son copy de venta): etiquetas de campos ("Nombre", "Teléfono móvil",
-  "Tu caso (opcional)"), el título "Preguntas frecuentes.", las descripciones del panel de cookies y
-  una línea de ayuda con el email en el formulario sin JavaScript.
+- **Altura de la home**: el encargo v2 fijaba 7200 px en 390x844; en v3 el cliente pidió más aire
+  (secciones de 72 px de padding vertical en móvil y 128 px en escritorio), y el test vigila ahora
+  un máximo de 10 000 px.
+- **Textos añadidos** (no son copy de venta): etiquetas de campos solo para lectores de pantalla
+  ("Nombre", "Teléfono móvil", "Tu caso (opcional)") con los _placeholders_ "Tu nombre" y "Tu
+  móvil", el título "Preguntas frecuentes.", "Dentro de la app" y los pies de las capturas, las
+  descripciones del panel de cookies y una línea de ayuda con el email en el formulario sin
+  JavaScript.
+- **Quitados en v3** a petición del cliente: "Programas de 8, 12 o 24 semanas. El precio lo vemos
+  en la valoración.", "Abro plazas cuando tengo hueco…", el título sobre el póster del vídeo y la
+  ayuda del prefijo telefónico.
+- **Redes sociales** (footer y `sameAs` del JSON-LD): Instagram, TikTok y Facebook, en
+  `src/config.ts`, sin los parámetros de seguimiento de los enlaces compartidos.
 - **Testimonios completos** (diálogo "Leer más"): solo se han corregido tildes y la grafía de la
   marca.
 

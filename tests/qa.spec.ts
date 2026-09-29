@@ -412,6 +412,8 @@ test.describe('Viewports', () => {
           .locator(sel)
           .first()
           .evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
+        // Da tiempo al IntersectionObserver a disparar los reveals antes de capturar.
+        await page.waitForTimeout(250);
         await page
           .locator(sel)
           .first()
@@ -1443,14 +1445,16 @@ test('hover de tarjetas y botones (capturas)', async ({ browser }) => {
     ['poster-vsl', '[data-vsl-play]', '[data-vsl]'],
     ['tarjeta-te-suena', '.suena-card >> nth=0', '.suena-list'],
     ['paso', '.step >> nth=1', '.steps'],
-    ['capturas-app', '.phones', '.phones'],
+    ['capturas-app', '.app >> nth=0', '.apps'],
+    ['dato-gerard', '.about-fact >> nth=0', '.about-facts'],
     [
       'testimonio',
       '.marquee-list:not([data-copy]) .t-card >> nth=1',
       '#opiniones .reviews-marquee',
     ],
     ['opcion-formulario', '#lead-form label.chip >> nth=1', '.chips'],
-    ['footer-wordmark', '.footer-giant-word span >> nth=3', '.footer-giant'],
+    ['redes', '.footer-social-link >> nth=0', '.footer-social'],
+    ['footer-wordmark', '.fg-letter >> nth=3', '.footer-giant'],
   ];
   const lifts: Record<string, number> = {};
   for (const [name, sel, area] of targets) {
@@ -1606,7 +1610,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       'Vídeo · 7 min',
       '¿Por qué sigues con dolor?',
       'Lo que nadie te ha explicado de tu lesión.',
-      'Mira esto antes de volver al box.',
       '7:00',
       'Por qué recaes',
       'Qué falla en tu enfoque',
@@ -1636,7 +1639,11 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       'Ejercicio específico y tus entrenos adaptados, en una app.',
       'Vuelves al 100 %',
       'Preparamos tu vuelta y te enseño a no recaer.',
-      'Programas de 8, 12 o 24 semanas. El precio lo vemos en la valoración.',
+      'Dentro de la app',
+      'Tu plan de hoy',
+      'Entrenos adaptados',
+      'Vídeo de cada ejercicio',
+      'Registro de dolor y sueño',
       'Valorar mi caso',
       'Atletas reales. Vuelta real al box.',
       'Quién está detrás',
@@ -1646,10 +1653,10 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       'Fisioterapeuta titulado',
       'Atleta desde 2017',
       'Especialista en CrossFit',
-      'Gerard Barrantes · Fundador de RehabilityWOD',
+      '+120 atletas recuperados',
+      'Gerard Barrantes Fundador de RehabilityWOD',
       'Cuéntame qué te pasa.',
       'Rellénalo en 30 segundos y te escribo para la videollamada de valoración.',
-      'Abro plazas cuando tengo hueco para darte el seguimiento que mereces.',
       'Paso 1 de 4',
       '¿Qué te duele?',
       'Cuéntame un poco más.',
@@ -1663,8 +1670,10 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       '¿Qué garantías tengo?',
       '¿Y si ya tengo pruebas o diagnóstico por imagen?',
       'Vuelve a entrenar sin dolor.',
+      'Web',
       'Contacto',
-      'Instagram @rehability_wod',
+      '@rehability_wod',
+      'Volver arriba',
       'Aviso legal',
       'Configurar cookies',
       'Fisioterapia online para atletas de CrossFit',
@@ -1677,6 +1686,11 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     expect(text).not.toContain('Te escribo yo por WhatsApp');
     expect(text).not.toContain('Sin compromiso');
     expect(text).not.toMatch(/Valoración inicial gratuita/i);
+    // Quitados a petición del cliente (v3).
+    expect(text).not.toContain('Programas de 8, 12 o 24 semanas. El precio');
+    expect(text).not.toContain('Abro plazas cuando tengo hueco');
+    expect(text).not.toContain('Mira esto antes de volver al box');
+    expect(text).not.toContain('Si tu número no es español');
     const hero = norm(await page.locator('#inicio').innerText());
     expect(hero.toLowerCase()).not.toContain('fisioterapia online para atletas de crossfit');
     const sticky = norm(
@@ -1754,7 +1768,8 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     await ctx.close();
   });
 
-  test('home: altura total en 390x844 ≤ 7200 px', async ({ browser }) => {
+  // El encargo v2 fijaba 7200 px; en v3 el cliente pidió más aire entre secciones y textos.
+  test('home: altura total en 390x844 ≤ 10 000 px', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     await setConsent(ctx, CONSENT_REJECTED);
     await skipIntro(ctx);
@@ -1763,7 +1778,7 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     await scrollThrough(page);
     const h = await page.evaluate(() => document.documentElement.scrollHeight);
     test.info().annotations.push({ type: 'home-height-390', description: String(h) });
-    expect(h).toBeLessThanOrEqual(7200);
+    expect(h).toBeLessThanOrEqual(10_000);
     await ctx.close();
   });
 
@@ -1781,8 +1796,8 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       ['.closing-phrase .accent', 3],
       ['.valoracion-head h2', 3],
       ['.valoracion-lead', 4.5],
-      ['.valoracion-note', 4.5],
-      ['.vsl-poster-title', 3],
+      ['.about-name', 3],
+      ['.about-role', 4.5],
     ];
     const fails: string[] = [];
     const report: string[] = [];

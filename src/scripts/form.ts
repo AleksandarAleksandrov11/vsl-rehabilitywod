@@ -173,12 +173,32 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     nav?.classList.toggle('is-final', step === total);
   }
 
+  // La tarjeta pasa de su alto anterior al del paso nuevo en el mismo tiempo que la transición
+  // de pasos; al terminar vuelve a height: auto (así se adapta a errores o al cambiar el ancho).
+  let heightTimer = 0;
+  function animateHeight(fromHeight: number): void {
+    window.clearTimeout(heightTimer);
+    root.style.height = '';
+    const toHeight = root.offsetHeight;
+    if (Math.abs(toHeight - fromHeight) < 2) return;
+    root.style.height = `${fromHeight}px`;
+    void root.offsetHeight;
+    root.classList.add('is-resizing');
+    root.style.height = `${toHeight}px`;
+    heightTimer = window.setTimeout(() => {
+      root.classList.remove('is-resizing');
+      root.style.height = '';
+    }, LEAVE_MS + 40);
+  }
+
   function showStep(step: number, { focus = true, announce = true } = {}): void {
     const previous = steps[current - 1];
     const dir = step >= current ? 1 : -1;
     const animate = announce && !reduceMotion() && previous !== undefined && step !== current;
     // Posición del paso que sale, antes de mostrar el nuevo (al ir hacia atrás lo desplazaría).
     const previousTop = previous?.offsetTop ?? 0;
+    // Alto de la tarjeta antes del cambio: cada paso mide lo suyo y el cambio se anima.
+    const fromHeight = root.offsetHeight;
     current = step;
     for (const fs of steps) {
       const isCurrent = Number(fs.dataset.step) === step;
@@ -210,6 +230,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
       }, LEAVE_MS);
     }
     applyNav(step);
+    if (animate) animateHeight(fromHeight);
     if (bar) bar.style.transform = `scaleX(${step / total})`;
     if (progressText) progressText.textContent = `Paso ${step} de ${total}`;
     if (announce && live) live.textContent = `Paso ${step} de ${total}`;
@@ -274,41 +295,6 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   });
   syncOtro();
 
-  // Altura estable: la tarjeta mide lo que el paso más alto (se recalcula al cambiar el ancho).
-  // Se mide de forma intrínseca (paso + su barra de navegación + partes fijas de la tarjeta):
-  // el <form> se estira con flex y su alto no sirve para comparar pasos.
-  function fitHeight(): void {
-    const fixed = root.getBoundingClientRect().height - form.getBoundingClientRect().height;
-    let max = 0;
-    for (const fs of steps) {
-      for (const other of steps) other.hidden = other !== fs;
-      applyNav(Number(fs.dataset.step));
-      const h = fs.getBoundingClientRect().height + (nav?.getBoundingClientRect().height ?? 0);
-      max = Math.max(max, h);
-    }
-    for (const fs of steps) fs.hidden = Number(fs.dataset.step) !== current;
-    applyNav(current);
-    root.style.minHeight = `${Math.ceil(fixed + max)}px`;
-  }
-  fitHeight();
-  // Las fuentes cambian la altura de los pasos: se vuelve a medir cuando terminan de cargar
-  // (fonts.ready puede resolverse antes de que empiecen a cargarse) y al final de la carga.
-  const refit = () => {
-    if (!root.querySelector('.is-leaving')) fitHeight();
-  };
-  void document.fonts?.ready.then(refit);
-  document.fonts?.addEventListener('loadingdone', refit);
-  window.addEventListener('load', refit, { once: true });
-  let lastWidth = window.innerWidth;
-  window.addEventListener(
-    'resize',
-    () => {
-      if (window.innerWidth === lastWidth) return;
-      lastWidth = window.innerWidth;
-      fitHeight();
-    },
-    { passive: true },
-  );
   showStep(1, { focus: false, announce: false });
 
   // Vuelta desde el fallback sin JS con error.

@@ -2,7 +2,6 @@
  * Movimiento de la home (solo transform, con requestAnimationFrame):
  * - Parallax sutil (±40 px) en la banda 3B y en el cierre.
  * - Línea de los pasos (escritorio): el punto avanza con el scroll.
- * - Carruseles que empiezan centrados (capturas de la app en móvil).
  * Con prefers-reduced-motion no hay parallax ni avance animado.
  */
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -56,15 +55,5 @@ if (!reduce && (layers.length || rail) && 'IntersectionObserver' in window) {
 } else if (rail) {
   rail.style.setProperty('--p', '1');
 }
-
-// Carruseles que empiezan con el elemento central centrado.
-document.querySelectorAll<HTMLElement>('[data-center-scroll]').forEach((el) => {
-  const center = () => {
-    const overflow = el.scrollWidth - el.clientWidth;
-    if (overflow > 1) el.scrollLeft = overflow / 2;
-  };
-  center();
-  window.addEventListener('load', center, { once: true });
-});
 
 export {};

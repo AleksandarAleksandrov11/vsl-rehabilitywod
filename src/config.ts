@@ -14,17 +14,19 @@ export const CONFIG = {
   // wa.me/640995494 (sin prefijo 34, el enlace no funciona) y el aviso legal da el 636748147.
   whatsapp: '34640995494',
   email: 'info@rehabilitywod.com',
-  instagram: 'https://instagram.com/rehability_wod',
+  instagram: 'https://www.instagram.com/rehability_wod/',
   instagramHandle: '@rehability_wod',
+  tiktok: 'https://www.tiktok.com/@rehability_wod',
+  facebook: 'https://www.facebook.com/share/18RvRfV4Ec/',
   vslYoutubeId: 'V3AgSalCNJs',
   vslMinutes: 7,
+  vslTitle: '¿Por qué sigues con dolor al entrenar CrossFit?',
 
   // TODO(Gerard): crear el Apps Script y poner GOOGLE_SCRIPT_URL y LEAD_SECRET en Vercel
   // (pasos en apps-script/README-apps-script.md). Sin ellos, /api/lead funciona en modo mock.
 
-  // TODO(Gerard): sustituir src/assets/photos/gerard.jpg por su foto definitiva (retrato 4:5,
-  // 1600 px de ancho o más). La actual es un recorte provisional de la web antigua (150x188 px)
-  // y el bloque "Quién está detrás" se ve pequeño hasta que se cambie (ver AboutGerard.astro).
+  // TODO(Gerard): si hay una foto profesional suya (retrato 4:5, 1600 px de ancho o más),
+  // sustituir src/assets/photos/gerard.jpg. La actual es un fotograma de su VSL (576x720 px).
 
   legal: {
     titular: 'GERARD BARRANTES BAUTISTA',

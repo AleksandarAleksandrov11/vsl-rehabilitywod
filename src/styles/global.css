@@ -29,7 +29,9 @@
   --radius: 24px;
   --header-h: 68px;
   --gutter: max(20px, env(safe-area-inset-left), env(safe-area-inset-right));
-  --section-y: 34px;
+  --section-y: 72px;
+  /* Aire entre el bloque de titular y el contenido de la sección. */
+  --title-gap: 28px;
 
   --font-display:
     'Big Shoulders Display', 'Big Shoulders Fallback', 'Arial Narrow', ui-sans-serif, sans-serif;
@@ -42,7 +44,8 @@
   :root {
     --header-h: 76px;
     --gutter: max(32px, env(safe-area-inset-left), env(safe-area-inset-right));
-    --section-y: 112px;
+    --section-y: 128px;
+    --title-gap: 56px;
   }
 }
 
@@ -242,8 +245,8 @@
 
 /* Una línea de apoyo bajo un titular. */
 @utility lead {
-  font-size: 1rem;
-  line-height: 1.5;
+  font-size: 1.0625rem;
+  line-height: 1.55;
   color: var(--muted);
 
   [data-theme='dark'] & {
@@ -321,12 +324,12 @@
 .section-cta {
   display: flex;
   justify-content: center;
-  margin-top: 20px;
+  margin-top: 40px;
 }
 
 @media (width >= 768px) {
   .section-cta {
-    margin-top: 56px;
+    margin-top: 64px;
   }
 }
 

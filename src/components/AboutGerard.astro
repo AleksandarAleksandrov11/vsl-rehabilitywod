@@ -1,15 +1,15 @@
 ---
 /**
- * 5B: quién está detrás. La foto es SIEMPRE de Gerard (nunca stock).
+ * 5B: quién está detrás. La foto es SIEMPRE de Gerard (nunca stock) y es lo principal del
+ * bloque: va grande justo después del titular.
  *
- * TODO(Gerard): sustituir src/assets/photos/gerard.jpg por la foto definitiva (retrato 4:5,
- * cara en el tercio superior, 1600 px de ancho o más). La actual es un recorte provisional de
- * https://rehabilitywod.com/collage.png (150x188 px).
+ * TODO(Gerard): si hay una foto profesional suya (retrato 4:5, cara en el tercio superior,
+ * 1600 px de ancho o más), sustituir src/assets/photos/gerard.jpg. La actual es un fotograma
+ * de su VSL (576x720 px); el srcset nunca pasa del tamaño natural.
  *
- * El diseño se adapta solo a la resolución de la foto, para que siempre se vea nítida en retina:
- * - 1600 px de ancho o más: foto grande (hasta 480 px CSS), a la izquierda en escritorio, con el
- *   chip flotante encima.
- * - Menos: como máximo la mitad de su ancho natural, en un marco junto a la frase grande.
+ * Móvil: titular, foto a todo el ancho, texto, 4 datos (2x2) y CTA.
+ * Escritorio: titular arriba, foto a la izquierda con el texto y los datos a la derecha, y el
+ * CTA centrado debajo.
  */
 import { getImage } from 'astro:assets';
 import Users from '@lucide/astro/icons/users';
@@ -21,120 +21,76 @@ import SplitWords from './SplitWords.astro';
 import gerard from '../assets/photos/gerard.jpg';
 import { QUALITY } from '../lib/images';
 
-const large = gerard.width >= 1600;
-const displayWidth = large ? 480 : Math.floor(gerard.width / 2);
-const displayHeight = Math.round((displayWidth * gerard.height) / gerard.width);
-
-// srcset hasta 2x del tamaño mostrado, sin pasar nunca del tamaño natural.
-const widths = [...new Set([displayWidth, displayWidth * 2].map((w) => Math.min(w, gerard.width)))];
+const widths = [...new Set([400, 576, 800, 1080, 1440].map((w) => Math.min(w, gerard.width)))];
 const [avif, webp] = await Promise.all([
   getImage({ src: gerard, widths, format: 'avif', quality: QUALITY.avif }),
   getImage({ src: gerard, widths, format: 'webp', quality: QUALITY.webp }),
 ]);
-const sizes = large
-  ? '(min-width: 768px) 420px, min(calc(100vw - 40px), 480px)'
-  : `${displayWidth}px`;
-const alt = 'Gerard Barrantes, fisioterapeuta y fundador de RehabilityWOD, entrenando en un box';
+const sizes = '(min-width: 1024px) 460px, (min-width: 768px) 440px, calc(100vw - 40px)';
+const alt = 'Gerard Barrantes, fisioterapeuta y fundador de RehabilityWOD, en el box';
 
 const facts = [
+  { Icon: Users, text: '+120 atletas recuperados' },
   { Icon: GraduationCap, text: 'Fisioterapeuta titulado' },
   { Icon: Dumbbell, text: 'Atleta desde 2017' },
   { Icon: Target, text: 'Especialista en CrossFit' },
 ];
-const phrase = ['Conozco el box', { br: 'always' as const }, { text: 'por dentro.', accent: true }];
 ---
 
-<div class:list={['about section-y', large ? 'about-large' : 'about-compact']} data-theme="dark">
-  <div class="container-x about-grid">
-    {large && (
-      <div class="about-photo-col">
-        <figure
-          class="about-photo reveal-clip"
-          data-reveal
-          style={`aspect-ratio:${gerard.width} / ${gerard.height};`}
-        >
-          <picture>
-            <source type="image/avif" srcset={avif.srcSet.attribute} sizes={sizes} />
-            <source type="image/webp" srcset={webp.srcSet.attribute} sizes={sizes} />
-            <img
-              src={webp.src}
-              width={displayWidth}
-              height={displayHeight}
-              alt={alt}
-              loading="lazy"
-              decoding="async"
-              class="about-img"
-            />
-          </picture>
-        </figure>
-        <p class="about-chip about-chip-float">
-          <Users size={18} stroke-width={1.75} aria-hidden="true" />
-          +120 atletas recuperados
-        </p>
-      </div>
-    )}
-
-    <div class="about-copy">
+<div class="about section-y" data-theme="dark">
+  <div class="container-x">
+    <div class="about-head">
       <p class="eyebrow reveal" data-reveal>
         Quién está detrás
       </p>
-
-      {large ? (
-        <SplitWords as="p" class="about-phrase" parts={phrase} />
-      ) : (
-        <div class="about-duo">
-          <figure
-            class="about-photo about-photo-small reveal-clip"
-            data-reveal
-            style={`width:${displayWidth}px; height:${displayHeight}px;`}
-          >
-            <picture>
-              <source type="image/avif" srcset={avif.srcSet.attribute} sizes={sizes} />
-              <source type="image/webp" srcset={webp.srcSet.attribute} sizes={sizes} />
-              <img
-                src={webp.src}
-                width={displayWidth}
-                height={displayHeight}
-                alt={alt}
-                loading="lazy"
-                decoding="async"
-                class="about-img"
-              />
-            </picture>
-          </figure>
-          <div class="about-duo-text">
-            <SplitWords as="p" class="about-phrase" parts={phrase} />
-            <p class="about-chip reveal" data-reveal style="--i:1">
-              <Users size={18} stroke-width={1.75} aria-hidden="true" />
-              +120 atletas recuperados
-            </p>
-          </div>
-        </div>
-      )}
-
-      <div class="about-text reveal" data-reveal style="--i:2">
-        <p>Soy Gerard Barrantes, fisioterapeuta y atleta de CrossFit desde 2017.</p>
-        <p>He trabajado en clínicas privadas y en la red sanitaria de Tarragona.</p>
-      </div>
-
-      <ul class="about-facts" role="list">
-        {facts.map(({ Icon, text }, i) => (
-          <li class="about-fact reveal" data-reveal style={`--i:${i + 3}`}>
-            <span class="icon-ring" aria-hidden="true">
-              <Icon size={20} stroke-width={1.75} />
-            </span>
-            <span>{text}</span>
-          </li>
-        ))}
-      </ul>
-
-      <p class="about-sign reveal" data-reveal style="--i:6">
-        Gerard Barrantes · Fundador de RehabilityWOD
-      </p>
+      <SplitWords
+        as="p"
+        class="about-phrase"
+        start={1}
+        parts={['Conozco el box', { br: 'always' }, { text: 'por dentro.', accent: true }]}
+      />
     </div>
-  </div>
 
-  <div class="container-x">
+    <div class="about-grid">
+      <figure class="about-photo reveal-clip" data-reveal>
+        <picture>
+          <source type="image/avif" srcset={avif.srcSet.attribute} sizes={sizes} />
+          <source type="image/webp" srcset={webp.srcSet.attribute} sizes={sizes} />
+          <img
+            src={webp.src}
+            width={gerard.width}
+            height={gerard.height}
+            alt={alt}
+            loading="lazy"
+            decoding="async"
+            class="about-img"
+          />
+        </picture>
+        <figcaption class="about-caption">
+          <span class="about-name">Gerard Barrantes</span>
+          <span class="about-role">Fundador de RehabilityWOD</span>
+        </figcaption>
+      </figure>
+
+      <div class="about-copy">
+        <div class="about-text reveal" data-reveal>
+          <p>Soy Gerard Barrantes, fisioterapeuta y atleta de CrossFit desde 2017.</p>
+          <p>He trabajado en clínicas privadas y en la red sanitaria de Tarragona.</p>
+        </div>
+
+        <ul class="about-facts" role="list">
+          {facts.map(({ Icon, text }, i) => (
+            <li class="about-fact reveal" data-reveal style={`--i:${i + 1}`}>
+              <span class="icon-ring" aria-hidden="true">
+                <Icon size={20} stroke-width={1.75} />
+              </span>
+              <span class="about-fact-text">{text}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+
     <div class="section-cta reveal" data-reveal>
       <CtaButton location="about">Quiero valorar mi caso</CtaButton>
     </div>
@@ -148,18 +104,40 @@ const phrase = ['Conozco el box', { br: 'always' as const }, { text: 'por dentro
     text-align: center;
   }
 
-  .about-copy {
+  .about-head {
     display: flex;
     flex-direction: column;
     align-items: center;
   }
 
+  .about-phrase {
+    margin-top: 16px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(3rem, 12.5vw, 3.5rem);
+    line-height: 0.9;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    text-wrap: balance;
+    color: var(--ink-on-dark);
+  }
+
+  .about-grid {
+    margin-top: var(--title-gap);
+  }
+
+  /* Foto grande de Gerard (4:5) con su nombre sobre un degradado. */
   .about-photo {
     position: relative;
-    margin: 0;
-    overflow: hidden;
+    width: 100%;
+    max-width: 460px;
+    margin: 0 auto;
+    aspect-ratio: 4 / 5;
     border: 1px solid var(--hair-on-dark);
+    border-radius: var(--radius);
     background: var(--surface);
+    overflow: hidden;
+    box-shadow: 0 40px 80px -40px rgba(0, 0, 0, 0.9);
   }
 
   .about-photo picture,
@@ -171,53 +149,58 @@ const phrase = ['Conozco el box', { br: 'always' as const }, { text: 'por dentro
 
   .about-img {
     object-fit: cover;
-    object-position: 50% 25%;
+    object-position: 50% 30%;
   }
 
-  .about-phrase {
+  .about-caption {
+    position: absolute;
+    inset: auto 0 0;
+    display: grid;
+    gap: 2px;
+    padding: 64px 20px 18px;
+    background: linear-gradient(180deg, rgba(10, 10, 10, 0) 0%, rgba(10, 10, 10, 0.86) 100%);
+    text-align: left;
+  }
+
+  .about-name {
     font-family: var(--font-display);
     font-weight: 800;
-    line-height: 0.9;
-    letter-spacing: 0.005em;
+    font-size: 1.625rem;
+    line-height: 1;
+    letter-spacing: 0.01em;
     text-transform: uppercase;
-    text-wrap: balance;
-    color: var(--ink-on-dark);
+    color: #ffffff;
   }
 
-  .about-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 40px;
-    padding: 0 16px 0 12px;
-    border: 1px solid var(--hair-on-dark);
-    border-radius: 999px;
-    background: rgba(18, 18, 18, 0.92);
-    box-shadow: 0 14px 30px -14px rgba(0, 0, 0, 0.7);
+  .about-role {
     font-size: 0.9375rem;
-    font-weight: 600;
-    white-space: nowrap;
+    color: #e2e2de;
   }
 
-  .about-chip :global(svg) {
-    color: var(--brand-bright);
+  .about-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 32px;
   }
 
   .about-text {
     display: grid;
-    gap: 4px;
+    gap: 6px;
     max-width: 24rem;
-    margin-top: 14px;
+    font-size: 1.0625rem;
+    line-height: 1.55;
     color: var(--muted-on-dark);
   }
 
+  /* 4 datos con el mismo estilo: 2x2 en móvil y tablet. */
   .about-facts {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
     width: 100%;
     max-width: 30rem;
-    margin: 16px 0 0;
+    margin: 28px 0 0;
     padding: 0;
     list-style: none;
   }
@@ -226,153 +209,83 @@ const phrase = ['Conozco el box', { br: 'always' as const }, { text: 'por dentro
     display: grid;
     justify-items: center;
     align-content: start;
-    gap: 6px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    line-height: 1.3;
-  }
-
-  .about-sign {
-    margin-top: 14px;
+    gap: 10px;
+    padding: 18px 12px;
+    border: 1px solid var(--hair-on-dark);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.03);
     font-size: 0.9375rem;
     font-weight: 600;
-    color: var(--ink-on-dark);
-  }
-
-  /* ---------- Foto pequeña: marco junto a la frase grande ---------- */
-  .about-duo {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-top: 12px;
-    text-align: left;
-  }
-
-  .about-photo-small {
-    flex: none;
-    border-radius: 16px;
-    box-shadow:
-      0 0 0 5px var(--surface),
-      0 0 0 6px var(--hair-on-dark);
-  }
-
-  .about-duo-text {
-    display: grid;
-    justify-items: start;
-    gap: 12px;
-  }
-
-  .about-compact .about-phrase {
-    font-size: clamp(2.375rem, 11vw, 3rem);
-  }
-
-  .about-compact .about-chip {
-    min-height: 36px;
-    font-size: 0.875rem;
+    line-height: 1.3;
+    transition:
+      border-color 0.4s var(--ease),
+      transform 0.4s var(--ease),
+      opacity 0.8s var(--ease);
   }
 
   .about-fact :global(.icon-ring) {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
+  }
+
+  @media (hover: hover) {
+    .about-fact:hover {
+      border-color: rgba(52, 211, 153, 0.45);
+      transform: translateY(-4px);
+    }
   }
 
   @media (width >= 768px) {
-    .about-duo {
-      gap: 28px;
+    .about-phrase {
       margin-top: 20px;
+      font-size: clamp(3.75rem, 1.5rem + 4vw, 6rem);
     }
 
-    .about-compact .about-phrase {
-      font-size: clamp(3.75rem, 1.5rem + 4vw, 5.5rem);
+    .about-photo {
+      max-width: 440px;
+    }
+
+    .about-copy {
+      margin-top: 40px;
     }
 
     .about-text {
       max-width: 36rem;
-      margin-top: 28px;
       font-size: 1.125rem;
     }
-
-    .about-facts {
-      gap: 24px;
-      margin-top: 32px;
-    }
-
-    .about-fact {
-      font-size: 0.9375rem;
-    }
   }
 
-  /* ---------- Foto grande (1600 px o más) ---------- */
-  .about-large .about-photo-col {
-    position: relative;
-    width: min(100%, 480px);
-    margin-inline: auto;
-  }
-
-  .about-large .about-photo {
-    border-radius: var(--radius);
-  }
-
-  .about-chip-float {
-    position: absolute;
-    left: 16px;
-    bottom: 16px;
-  }
-
-  .about-large .about-copy {
-    margin-top: 32px;
-  }
-
-  .about-large .about-phrase {
-    margin-top: 14px;
-    font-size: clamp(3rem, 12.5vw, 3.5rem);
-  }
-
-  @media (width >= 768px) {
-    .about-large .about-grid {
+  /* Escritorio: foto a la izquierda y el resto a la derecha. */
+  @media (width >= 1024px) {
+    .about-grid {
       display: grid;
-      grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
-      column-gap: 64px;
+      grid-template-columns: 460px minmax(0, 1fr);
+      column-gap: 72px;
       align-items: center;
+      max-width: 1080px;
+      margin-inline: auto;
+    }
+
+    .about-photo {
+      max-width: none;
+    }
+
+    .about-copy {
+      align-items: flex-start;
+      margin-top: 0;
       text-align: left;
     }
 
-    .about-large .about-photo-col {
-      width: 100%;
-      margin: 0;
-    }
-
-    .about-large .about-copy {
-      align-items: flex-start;
-      margin-top: 0;
-    }
-
-    .about-large .about-phrase {
-      font-size: clamp(3.75rem, 1.5rem + 4vw, 6rem);
-    }
-  }
-
-  /* Pantallas muy estrechas: los mini datos en una columna y el chip más compacto. */
-  @media (width < 360px) {
     .about-facts {
-      grid-template-columns: 1fr;
-      justify-items: center;
-      gap: 8px;
+      max-width: none;
+      margin-top: 36px;
     }
 
     .about-fact {
-      display: inline-flex;
+      grid-template-columns: auto minmax(0, 1fr);
+      justify-items: start;
       align-items: center;
-      gap: 10px;
-    }
-
-    .about-duo {
-      gap: 12px;
-    }
-
-    .about-compact .about-chip {
-      padding: 0 12px 0 10px;
-      font-size: 0.8125rem;
+      padding: 18px;
     }
   }
 </style>

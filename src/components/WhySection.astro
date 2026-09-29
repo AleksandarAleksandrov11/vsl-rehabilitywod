@@ -157,9 +157,9 @@ const compare = [
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: 82%;
-    gap: 14px;
-    margin: 18px 0 0;
-    padding: 6px var(--gutter) 14px;
+    gap: 16px;
+    margin: var(--title-gap) 0 0;
+    padding: 6px var(--gutter) 18px;
     list-style: none;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
@@ -177,8 +177,8 @@ const compare = [
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    min-height: 168px;
-    padding: 98px 24px 20px;
+    min-height: 196px;
+    padding: 108px 24px 26px;
     border: 1px solid var(--hair-on-light);
     border-radius: var(--radius);
     background: #ffffff;
@@ -208,7 +208,7 @@ const compare = [
     max-width: 15em;
     font-size: 1.25rem;
     font-weight: 600;
-    line-height: 1.3;
+    line-height: 1.35;
     letter-spacing: -0.01em;
   }
 
@@ -237,9 +237,9 @@ const compare = [
     .suena-list {
       grid-auto-flow: row;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 20px;
+      gap: 24px;
       max-width: calc(1240px + 2 * var(--gutter));
-      margin: 56px auto 0;
+      margin: var(--title-gap) auto 0;
       overflow: visible;
     }
 
@@ -255,8 +255,8 @@ const compare = [
     isolation: isolate;
     display: flex;
     align-items: center;
-    min-height: 80svh;
-    padding-block: 56px;
+    min-height: 88svh;
+    padding-block: 96px;
     overflow: hidden;
     color: var(--ink-on-dark);
     background: var(--void);
@@ -310,14 +310,14 @@ const compare = [
 
   .band-lead {
     max-width: 26rem;
-    margin-top: 20px;
+    margin-top: 24px;
     color: rgba(245, 245, 242, 0.84);
   }
 
   @media (width >= 768px) {
     .band {
-      min-height: 70vh;
-      padding-block: 112px;
+      min-height: 76vh;
+      padding-block: 144px;
     }
 
     .band-statement {
@@ -339,14 +339,14 @@ const compare = [
 
   .cmp-card {
     display: grid;
-    gap: 8px;
+    gap: 12px;
     max-width: 920px;
-    margin: 20px auto 0;
+    margin: var(--title-gap) auto 0;
     text-align: left;
   }
 
   .cmp-col {
-    padding: 16px 20px 10px;
+    padding: 24px 22px 18px;
     border-radius: var(--radius);
   }
 
@@ -377,8 +377,8 @@ const compare = [
 
   .cmp-list {
     display: grid;
-    gap: 0;
-    margin: 8px 0 0;
+    gap: 4px;
+    margin: 14px 0 0;
     padding: 0;
     list-style: none;
   }
@@ -387,14 +387,14 @@ const compare = [
     display: flex;
     align-items: center;
     gap: 12px;
-    min-height: 30px;
+    min-height: 36px;
     font-size: 1rem;
     line-height: 1.3;
   }
 
   .cmp-old .cmp-row {
     font-size: 0.9375rem;
-    min-height: 26px;
+    min-height: 32px;
   }
 
   .cmp-row :global(.cmp-x) {
@@ -443,7 +443,6 @@ const compare = [
       grid-template-columns: 1fr 1.08fr;
       align-items: center;
       gap: 0;
-      margin-top: 56px;
     }
 
     .cmp-col {

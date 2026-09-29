@@ -2,15 +2,15 @@
 /**
  * Sección 4: cómo funciona. Única sección teñida de verde (--brand-deep, rejilla y grano).
  * 3 pasos (en escritorio unidos por una línea con un punto que avanza con el scroll) y
- * 3 capturas reales de la app en marcos de móvil hechos en CSS.
+ * 4 capturas reales de la app en marcos finos (carrusel en móvil, en fila en escritorio).
  */
 import { Image } from 'astro:assets';
 import SplitWords from './SplitWords.astro';
 import SectionCta from './SectionCta.astro';
 import app1 from '../assets/images/app-1.jpg';
+import app2 from '../assets/images/app-2.jpg';
 import app3 from '../assets/images/app-3.jpg';
 import app4 from '../assets/images/app-4.jpg';
-import { QUALITY } from '../lib/images';
 
 const steps = [
   {
@@ -25,18 +25,33 @@ const steps = [
   },
   {
     n: '03',
-    title: 'Vuelves al 100 %',
+    title: 'Vuelves al 100 %',
     text: 'Preparamos tu vuelta y te enseño a no recaer.',
   },
 ];
 
+// Capturas reales de la app (1080x2340). La barra de navegación de Android se recorta con CSS.
 const shots = [
-  { src: app3, alt: 'Captura de la app: registro diario de dolor, estrés y calidad del sueño' },
   {
     src: app1,
+    caption: 'Tu plan de hoy',
     alt: 'Captura de la app de RehabilityWOD: plan de hoy con la sesión y las métricas personales',
   },
-  { src: app4, alt: 'Captura de la app: ejercicio con vídeo explicativo y objetivo de la serie' },
+  {
+    src: app2,
+    caption: 'Entrenos adaptados',
+    alt: 'Captura de la app: sesión de metcon con las adaptaciones indicadas por Gerard',
+  },
+  {
+    src: app4,
+    caption: 'Vídeo de cada ejercicio',
+    alt: 'Captura de la app: ejercicio con vídeo explicativo y objetivo de la serie',
+  },
+  {
+    src: app3,
+    caption: 'Registro de dolor y sueño',
+    alt: 'Captura de la app: registro diario de dolor, estrés y calidad del sueño',
+  },
 ];
 ---
 
@@ -75,36 +90,43 @@ const shots = [
         ))}
       </ol>
     </div>
+
+    <p class="eyebrow apps-eyebrow reveal" data-reveal>
+      Dentro de la app
+    </p>
   </div>
 
   <ul
-    class="phones"
+    class="apps"
     role="list"
     aria-label="Capturas reales de la app"
     data-scroll-region
-    data-center-scroll
     data-reveal
   >
     {shots.map((shot, i) => (
-      <li class="phone" style={`--i:${i}`}>
-        <Image
-          src={shot.src}
-          alt={shot.alt}
-          widths={[240, 360, 480, 720]}
-          sizes="(min-width: 1024px) 230px, (min-width: 768px) 190px, 40vw"
-          quality={QUALITY.webp}
-          loading="lazy"
-          decoding="async"
-          class="phone-img"
-        />
+      <li class="app" style={`--i:${i}`}>
+        <figure class="app-figure">
+          <div class="device">
+            <div class="device-screen">
+              <Image
+                src={shot.src}
+                alt={shot.alt}
+                widths={[320, 480, 640, 840, 1080]}
+                sizes="(min-width: 1024px) 240px, (min-width: 768px) 280px, 64vw"
+                quality={85}
+                loading="lazy"
+                decoding="async"
+                class="device-img"
+              />
+            </div>
+          </div>
+          <figcaption class="app-caption">{shot.caption}</figcaption>
+        </figure>
       </li>
     ))}
   </ul>
 
   <div class="container-x">
-    <p class="how-note reveal" data-reveal>
-      Programas de 8, 12 o 24 semanas. El precio lo vemos en la valoración.
-    </p>
     <SectionCta location="how" label="Valorar mi caso" />
   </div>
 </section>
@@ -123,7 +145,7 @@ const shots = [
   /* ---------------- Pasos ---------------- */
   .steps-wrap {
     position: relative;
-    margin-top: 20px;
+    margin-top: var(--title-gap);
   }
 
   .steps-rail {
@@ -132,7 +154,7 @@ const shots = [
 
   .steps {
     display: grid;
-    gap: 8px;
+    gap: 12px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -144,8 +166,8 @@ const shots = [
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    gap: 16px;
-    padding: 14px 18px;
+    gap: 18px;
+    padding: 22px 20px;
     border: 1px solid var(--hair-on-dark);
     border-radius: var(--radius);
     background: rgba(18, 18, 18, 0.6);
@@ -176,9 +198,9 @@ const shots = [
   }
 
   .step-text {
-    margin-top: 6px;
+    margin-top: 10px;
     font-size: 0.9375rem;
-    line-height: 1.4;
+    line-height: 1.5;
     color: var(--muted-on-dark);
   }
 
@@ -197,90 +219,135 @@ const shots = [
     }
   }
 
-  /* ---------------- Capturas ---------------- */
-  .phones {
+  /* ---------------- App ---------------- */
+  .apps-eyebrow {
+    margin-top: 56px;
+  }
+
+  /* Móvil y tablet: carrusel con snap; cada móvil ocupa el 64 % del ancho y asoma el siguiente. */
+  .apps {
     display: flex;
-    gap: 12px;
-    margin: 14px 0 0;
-    padding: 12px calc(50% - 15vw) 12px;
+    gap: 18px;
+    margin: 20px 0 0;
+    padding: 8px calc(50% - 32vw) 12px;
     list-style: none;
     overflow-x: auto;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
   }
 
-  .phones::-webkit-scrollbar {
+  .apps::-webkit-scrollbar {
     display: none;
   }
 
-  .phone {
-    position: relative;
+  .app {
     flex: none;
-    width: 30vw;
-    max-width: 190px;
-    border: 10px solid var(--void);
-    border-radius: 40px;
-    background: var(--void);
-    box-shadow: 0 30px 60px -28px rgba(0, 0, 0, 0.7);
-    overflow: hidden;
+    width: 64vw;
+    max-width: 280px;
     scroll-snap-align: center;
-    transition: transform 0.9s var(--ease);
   }
 
-  /* Isla superior. */
-  .phone::before {
+  .app-figure {
+    margin: 0;
+  }
+
+  /* Marco fino: 8 px de bisel, sin isla ni muesca que tape la pantalla. La cámara es un punto
+     sobre la barra de estado (que en las capturas está vacía en el centro). */
+  .device {
+    position: relative;
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 40px;
+    background: linear-gradient(160deg, #1f1f1f 0%, #0b0b0b 100%);
+    box-shadow:
+      0 36px 70px -34px rgba(0, 0, 0, 0.85),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    transition:
+      transform 0.6s var(--ease),
+      box-shadow 0.6s var(--ease);
+  }
+
+  .device::after {
     content: '';
     position: absolute;
-    z-index: 2;
-    top: 7px;
+    z-index: 1;
+    top: 15px;
     left: 50%;
-    width: 34%;
-    height: 16px;
-    border-radius: 999px;
-    background: var(--void);
-    transform: translateX(-50%);
+    width: 9px;
+    height: 9px;
+    margin-left: -4.5px;
+    border-radius: 50%;
+    background: #050505;
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.08);
   }
 
-  .phone :global(.phone-img) {
+  .device-screen {
+    aspect-ratio: 1080 / 2208;
+    border-radius: 32px;
+    background: #ffffff;
+    overflow: hidden;
+  }
+
+  .device-screen :global(.device-img) {
     display: block;
     width: 100%;
-    height: auto;
-    border-radius: 30px;
+    height: 100%;
+    object-fit: cover;
+    object-position: top;
   }
 
-  /* La central, ligeramente mayor. */
-  .phone:nth-child(2) {
-    z-index: 1;
-    transform: scale(1.06);
+  .app-caption {
+    margin-top: 16px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.375rem;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--ink-on-dark);
   }
 
-  .how-note {
-    max-width: 22rem;
-    margin: 10px auto 0;
-    font-size: 0.9375rem;
-    line-height: 1.45;
-    color: var(--muted-on-dark);
+  .apps:global(.reveal-armed) .app {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+  }
+
+  .apps:global(.reveal-armed.is-in) .app {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 0.8s var(--ease),
+      transform 0.8s var(--ease);
+    transition-delay: calc(var(--i) * 90ms);
+  }
+
+  @media (hover: hover) {
+    .app:hover .device {
+      transform: translate3d(0, -8px, 0);
+      box-shadow:
+        0 48px 80px -34px rgba(0, 0, 0, 0.9),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
   }
 
   @media (width >= 768px) {
-    .phones {
-      padding-inline: calc(50% - 95px - 14px - 190px);
+    .apps {
+      gap: 24px;
+      padding-inline: calc(50% - 140px);
     }
 
-    .phone {
-      width: 190px;
+    .app {
+      width: 280px;
     }
 
-    .how-note {
-      max-width: none;
-      margin-top: 28px;
+    .apps-eyebrow {
+      margin-top: 88px;
     }
   }
 
   /* ---------------- Escritorio ---------------- */
   @media (width >= 1024px) {
     .steps-wrap {
-      margin-top: 64px;
       padding-top: 36px;
     }
 
@@ -337,68 +404,25 @@ const shots = [
       transform: translate3d(var(--x, 0px), 0, 0);
     }
 
-    /* Capturas en abanico que se abre al entrar en pantalla. */
-    .phones {
+    /* Las 4 capturas en fila, hasta 240 px cada una. */
+    .apps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 240px));
       justify-content: center;
-      gap: 0;
-      margin-top: 72px;
-      padding: 24px 0 36px;
+      gap: clamp(20px, 2.4vw, 32px);
+      margin-top: 28px;
+      padding: 8px var(--gutter) 12px;
       overflow: visible;
     }
 
-    .phone {
-      width: 230px;
+    .app {
+      width: auto;
       max-width: none;
     }
 
-    .phone:nth-child(1) {
-      transform: translate3d(28px, 18px, 0) rotate(-6deg);
-    }
-
-    .phone:nth-child(2) {
-      transform: translate3d(0, -8px, 0);
-    }
-
-    .phone:nth-child(3) {
-      transform: translate3d(-28px, 18px, 0) rotate(6deg);
-    }
-
-    .phones:global(.reveal-armed) .phone:nth-child(1) {
-      transform: translate3d(100%, 30px, 0) rotate(0deg);
-    }
-
-    .phones:global(.reveal-armed) .phone:nth-child(3) {
-      transform: translate3d(-100%, 30px, 0) rotate(0deg);
-    }
-
-    .phones:global(.reveal-armed) .phone:nth-child(2) {
-      transform: translate3d(0, 30px, 0);
-    }
-
-    .phones:global(.reveal-armed.is-in) .phone:nth-child(1) {
-      transform: translate3d(28px, 18px, 0) rotate(-6deg);
-    }
-
-    .phones:global(.reveal-armed.is-in) .phone:nth-child(2) {
-      transform: translate3d(0, -8px, 0);
-    }
-
-    .phones:global(.reveal-armed.is-in) .phone:nth-child(3) {
-      transform: translate3d(-28px, 18px, 0) rotate(6deg);
-    }
-
-    @media (hover: hover) {
-      .phones:hover .phone:nth-child(1) {
-        transform: translate3d(8px, 14px, 0) rotate(-8deg);
-      }
-
-      .phones:hover .phone:nth-child(2) {
-        transform: translate3d(0, -18px, 0);
-      }
-
-      .phones:hover .phone:nth-child(3) {
-        transform: translate3d(-8px, 14px, 0) rotate(8deg);
-      }
+    .app-caption {
+      font-size: clamp(1.125rem, 0.5rem + 1vw, 1.375rem);
+      text-wrap: balance;
     }
   }
 </style>

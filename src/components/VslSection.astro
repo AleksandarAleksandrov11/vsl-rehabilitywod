@@ -1,8 +1,8 @@
 ---
 /**
- * Sección 2: VSL. Póster propio (foto de ambiente, no la miniatura de YouTube): antes del clic
- * no hay iframe ni ninguna petición a YouTube. Al hacer clic, vsl.ts carga el iframe de
- * youtube-nocookie con autoplay y un fundido de 250 ms.
+ * Sección 2: VSL. La portada es la del propio vídeo, servida desde la web (no desde YouTube):
+ * antes del clic no hay iframe ni ninguna petición a YouTube. Al hacer clic, vsl.ts carga el
+ * iframe de youtube-nocookie con autoplay y un fundido de 250 ms.
  */
 import Play from '@lucide/astro/icons/play';
 import RotateCcw from '@lucide/astro/icons/rotate-ccw';
@@ -10,13 +10,13 @@ import Crosshair from '@lucide/astro/icons/crosshair';
 import Route from '@lucide/astro/icons/route';
 import SplitWords from './SplitWords.astro';
 import SectionCta from './SectionCta.astro';
-import posterPhoto from '../assets/photos/vsl-poster.jpg';
+import coverPhoto from '../assets/photos/vsl-cover.jpg';
 import { WIDTHS, responsive } from '../lib/images';
 import { CONFIG } from '../config';
 
 const id = CONFIG.vslYoutubeId;
 const embedSrc = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
-const poster = await responsive(posterPhoto, WIDTHS.landscape);
+const poster = await responsive(coverPhoto, WIDTHS.landscape);
 const sizes = '(min-width: 1088px) 1040px, calc(100vw - 24px)';
 
 const keys = [
@@ -50,7 +50,7 @@ const keys = [
       type="button"
       class="vsl-facade"
       data-vsl-play
-      aria-label="Mira esto antes de volver al box. Reproducir el vídeo (7 minutos)"
+      aria-label={`Reproducir el vídeo: ${CONFIG.vslTitle} (${CONFIG.vslMinutes} minutos)`}
     >
       <picture class="vsl-picture">
         <source type="image/avif" srcset={poster.avif} sizes={sizes} />
@@ -66,12 +66,6 @@ const keys = [
         />
       </picture>
       <span class="vsl-veil" aria-hidden="true"></span>
-      <span class="vsl-poster-title" aria-hidden="true">
-        Mira esto <br class="br-mobile" />
-        antes de <br class="br-mobile" />
-        volver <br class="br-mobile" />
-        al box.
-      </span>
       <span class="vsl-play" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="30" height="30" class="vsl-play-icon" focusable="false">
           <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"></path>
@@ -152,11 +146,11 @@ const keys = [
   }
 
   .vsl-title {
-    margin-top: 12px;
+    margin-top: 18px;
   }
 
   .vsl-lead {
-    margin-top: 10px;
+    margin-top: 16px;
   }
 
   /* Reproductor: sangra hasta 12 px del borde en móvil; máximo 1040 px en escritorio. */
@@ -166,7 +160,7 @@ const keys = [
     aspect-ratio: 16 / 9;
     width: calc(100% - 24px);
     max-width: 1040px;
-    margin: 22px auto 0;
+    margin: var(--title-gap) auto 0;
     border: 1px solid var(--hair-on-dark);
     border-radius: var(--radius);
     background: var(--surface);
@@ -203,39 +197,15 @@ const keys = [
 
   .vsl-poster {
     object-fit: cover;
-    object-position: 60% 50%;
-    filter: contrast(1.03) saturate(0.95);
     transition: transform 0.9s var(--ease);
   }
 
-  /* Velo oscuro a la izquierda, donde va el título. */
+  /* Portada tal cual; solo un velo muy suave que se aclara al pasar el ratón. */
   .vsl-veil {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-      90deg,
-      rgba(10, 10, 10, 0.88) 0%,
-      rgba(10, 10, 10, 0.6) 42%,
-      rgba(10, 10, 10, 0.12) 72%,
-      rgba(10, 10, 10, 0.25) 100%
-    );
+    background: rgba(10, 10, 10, 0.12);
     transition: opacity 0.6s var(--ease);
-  }
-
-  .vsl-poster-title {
-    position: absolute;
-    left: 5%;
-    top: 50%;
-    width: 44%;
-    transform: translateY(-50%);
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: clamp(1.75rem, 9vw, 2.25rem);
-    line-height: 0.9;
-    letter-spacing: 0.005em;
-    text-transform: uppercase;
-    text-wrap: balance;
-    color: #ffffff;
   }
 
   /* Play: 84 px en --brand-strong con un anillo que late cada 2,2 s. */
@@ -262,13 +232,6 @@ const keys = [
     border: 2px solid var(--brand-bright);
     opacity: 0;
     animation: vsl-ring 2.2s var(--ease) infinite;
-  }
-
-  /* Móvil: el play va sobre el motivo (tercio derecho) para no tapar el título. */
-  @media (width < 640px) {
-    .vsl-play {
-      left: 71%;
-    }
   }
 
   .vsl-play-icon {
@@ -311,7 +274,7 @@ const keys = [
     }
 
     .vsl-facade:hover .vsl-veil {
-      opacity: 0.8;
+      opacity: 0;
     }
   }
 
@@ -343,8 +306,8 @@ const keys = [
   .vsl-keys {
     display: grid;
     justify-items: center;
-    gap: 4px;
-    margin: 18px 0 0;
+    gap: 14px;
+    margin: 32px 0 0;
     padding: 0;
     list-style: none;
   }
@@ -366,20 +329,13 @@ const keys = [
   @media (width >= 768px) {
     .vsl-frame {
       width: calc(100% - 2 * var(--gutter));
-      margin-top: 48px;
-    }
-
-    .vsl-poster-title {
-      left: 5.5%;
-      width: 34%;
-      font-size: clamp(2.5rem, 1rem + 3.2vw, 4rem);
     }
 
     .vsl-keys {
       grid-template-columns: repeat(3, auto);
       justify-content: center;
-      gap: 40px;
-      margin-top: 48px;
+      gap: 48px;
+      margin-top: 56px;
     }
   }
 </style>
