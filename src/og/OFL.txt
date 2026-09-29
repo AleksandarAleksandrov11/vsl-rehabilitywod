@@ -1,4 +1,5 @@
-Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans) WorkSans-Italic[wght].ttf: Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
+RWODShoulders.ttf: Big Shoulders Display ExtraBold (renombrada para la imagen OG). Copyright 2019 The Big Shoulders Project Authors (https://github.com/xotypeco/big_shoulders)
+RWODDisplay.ttf, RWODText.ttf: Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans) WorkSans-Italic[wght].ttf: Copyright 2019 The Work Sans Project Authors (https://github.com/weiweihuanghuang/Work-Sans)
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

@@ -1,130 +1,177 @@
 ---
 /**
- * Sección 2: VSL con fachada ligera.
- * La miniatura de YouTube se descarga y optimiza en build (AVIF/WebP servidos desde /_astro),
- * así que antes del clic no hay iframe ni ninguna petición a YouTube. Al hacer clic se carga
- * el iframe de youtube-nocookie con autoplay.
+ * Sección 2: VSL. Póster propio (foto de ambiente, no la miniatura de YouTube): antes del clic
+ * no hay iframe ni ninguna petición a YouTube. Al hacer clic, vsl.ts carga el iframe de
+ * youtube-nocookie con autoplay y un fundido de 250 ms.
  */
-import { getImage, inferRemoteSize } from 'astro:assets';
 import Play from '@lucide/astro/icons/play';
+import RotateCcw from '@lucide/astro/icons/rotate-ccw';
+import Crosshair from '@lucide/astro/icons/crosshair';
+import Route from '@lucide/astro/icons/route';
+import SplitWords from './SplitWords.astro';
 import SectionCta from './SectionCta.astro';
+import posterPhoto from '../assets/photos/vsl-poster.jpg';
+import { WIDTHS, responsive } from '../lib/images';
 import { CONFIG } from '../config';
 
 const id = CONFIG.vslYoutubeId;
 const embedSrc = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
-const fallbackThumb = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+const poster = await responsive(posterPhoto, WIDTHS.landscape);
+const sizes = '(min-width: 1088px) 1040px, calc(100vw - 24px)';
 
-type Poster = { avif: string; webp: string; src: string; width: number; height: number };
-
-async function buildPoster(): Promise<Poster | null> {
-  for (const quality of ['maxresdefault', 'hqdefault']) {
-    const url = `https://i.ytimg.com/vi/${id}/${quality}.jpg`;
-    try {
-      const { width, height } = await inferRemoteSize(url);
-      if (!width || !height || width <= 120) continue; // 120x90 = "no existe"
-      const widths = [480, 800, 1280].filter((w) => w < width).concat(width);
-      const common = { src: url, width, height, widths: [...new Set(widths)] };
-      const [avif, webp] = await Promise.all([
-        getImage({ ...common, format: 'avif' }),
-        getImage({ ...common, format: 'webp' }),
-      ]);
-      return {
-        avif: avif.srcSet.attribute,
-        webp: webp.srcSet.attribute,
-        src: webp.src,
-        width,
-        height,
-      };
-    } catch {
-      // Probar con la siguiente calidad.
-    }
-  }
-  return null;
-}
-
-const poster = await buildPoster();
-const sizes =
-  '(min-width: 1200px) 1136px, (min-width: 768px) calc(100vw - 64px), calc(100vw - 40px)';
+const keys = [
+  { Icon: RotateCcw, text: 'Por qué recaes' },
+  { Icon: Crosshair, text: 'Qué falla en tu enfoque' },
+  { Icon: Route, text: 'Qué hacer desde hoy' },
+];
 ---
 
-<section id="video" class="section-y vsl" data-theme="dark" aria-labelledby="vsl-title">
+<section id="video" class="vsl section-y tex-grain" data-theme="dark" aria-labelledby="vsl-title">
+  <div class="vsl-glow" aria-hidden="true"></div>
+
+  <div class="container-x vsl-head">
+    <p class="vsl-pill reveal" data-reveal>
+      <Play size={14} stroke-width={1.75} aria-hidden="true" class="vsl-pill-icon" />
+      Vídeo · {CONFIG.vslMinutes} min
+    </p>
+    <SplitWords
+      id="vsl-title"
+      class="h2-display vsl-title"
+      start={1}
+      parts={['¿Por qué sigues', { br: 'always' }, { text: 'con dolor?', accent: true }]}
+    />
+    <p class="lead vsl-lead reveal" data-reveal style="--i:3">
+      Lo que nadie te ha explicado de tu lesión.
+    </p>
+  </div>
+
+  <div class="vsl-frame reveal-scale" data-reveal data-vsl data-embed={embedSrc}>
+    <button
+      type="button"
+      class="vsl-facade"
+      data-vsl-play
+      aria-label="Mira esto antes de volver al box. Reproducir el vídeo (7 minutos)"
+    >
+      <picture class="vsl-picture">
+        <source type="image/avif" srcset={poster.avif} sizes={sizes} />
+        <source type="image/webp" srcset={poster.webp} sizes={sizes} />
+        <img
+          src={poster.fallback}
+          width={poster.width}
+          height={poster.height}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          class="vsl-poster"
+        />
+      </picture>
+      <span class="vsl-veil" aria-hidden="true"></span>
+      <span class="vsl-poster-title" aria-hidden="true">
+        Mira esto <br class="br-mobile" />
+        antes de <br class="br-mobile" />
+        volver <br class="br-mobile" />
+        al box.
+      </span>
+      <span class="vsl-play" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="30" height="30" class="vsl-play-icon" focusable="false">
+          <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"></path>
+        </svg>
+      </span>
+      <span class="vsl-duration tabular" aria-hidden="true">
+        7:00
+      </span>
+    </button>
+    <noscript>
+      <a class="vsl-noscript" href={`https://www.youtube.com/watch?v=${id}`}>
+        Ver el vídeo en YouTube
+      </a>
+    </noscript>
+  </div>
+
   <div class="container-x">
-    <div class="max-w-3xl" data-reveal>
-      <p class="eyebrow">El vídeo</p>
-      <h2 id="vsl-title" class="h2-display mt-4">
-        Si llevas tiempo con dolor, este vídeo es para&nbsp;ti.
-      </h2>
-      <p class="text-body mt-5 max-w-xl text-muted-on-dark">
-        En 7 minutos vas a entender por qué no has mejorado y qué puedes hacer a partir de ahora.
-      </p>
-    </div>
-
-    <div class="vsl-frame mt-10 md:mt-14" data-vsl data-embed={embedSrc} data-reveal>
-      <button
-        type="button"
-        class="vsl-facade"
-        data-vsl-play
-        aria-label="Reproducir el vídeo de Gerard (7 minutos)"
-      >
-        {poster ? (
-          <picture>
-            <source type="image/avif" srcset={poster.avif} sizes={sizes} />
-            <source type="image/webp" srcset={poster.webp} sizes={sizes} />
-            <img
-              src={poster.src}
-              width={poster.width}
-              height={poster.height}
-              alt="Gerard Barrantes explicando en el box por qué no mejora tu lesión"
-              loading="lazy"
-              decoding="async"
-              class="vsl-poster"
-            />
-          </picture>
-        ) : (
-          <img
-            src={fallbackThumb}
-            width="480"
-            height="360"
-            alt="Gerard Barrantes explicando en el box por qué no mejora tu lesión"
-            loading="lazy"
-            decoding="async"
-            class="vsl-poster"
-            data-yt-thumb
-          />
-        )}
-        <span class="vsl-shade" aria-hidden="true"></span>
-        <span class="vsl-play" aria-hidden="true">
-          <Play size={30} stroke-width={1.5} class="vsl-play-icon" />
-        </span>
-        <span class="vsl-duration" aria-hidden="true">
-          7 min
-        </span>
-      </button>
-      <noscript>
-        <a class="link vsl-noscript" href={`https://www.youtube.com/watch?v=${id}`}>
-          Ver el vídeo en YouTube
-        </a>
-      </noscript>
-    </div>
-
-    <SectionCta location="vsl" note="Te escribo yo por WhatsApp. Sin compromiso." />
+    <ul class="vsl-keys" role="list">
+      {keys.map(({ Icon, text }, i) => (
+        <li class="vsl-key reveal" data-reveal style={`--i:${i}`}>
+          <span class="icon-ring" aria-hidden="true">
+            <Icon size={20} stroke-width={1.75} />
+          </span>
+          <span>{text}</span>
+        </li>
+      ))}
+    </ul>
+    <SectionCta location="vsl" />
   </div>
 </section>
 
 <style>
   .vsl {
+    position: relative;
     background: var(--void);
     color: var(--ink-on-dark);
-    border-top: 1px solid var(--hair-on-dark);
+    overflow: hidden;
+    --grain: 0.05;
   }
 
+  /* Resplandor radial verde detrás del reproductor. */
+  .vsl-glow {
+    position: absolute;
+    z-index: -1;
+    left: 50%;
+    top: 46%;
+    width: min(1400px, 160vw);
+    height: min(900px, 110vw);
+    transform: translate(-50%, -50%);
+    background: radial-gradient(closest-side, rgba(5, 148, 103, 0.16), rgba(5, 148, 103, 0) 100%);
+    pointer-events: none;
+  }
+
+  .vsl-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .vsl-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 30px;
+    padding: 0 14px;
+    border: 1px solid var(--hair-strong-on-dark);
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--ink-on-dark);
+  }
+
+  .vsl-pill :global(.vsl-pill-icon) {
+    color: var(--brand-bright);
+    fill: currentColor;
+  }
+
+  .vsl-title {
+    margin-top: 12px;
+  }
+
+  .vsl-lead {
+    margin-top: 10px;
+  }
+
+  /* Reproductor: sangra hasta 12 px del borde en móvil; máximo 1040 px en escritorio. */
   .vsl-frame {
     position: relative;
+    z-index: 2;
     aspect-ratio: 16 / 9;
-    border-radius: var(--radius-card);
-    overflow: hidden;
-    background: var(--surface);
+    width: calc(100% - 24px);
+    max-width: 1040px;
+    margin: 22px auto 0;
     border: 1px solid var(--hair-on-dark);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+    box-shadow: 0 40px 80px -30px rgba(5, 148, 103, 0.35);
   }
 
   .vsl-facade {
@@ -136,15 +183,18 @@ const sizes =
     padding: 0;
     border: 0;
     background: transparent;
-    color: #fff;
+    color: #ffffff;
+    text-align: left;
+    overflow: hidden;
+    border-radius: inherit;
   }
 
   .vsl-facade:focus-visible {
     outline-offset: -4px;
-    border-radius: var(--radius-card);
+    border-radius: var(--radius);
   }
 
-  .vsl-facade picture,
+  .vsl-picture,
   .vsl-poster {
     display: block;
     width: 100%;
@@ -153,74 +203,183 @@ const sizes =
 
   .vsl-poster {
     object-fit: cover;
+    object-position: 60% 50%;
+    filter: contrast(1.03) saturate(0.95);
+    transition: transform 0.9s var(--ease);
   }
 
-  .vsl-shade {
+  /* Velo oscuro a la izquierda, donde va el título. */
+  .vsl-veil {
     position: absolute;
     inset: 0;
-    background: rgba(10, 10, 10, 0.18);
-    transition: background-color 0.3s var(--ease-out);
+    background: linear-gradient(
+      90deg,
+      rgba(10, 10, 10, 0.88) 0%,
+      rgba(10, 10, 10, 0.6) 42%,
+      rgba(10, 10, 10, 0.12) 72%,
+      rgba(10, 10, 10, 0.25) 100%
+    );
+    transition: opacity 0.6s var(--ease);
   }
 
+  .vsl-poster-title {
+    position: absolute;
+    left: 5%;
+    top: 50%;
+    width: 44%;
+    transform: translateY(-50%);
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.75rem, 9vw, 2.25rem);
+    line-height: 0.9;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    text-wrap: balance;
+    color: #ffffff;
+  }
+
+  /* Play: 84 px en --brand-strong con un anillo que late cada 2,2 s. */
   .vsl-play {
     position: absolute;
     top: 50%;
     left: 50%;
     display: grid;
     place-items: center;
-    width: 76px;
-    height: 76px;
-    margin: -38px 0 0 -38px;
+    width: 84px;
+    height: 84px;
+    margin: -42px 0 0 -42px;
     border-radius: 50%;
     background: var(--brand-strong);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-    transition: transform 0.3s var(--ease-out);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    transition: transform 0.5s var(--ease);
   }
 
-  .vsl-play :global(.vsl-play-icon) {
-    fill: currentColor;
-    margin-left: 3px;
+  .vsl-play::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid var(--brand-bright);
+    opacity: 0;
+    animation: vsl-ring 2.2s var(--ease) infinite;
+  }
+
+  /* Móvil: el play va sobre el motivo (tercio derecho) para no tapar el título. */
+  @media (width < 640px) {
+    .vsl-play {
+      left: 71%;
+    }
+  }
+
+  .vsl-play-icon {
+    position: relative;
+    margin-left: 4px;
+    fill: #ffffff;
+  }
+
+  @keyframes vsl-ring {
+    0% {
+      transform: scale(1);
+      opacity: 0.5;
+    }
+    70%,
+    100% {
+      transform: scale(1.35);
+      opacity: 0;
+    }
   }
 
   .vsl-duration {
     position: absolute;
     right: 14px;
     bottom: 14px;
-    padding: 4px 10px;
+    padding: 5px 11px;
     border-radius: 999px;
     background: rgba(10, 10, 10, 0.72);
     font-size: 0.8125rem;
     font-weight: 600;
-    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
   }
 
-  .vsl-facade:hover .vsl-play {
-    transform: scale(1.06);
-  }
+  @media (hover: hover) {
+    .vsl-facade:hover .vsl-poster {
+      transform: scale(1.03);
+    }
 
-  .vsl-facade:hover .vsl-shade {
-    background: rgba(10, 10, 10, 0.08);
+    .vsl-facade:hover .vsl-play {
+      transform: scale(1.08);
+    }
+
+    .vsl-facade:hover .vsl-veil {
+      opacity: 0.8;
+    }
   }
 
   .vsl-frame :global(iframe) {
     position: absolute;
+    z-index: 3;
     inset: 0;
     width: 100%;
     height: 100%;
     border: 0;
+    opacity: 0;
+    transition: opacity 0.25s var(--ease);
+  }
+
+  .vsl-frame :global(iframe.is-ready) {
+    opacity: 1;
   }
 
   .vsl-noscript {
     position: absolute;
+    z-index: 4;
     left: 16px;
     bottom: 16px;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  /* 3 claves: una columna centrada en móvil, en fila en escritorio. */
+  .vsl-keys {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+    margin: 18px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .vsl-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .vsl-key :global(.icon-ring) {
+    width: 32px;
+    height: 32px;
   }
 
   @media (width >= 768px) {
-    .vsl-play {
-      width: 92px;
-      height: 92px;
-      margin: -46px 0 0 -46px;
+    .vsl-frame {
+      width: calc(100% - 2 * var(--gutter));
+      margin-top: 48px;
+    }
+
+    .vsl-poster-title {
+      left: 5.5%;
+      width: 34%;
+      font-size: clamp(2.5rem, 1rem + 3.2vw, 4rem);
+    }
+
+    .vsl-keys {
+      grid-template-columns: repeat(3, auto);
+      justify-content: center;
+      gap: 40px;
+      margin-top: 48px;
     }
   }
 </style>

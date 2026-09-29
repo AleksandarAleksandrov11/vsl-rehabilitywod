@@ -2,7 +2,7 @@
  * npm run qa:lighthouse
  * Lighthouse (móvil y escritorio) sobre la home servida por scripts/qa-server.mjs.
  * Requiere un build previo con ASTRO_ADAPTER=node (lo hace `npm run qa`).
- * Guarda los informes HTML y JSON en qa/lighthouse/ y un resumen en qa/lighthouse/summary.json.
+ * Guarda los informes HTML y JSON en qa/lighthouse-v2/ y un resumen en qa/lighthouse-v2/summary.json.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -13,7 +13,7 @@ import { chromium } from '@playwright/test';
 
 const PORT = process.env.QA_PORT ?? '4321';
 const URL = process.env.LH_URL ?? `http://127.0.0.1:${PORT}/`;
-const OUT = 'qa/lighthouse';
+const OUT = process.env.LH_OUT ?? 'qa/lighthouse-v2';
 const RUNS = Number(process.env.LH_RUNS ?? 3);
 mkdirSync(OUT, { recursive: true });
 

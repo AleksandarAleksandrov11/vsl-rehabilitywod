@@ -1,38 +1,52 @@
 ---
+/**
+ * Sección 5: opiniones (5A, marquee hacia la izquierda) y quién está detrás (5B).
+ * Misma lógica que la cinta de stats: copia con aria-hidden e inert, pausa con hover, foco y
+ * pulsación larga, máscara lateral y scroll manual con reduced-motion.
+ */
 import X from '@lucide/astro/icons/x';
 import AboutGerard from './AboutGerard.astro';
-import SectionCta from './SectionCta.astro';
+import SplitWords from './SplitWords.astro';
 import { TESTIMONIALS } from '../data/testimonials';
 
 const copies = [false, true] as const; // la segunda copia es el duplicado del loop
 ---
 
-<section id="opiniones" class="section-y reviews" data-theme="dark" aria-labelledby="reviews-title">
-  <div class="container-x" data-reveal>
-    <p class="eyebrow">Opiniones</p>
-    <h2 id="reviews-title" class="h2-display mt-4">
-      Atletas reales. Vuelta real al&nbsp;box.
-    </h2>
-  </div>
+<section id="opiniones" aria-labelledby="reviews-title">
+  <div class="reviews section-y" data-theme="light">
+    <div class="container-x">
+      <SplitWords
+        id="reviews-title"
+        class="h2-display reviews-title"
+        parts={[
+          'Atletas reales.',
+          { br: 'always' },
+          { text: 'Vuelta real', accent: true },
+          { text: 'al box.', accent: true, nowrap: true },
+        ]}
+      />
+    </div>
 
-  <div class="marquee mt-10 md:mt-14" data-marquee>
-    <div class="marquee-track">
-      {copies.map((isCopy) => (
-        <ul
-          class="marquee-list"
-          role="list"
-          aria-hidden={isCopy ? 'true' : undefined}
-          inert={isCopy ? true : undefined}
-          data-copy={isCopy ? 'true' : undefined}
-        >
-          {TESTIMONIALS.map((t) => (
-            <li class="t-card" data-testimonial={t.id}>
-              <span class="t-chip">{t.zona}</span>
-              <blockquote class="t-quote">
-                <p>«{t.cita}»</p>
-              </blockquote>
-              <div class="t-foot">
-                <div class="t-person">
+    <div class="marquee reviews-marquee" data-marquee>
+      <div class="marquee-track">
+        {copies.map((isCopy) => (
+          <ul
+            class="marquee-list reviews-list"
+            role="list"
+            aria-hidden={isCopy ? 'true' : undefined}
+            inert={isCopy ? true : undefined}
+            data-copy={isCopy ? 'true' : undefined}
+          >
+            {TESTIMONIALS.map((t) => (
+              <li class="t-card" data-testimonial={t.id}>
+                <span class="t-quote-mark" aria-hidden="true">
+                  “
+                </span>
+                <span class="t-chip">{t.zona}</span>
+                <blockquote class="t-quote">
+                  <p>{t.cita}</p>
+                </blockquote>
+                <div class="t-foot">
                   <span class="t-avatar" aria-hidden="true">
                     {t.nombre.charAt(0)}
                   </span>
@@ -40,187 +54,177 @@ const copies = [false, true] as const; // la segunda copia es el duplicado del l
                     <span class="t-name">{t.nombre}</span>
                     <span class="t-desc">{t.descripcion}</span>
                   </span>
+                  <button
+                    type="button"
+                    class="t-more"
+                    data-dialog-open={`t-${t.id}`}
+                    aria-haspopup="dialog"
+                    tabindex={isCopy ? -1 : undefined}
+                  >
+                    Leer más<span class="sr-only"> de {t.nombre}</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  class="t-more"
-                  data-dialog-open={`t-${t.id}`}
-                  aria-haspopup="dialog"
-                  tabindex={isCopy ? -1 : undefined}
-                >
-                  Leer más<span class="sr-only"> de {t.nombre}</span>
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      ))}
-    </div>
-  </div>
-
-  {TESTIMONIALS.map((t) => (
-    <dialog id={`t-${t.id}`} class="t-dialog" aria-labelledby={`t-${t.id}-title`} data-theme="dark">
-      <div class="t-dialog-inner">
-        <div class="t-dialog-head">
-          <span class="t-chip">{t.zona}</span>
-          <button type="button" class="t-close" data-dialog-close aria-label="Cerrar opinión">
-            <X size={22} stroke-width={1.5} aria-hidden="true" />
-          </button>
-        </div>
-        <h3 id={`t-${t.id}-title`} class="t-dialog-title">
-          {t.nombre}
-        </h3>
-        <p class="t-desc">{t.descripcion}</p>
-        <div class="t-dialog-body">
-          {t.completo.map((para) => (
-            <p>{para}</p>
-          ))}
-        </div>
+              </li>
+            ))}
+          </ul>
+        ))}
       </div>
-    </dialog>
-  ))}
+    </div>
 
-  <div class="container-x">
-    <AboutGerard />
-    <SectionCta location="testimonials" />
+    {TESTIMONIALS.map((t) => (
+      <dialog id={`t-${t.id}`} class="t-dialog" aria-labelledby={`t-${t.id}-title`}>
+        <div class="t-dialog-inner">
+          <div class="t-dialog-head">
+            <span class="t-chip">{t.zona}</span>
+            <button type="button" class="t-close" data-dialog-close aria-label="Cerrar opinión">
+              <X size={22} stroke-width={1.75} aria-hidden="true" />
+            </button>
+          </div>
+          <h3 id={`t-${t.id}-title`} class="t-dialog-title">
+            {t.nombre}
+          </h3>
+          <p class="t-desc">{t.descripcion}</p>
+          <div class="t-dialog-body">
+            {t.completo.map((para) => (
+              <p>{para}</p>
+            ))}
+          </div>
+        </div>
+      </dialog>
+    ))}
   </div>
+
+  <AboutGerard />
 </section>
 
 <style>
   .reviews {
-    background: var(--void);
-    color: var(--ink-on-dark);
+    background: var(--paper-2);
+    color: var(--ink);
+    text-align: center;
     overflow-x: clip;
   }
 
-  /* ---------------- Marquee ---------------- */
-  .marquee {
-    position: relative;
-    overflow: hidden;
-    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
-    mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+  .reviews-marquee {
+    margin-top: 18px;
+    padding-block: 6px 14px;
+    --marquee-duration: 60s;
   }
 
-  .marquee-track {
-    display: flex;
-    width: max-content;
-    animation: marquee 52s linear infinite;
-    will-change: transform;
-  }
-
-  .marquee:hover .marquee-track,
-  .marquee:focus-within .marquee-track,
-  .marquee:global(.is-paused) .marquee-track {
-    animation-play-state: paused;
-  }
-
-  @keyframes marquee {
-    from {
-      transform: translate3d(0, 0, 0);
-    }
-    to {
-      transform: translate3d(-50%, 0, 0);
-    }
-  }
-
-  .marquee-list {
-    display: flex;
+  .reviews-list {
     gap: 16px;
-    margin: 0;
-    padding: 4px 16px 4px 0;
-    list-style: none;
+    padding-right: 16px;
+    text-align: left;
   }
 
   .t-card {
+    position: relative;
     flex: none;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    width: min(85vw, 340px);
-    padding: 24px;
-    border: 1px solid var(--hair-on-dark);
-    border-radius: var(--radius-card);
-    background: var(--surface);
+    width: min(84vw, 360px);
+    padding: 24px 28px 20px;
+    border: 1px solid var(--hair-on-light);
+    border-radius: var(--radius);
+    background: #ffffff;
+    box-shadow: 0 16px 36px -26px rgba(0, 0, 0, 0.25);
+    scroll-snap-align: center;
+    transition:
+      transform 0.5s var(--ease),
+      box-shadow 0.5s var(--ease);
+  }
+
+  .t-quote-mark {
+    position: absolute;
+    top: 6px;
+    right: 22px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 5.5rem;
+    line-height: 1;
+    color: rgba(5, 148, 103, 0.25);
+    pointer-events: none;
   }
 
   .t-chip {
     align-self: flex-start;
-    padding: 4px 10px;
+    padding: 5px 12px;
     border-radius: 999px;
-    border: 1px solid var(--hair-on-dark);
-    background: rgba(255, 255, 255, 0.04);
-    font-size: 0.75rem;
+    background: var(--brand-soft);
+    color: var(--brand-strong);
+    font-size: 0.8125rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
-    color: var(--brand-bright);
+    line-height: 1.2;
+    transition:
+      background-color 0.4s var(--ease),
+      color 0.4s var(--ease);
   }
 
   .t-quote {
     flex: 1;
-    margin: 0;
+    margin: 14px 0 0;
   }
 
   .t-quote p {
-    margin: 0;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
     font-size: 1rem;
     line-height: 1.55;
-    color: var(--ink-on-dark);
+    color: var(--ink);
   }
 
   .t-foot {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
-    padding-top: 16px;
-    border-top: 1px solid var(--hair-on-dark);
-  }
-
-  .t-person {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    min-width: 0;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--hair-on-light);
   }
 
   .t-avatar {
     flex: none;
     display: grid;
     place-items: center;
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     background: var(--brand-soft);
     color: var(--brand-strong);
-    font-weight: 700;
-    font-size: 1rem;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.375rem;
+    line-height: 1;
   }
 
   .t-who {
+    flex: 1;
     display: grid;
     min-width: 0;
   }
 
   .t-name {
-    font-weight: 700;
+    font-weight: 600;
     font-size: 1rem;
     line-height: 1.3;
   }
 
   .t-desc {
-    margin: 0;
     font-size: 0.875rem;
     line-height: 1.35;
-    color: var(--muted-on-dark);
+    color: var(--muted);
   }
 
   .t-more {
     flex: none;
     min-height: 44px;
-    padding: 0 4px;
+    padding: 0 2px;
     border: 0;
     background: none;
-    color: var(--ink-on-dark);
+    color: var(--brand-strong);
     font: inherit;
     font-size: 0.9375rem;
     font-weight: 600;
@@ -229,39 +233,36 @@ const copies = [false, true] as const; // la segunda copia es el duplicado del l
     text-underline-offset: 4px;
   }
 
-  .t-more:hover {
-    color: var(--brand-bright);
+  .t-card:active {
+    transform: scale(0.98);
+  }
+
+  @media (hover: hover) {
+    .t-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 30px 56px -26px rgba(0, 0, 0, 0.32);
+    }
+
+    /* Se rellena de verde con texto blanco (--brand-strong para mantener el contraste AA). */
+    .t-card:hover .t-chip {
+      background: var(--brand-strong);
+      color: #ffffff;
+    }
+
+    .t-more:hover {
+      text-decoration-thickness: 2px;
+    }
   }
 
   @media (width >= 768px) {
-    .t-card {
-      width: 380px;
+    .reviews-marquee {
+      margin-top: 56px;
     }
   }
 
-  /* Reduced motion: fila con scroll horizontal y snap, sin animación. */
   @media (prefers-reduced-motion: reduce) {
-    .marquee {
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      scroll-padding-inline: var(--gutter);
-      -webkit-mask-image: none;
-      mask-image: none;
-      scrollbar-width: thin;
-    }
-
-    .marquee-track {
-      animation: none !important;
-      transform: none;
+    .reviews-list {
       padding-inline: var(--gutter);
-    }
-
-    .marquee-list[data-copy] {
-      display: none;
-    }
-
-    .t-card {
-      scroll-snap-align: start;
     }
   }
 
@@ -271,35 +272,25 @@ const copies = [false, true] as const; // la segunda copia es el duplicado del l
     max-height: min(84svh, 760px);
     margin: auto;
     padding: 0;
-    border: 1px solid var(--hair-on-dark);
-    border-radius: var(--radius-card);
-    background: var(--surface);
-    color: var(--ink-on-dark);
+    border: 1px solid var(--hair-on-light);
+    border-radius: var(--radius);
+    background: #ffffff;
+    color: var(--ink);
     overflow: auto;
     overscroll-behavior: contain;
+    text-align: left;
   }
 
   .t-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(10, 10, 10, 0.72);
   }
 
   .t-dialog[open] {
-    animation: dialog-in 0.3s var(--ease-out) both;
-  }
-
-  @keyframes dialog-in {
-    from {
-      opacity: 0;
-      transform: translate3d(0, 12px, 0);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
+    animation: fade-up 0.35s var(--ease) both;
   }
 
   .t-dialog-inner {
-    padding: 20px 24px 28px;
+    padding: 20px 26px 30px;
   }
 
   .t-dialog-head {
@@ -318,29 +309,32 @@ const copies = [false, true] as const; // la segunda copia es el duplicado del l
     border: 0;
     border-radius: 50%;
     background: transparent;
-    color: var(--ink-on-dark);
+    color: var(--ink);
   }
 
   .t-close:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--paper-2);
   }
 
   .t-dialog-title {
-    margin: 12px 0 2px;
-    font-size: 1.75rem;
+    margin: 14px 0 4px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 2.5rem;
+    line-height: 0.9;
+    text-transform: uppercase;
   }
 
   .t-dialog-body {
-    margin-top: 20px;
     display: grid;
     gap: 14px;
+    margin-top: 20px;
   }
 
   .t-dialog-body p {
-    margin: 0;
     font-size: 1.0625rem;
     line-height: 1.65;
-    color: rgba(245, 245, 242, 0.9);
+    color: #2a2a2a;
   }
 
   :global(html:has(dialog[open])) {

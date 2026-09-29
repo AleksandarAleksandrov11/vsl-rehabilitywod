@@ -1,0 +1,65 @@
+---
+/**
+ * Titular con cada palabra dentro de una máscara para la animación `word-up`.
+ * Se genera en build: <span class="w"><span style="--i:n">palabra</span></span>.
+ * Sin JS el titular se ve completo; boot.ts solo arma la animación si está fuera de pantalla.
+ *
+ * parts: texto normal, { text, accent } para la palabra destacada, { nowrap } para que un grupo
+ * de palabras no se separe (evita palabras solas) y { br: 'mobile' | 'always' } para un salto de
+ * línea (solo en móvil o siempre).
+ */
+type Part =
+  string | { text: string; accent?: boolean; nowrap?: boolean } | { br: 'mobile' | 'always' };
+
+interface Props {
+  parts: Part[];
+  as?: 'h1' | 'h2' | 'h3' | 'p' | 'span' | 'div';
+  class?: string;
+  id?: string;
+  /** Índice inicial del escalonado (70 ms por palabra). */
+  start?: number;
+  /** Añade data-reveal para que boot.ts arme la entrada al hacer scroll. */
+  reveal?: boolean;
+  [key: string]: unknown;
+}
+
+// `rest` lleva el atributo de ámbito de estilos del componente padre (data-astro-cid-*).
+const {
+  parts,
+  as: Tag = 'h2',
+  class: className = '',
+  id,
+  start = 0,
+  reveal = true,
+  ...rest
+} = Astro.props;
+
+const escape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+let i = start;
+const word = (w: string) => `<span class="w"><span style="--i:${i++}">${escape(w)}</span></span>`;
+const words = (text: string) => text.trim().split(/ +/).map(word).join(' ');
+
+const html = parts
+  .map((part, idx) => {
+    const sep = idx > 0 ? ' ' : '';
+    if (typeof part === 'string') return sep + words(part);
+    if ('br' in part) {
+      return part.br === 'mobile' ? '<br class="br-mobile" />' : '<br />';
+    }
+    const inner = words(part.text);
+    const classes = [part.accent && 'accent', part.nowrap && 'nowrap'].filter(Boolean).join(' ');
+    return sep + (classes ? `<span class="${classes}">${inner}</span>` : inner);
+  })
+  .join('')
+  // Un salto de línea no necesita espacio delante ni detrás.
+  .replace(/ (<br[^>]*>) ?/g, '$1');
+---
+
+<Tag
+  {...rest}
+  id={id}
+  class:list={['split', className]}
+  data-reveal={reveal ? '' : undefined}
+  set:html={html}
+/>

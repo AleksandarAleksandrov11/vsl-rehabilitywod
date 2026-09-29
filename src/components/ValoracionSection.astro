@@ -1,30 +1,56 @@
 ---
+/**
+ * Sección 6: valoración. Foto de box a sangre casi tapada por un velo (--void al 88 %) y un
+ * resplandor verde tenue arriba. En móvil la foto solo asoma arriba para no restar legibilidad.
+ */
 import LeadForm from './LeadForm.astro';
 import Faq from './Faq.astro';
+import SplitWords from './SplitWords.astro';
+import formPhoto from '../assets/photos/form-bg.jpg';
+import { WIDTHS, responsive } from '../lib/images';
+
+const bg = await responsive(formPhoto, WIDTHS.landscape);
 ---
 
 <section
   id="valoracion"
-  class="section-y valoracion"
+  class="valoracion section-y"
   data-theme="dark"
   aria-labelledby="valoracion-title"
 >
+  <div class="valoracion-media" aria-hidden="true">
+    <picture>
+      <source type="image/avif" srcset={bg.avif} sizes="100vw" />
+      <source type="image/webp" srcset={bg.webp} sizes="100vw" />
+      <img
+        src={bg.fallback}
+        width={bg.width}
+        height={bg.height}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        class="valoracion-img"
+      />
+    </picture>
+  </div>
+  <div class="valoracion-veil" aria-hidden="true"></div>
+
   <div class="container-x">
-    <div class="valoracion-head" data-reveal>
-      <p class="eyebrow">Valoración gratuita</p>
-      <h2 id="valoracion-title" class="h2-display mt-4">
-        Cuéntame qué te pasa.
-      </h2>
-      <p class="text-body mt-5 text-ink-on-dark/85">
-        Te escribo por WhatsApp para una videollamada de valoración gratuita. Si no es para ti, te
-        lo diré claro.
+    <div class="valoracion-head">
+      <SplitWords
+        id="valoracion-title"
+        class="h2-display"
+        parts={['Cuéntame', { br: 'always' }, { text: 'qué te pasa.', accent: true }]}
+      />
+      <p class="lead valoracion-lead reveal" data-reveal style="--i:2">
+        Rellénalo en 30 segundos y te escribo para la videollamada de valoración.
       </p>
-      <p class="text-secondary mt-3 text-muted-on-dark">
-        Abro plazas nuevas cuando tengo hueco para darte el seguimiento que mereces.
+      <p class="valoracion-note reveal" data-reveal style="--i:3">
+        Abro plazas cuando tengo hueco para darte el seguimiento que mereces.
       </p>
     </div>
 
-    <div class="mt-10 md:mt-12">
+    <div class="valoracion-form">
       <LeadForm />
     </div>
 
@@ -38,21 +64,39 @@ import Faq from './Faq.astro';
     isolation: isolate;
     background: var(--void);
     color: var(--ink-on-dark);
-    border-top: 1px solid var(--hair-on-dark);
+    overflow: hidden;
   }
 
-  /* Glow verde muy sutil (< 6 % de opacidad). */
-  .valoracion::before {
-    content: '';
+  .valoracion-media {
+    position: absolute;
+    z-index: -2;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 720px;
+  }
+
+  .valoracion-media picture,
+  .valoracion-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .valoracion-img {
+    object-fit: cover;
+    object-position: 50% 30%;
+    filter: contrast(1.03) saturate(0.95);
+  }
+
+  /* Velo casi opaco y resplandor verde arriba. En móvil la foto se funde con --void. */
+  .valoracion-veil {
     position: absolute;
     z-index: -1;
     inset: 0;
-    background: radial-gradient(
-      60% 40% at 50% 22%,
-      rgba(52, 211, 153, 0.05) 0%,
-      rgba(52, 211, 153, 0) 100%
-    );
-    pointer-events: none;
+    background:
+      radial-gradient(70% 420px at 50% 0%, rgba(5, 148, 103, 0.18), rgba(5, 148, 103, 0) 100%),
+      linear-gradient(180deg, rgba(10, 10, 10, 0.84) 0, rgba(10, 10, 10, 0.9) 360px, #0a0a0a 720px);
   }
 
   .valoracion-head {
@@ -61,14 +105,49 @@ import Faq from './Faq.astro';
     text-align: center;
   }
 
+  .valoracion-lead {
+    margin-top: 12px;
+  }
+
+  .valoracion-note {
+    margin-top: 8px;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--muted-on-dark);
+  }
+
+  .valoracion-form {
+    margin-top: 18px;
+  }
+
   @media (width >= 768px) {
+    .valoracion-media {
+      inset: 0;
+      height: auto;
+    }
+
+    .valoracion-veil {
+      background:
+        radial-gradient(60% 520px at 50% 0%, rgba(5, 148, 103, 0.16), rgba(5, 148, 103, 0) 100%),
+        rgba(10, 10, 10, 0.88);
+    }
+
     .valoracion-head {
       max-width: 720px;
     }
 
-    .valoracion-head p {
+    .valoracion-lead,
+    .valoracion-note {
       max-width: 560px;
       margin-inline: auto;
+    }
+
+    .valoracion-lead {
+      margin-top: 20px;
+    }
+
+    .valoracion-form {
+      margin-top: 44px;
     }
   }
 </style>

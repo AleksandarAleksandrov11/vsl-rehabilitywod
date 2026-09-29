@@ -45,6 +45,7 @@ await step('Saltar paso', () => page.getByRole('button', { name: 'Saltar este pa
 await step('Escribir nombre', () => page.locator('#nombre').pressSequentially('Ana'));
 await step('Continuar', () => page.getByRole('button', { name: 'Continuar' }).tap());
 await step('Abrir FAQ', () => page.locator('.faq-q').first().tap());
+await step('Hover/tap tarjeta', () => page.locator('.suena-card').first().tap());
 await step('Play VSL', async () => {
   await page.locator('#video').scrollIntoViewIfNeeded();
   await page.locator('[data-vsl-play]').tap();
@@ -52,9 +53,10 @@ await step('Play VSL', async () => {
 const worst = Math.max(...steps.map((s) => s.maxMs));
 console.table(steps);
 console.log('Peor interacción (ms):', worst);
-mkdirSync('qa/lighthouse', { recursive: true });
+const OUT = process.env.LH_OUT ?? 'qa/lighthouse-v2';
+mkdirSync(OUT, { recursive: true });
 writeFileSync(
-  'qa/lighthouse/inp.json',
+  `${OUT}/inp.json`,
   `${JSON.stringify({ cpuThrottling: 4, steps, worstMs: worst }, null, 2)}\n`,
 );
 await browser.close();

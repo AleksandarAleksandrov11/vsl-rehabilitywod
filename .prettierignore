@@ -5,5 +5,8 @@ node_modules
 package-lock.json
 qa/lighthouse
 qa/screenshots
+qa/lighthouse-v2
+qa/screenshots-v2
+qa/photo-sheets
 test-results
 playwright-report

@@ -1,0 +1,42 @@
+{
+  "cpuThrottling": 4,
+  "steps": [
+    {
+      "label": "Rechazar cookies (banner)",
+      "maxMs": 80
+    },
+    {
+      "label": "CTA hero → #valoracion",
+      "maxMs": 40
+    },
+    {
+      "label": "Chip \"Rodilla\"",
+      "maxMs": 120
+    },
+    {
+      "label": "Saltar paso",
+      "maxMs": 88
+    },
+    {
+      "label": "Escribir nombre",
+      "maxMs": 40
+    },
+    {
+      "label": "Continuar",
+      "maxMs": 80
+    },
+    {
+      "label": "Abrir FAQ",
+      "maxMs": 48
+    },
+    {
+      "label": "Hover/tap tarjeta",
+      "maxMs": 64
+    },
+    {
+      "label": "Play VSL",
+      "maxMs": 48
+    }
+  ],
+  "worstMs": 120
+}

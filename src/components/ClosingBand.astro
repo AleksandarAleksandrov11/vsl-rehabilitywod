@@ -1,0 +1,140 @@
+---
+/**
+ * Banda de cierre (entre la valoración y el footer): foto de atleta en un overhead, velo fuerte,
+ * parallax sutil y CTA que sube a #valoracion.
+ */
+import CtaButton from './CtaButton.astro';
+import SplitWords from './SplitWords.astro';
+import closingPhoto from '../assets/photos/closing.jpg';
+import closingPhotoMobile from '../assets/photos/closing-m.jpg';
+import { WIDTHS, responsive } from '../lib/images';
+
+const [photo, photoMobile] = await Promise.all([
+  responsive(closingPhoto, WIDTHS.landscape),
+  responsive(closingPhotoMobile, WIDTHS.portrait),
+]);
+---
+
+<section class="closing" data-theme="dark" aria-label="Vuelve a entrenar sin dolor">
+  <div class="closing-media" aria-hidden="true" data-parallax>
+    <picture>
+      <source
+        media="(max-width: 767.98px)"
+        type="image/avif"
+        srcset={photoMobile.avif}
+        sizes="100vw"
+      />
+      <source
+        media="(max-width: 767.98px)"
+        type="image/webp"
+        srcset={photoMobile.webp}
+        sizes="100vw"
+      />
+      <source type="image/avif" srcset={photo.avif} sizes="100vw" />
+      <source type="image/webp" srcset={photo.webp} sizes="100vw" />
+      <img
+        src={photo.fallback}
+        width={photo.width}
+        height={photo.height}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        class="closing-img"
+      />
+    </picture>
+  </div>
+  <div class="closing-veil tex-grain" aria-hidden="true"></div>
+  <div class="container-x closing-content">
+    <SplitWords
+      as="p"
+      class="closing-phrase"
+      parts={['Vuelve a entrenar', { br: 'always' }, { text: 'sin dolor.', accent: true }]}
+    />
+    <div class="section-cta reveal" data-reveal style="--i:3">
+      <CtaButton location="closing">Quiero valorar mi caso</CtaButton>
+    </div>
+  </div>
+</section>
+
+<style>
+  .closing {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    min-height: 60svh;
+    padding-block: 64px;
+    overflow: hidden;
+    background: var(--void);
+    color: var(--ink-on-dark);
+    text-align: center;
+  }
+
+  .closing-media {
+    position: absolute;
+    z-index: -2;
+    inset: -40px 0;
+    will-change: transform;
+  }
+
+  .closing-media picture,
+  .closing-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .closing-img {
+    object-fit: cover;
+    object-position: 50% 30%;
+    filter: contrast(1.03) saturate(0.95);
+  }
+
+  /* Velo fuerte: la foto se nota, el texto manda. */
+  .closing-veil {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(10, 10, 10, 0.72) 0%,
+      rgba(10, 10, 10, 0.66) 50%,
+      rgba(10, 10, 10, 0.86) 100%
+    );
+    --grain: 0.05;
+  }
+
+  .closing-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .closing-phrase {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(3rem, 13vw, 3.5rem);
+    line-height: 0.9;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+
+  .closing .section-cta {
+    margin-top: 28px;
+  }
+
+  @media (width >= 768px) {
+    .closing {
+      padding-block: 96px;
+    }
+
+    .closing-phrase {
+      font-size: clamp(4rem, 1.5rem + 5.4vw, 6.5rem);
+    }
+
+    .closing .section-cta {
+      margin-top: 44px;
+    }
+  }
+</style>

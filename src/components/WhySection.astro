@@ -1,231 +1,483 @@
 ---
-import Dumbbell from '@lucide/astro/icons/dumbbell';
-import Activity from '@lucide/astro/icons/activity';
-import SlidersHorizontal from '@lucide/astro/icons/sliders-horizontal';
-import MessageCircle from '@lucide/astro/icons/message-circle';
+/**
+ * Sección 3: por qué. Tres bloques con fondos distintos:
+ * 3A "¿Te suena?" (claro con rejilla), 3B frase a pantalla completa (foto con parallax)
+ * y 3C comparativa (degradado suave de --brand-soft a --paper).
+ */
+import X from '@lucide/astro/icons/x';
+import Check from '@lucide/astro/icons/check';
+import SplitWords from './SplitWords.astro';
 import SectionCta from './SectionCta.astro';
+import bandPhoto from '../assets/photos/band-statement.jpg';
+import bandPhotoMobile from '../assets/photos/band-statement-m.jpg';
+import { WIDTHS, responsive } from '../lib/images';
 
-const pains = [
+const [band, bandMobile] = await Promise.all([
+  responsive(bandPhoto, WIDTHS.landscape),
+  responsive(bandPhotoMobile, WIDTHS.portrait),
+]);
+
+const suena = [
   'Evitas ejercicios que antes hacías sin pensar.',
-  'Mejoras un poco y, al volver a entrenar normal, recaes.',
+  'Mejoras, vuelves a entrenar normal y recaes.',
   'Empiezas a pensar que lo tuyo es crónico.',
 ];
 
-const reasons = [
-  {
-    icon: Dumbbell,
-    title: 'Especialista en CrossFit.',
-    text: 'Fisioterapeuta y atleta desde 2017. Conozco el box por dentro.',
-  },
-  {
-    icon: Activity,
-    title: 'Sin dejar de entrenar.',
-    text: 'Adaptamos tu programación para que sigas entrenando de forma segura.',
-  },
-  {
-    icon: SlidersHorizontal,
-    title: 'Un plan que se ajusta.',
-    text: 'Reajustes cada semana según cómo responde tu cuerpo.',
-  },
-  {
-    icon: MessageCircle,
-    title: 'Nunca vas solo.',
-    text: 'Seguimiento diario en la app y contacto directo por WhatsApp.',
-  },
+const compare = [
+  { old: 'Parar de entrenar', rw: 'Sigues entrenando, con adaptaciones' },
+  { old: 'Ejercicios sueltos', rw: 'Plan progresivo para CrossFit' },
+  { old: 'Solo cuando duele', rw: 'Seguimiento diario' },
+  { old: 'El mismo plan para todos', rw: 'Reajustes cada semana' },
+  { old: 'Solo entre sesiones', rw: 'Contacto directo por WhatsApp' },
 ];
 ---
 
-<section id="por-que" class="section-y why" data-theme="light" aria-labelledby="why-title">
-  <div class="container-x">
-    <!-- Bloque A: identificación -->
-    <div class="max-w-3xl" data-reveal>
-      <p class="eyebrow">¿Te suena?</p>
-      <h2 id="why-title" class="h2-display mt-4">
-        Si entrenas con dolor, esto te&nbsp;suena.
-      </h2>
+<section id="por-que" aria-labelledby="suena-title">
+  <!-- 3A -->
+  <div class="suena section-y tex-grid" data-theme="light">
+    <div class="container-x">
+      <SplitWords
+        id="suena-title"
+        class="h2-display suena-title"
+        parts={['¿Te', { text: 'suena?', accent: true }]}
+      />
     </div>
-
-    <ol class="pains mt-10 md:mt-14" role="list">
-      {pains.map((pain, i) => (
-        <li class="pain" data-reveal>
-          <span class="pain-num tabular" aria-hidden="true">
-            {i + 1}
+    <ul class="suena-list" role="list" aria-label="Situaciones habituales" data-scroll-region>
+      {suena.map((text, i) => (
+        <li class="suena-card reveal" data-reveal style={`--i:${i}`}>
+          <span class="suena-num" aria-hidden="true">
+            {String(i + 1).padStart(2, '0')}
           </span>
-          <p class="pain-text">{pain}</p>
-        </li>
-      ))}
-    </ol>
-
-    <!-- Bloque B: el giro -->
-    <div class="turn mt-16 md:mt-24" data-theme="dark" data-reveal>
-      <h3 class="turn-title">
-        El problema no suele ser tu lesión. Suele ser{' '}
-        <span class="text-brand-bright">el&nbsp;enfoque.</span>
-      </h3>
-      <p class="turn-text">
-        Ejercicios sueltos, un tratamiento puntual cuando duele y ninguna progresión.
-      </p>
-      <p class="turn-text turn-text-next">
-        Alivia a corto plazo, pero no prepara a tu cuerpo para volver a tolerar lo que le pides
-        entrenando.
-      </p>
-    </div>
-
-    <!-- Bloque C: 4 razones -->
-    <ul class="reasons mt-16 md:mt-24" role="list">
-      {reasons.map(({ icon: Icon, title, text }) => (
-        <li class="reason" data-reveal>
-          <span class="reason-icon" aria-hidden="true">
-            <Icon size={24} stroke-width={1.5} />
-          </span>
-          <h3 class="reason-title">{title}</h3>
-          <p class="reason-text">{text}</p>
+          <p class="suena-text">{text}</p>
         </li>
       ))}
     </ul>
+  </div>
 
-    <SectionCta location="why" />
+  <!-- 3B -->
+  <div class="band" data-theme="dark">
+    <div class="band-media" aria-hidden="true" data-parallax>
+      <picture>
+        <source
+          media="(max-width: 767.98px)"
+          type="image/avif"
+          srcset={bandMobile.avif}
+          sizes="100vw"
+        />
+        <source
+          media="(max-width: 767.98px)"
+          type="image/webp"
+          srcset={bandMobile.webp}
+          sizes="100vw"
+        />
+        <source type="image/avif" srcset={band.avif} sizes="100vw" />
+        <source type="image/webp" srcset={band.webp} sizes="100vw" />
+        <img
+          src={band.fallback}
+          width={band.width}
+          height={band.height}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          class="band-img"
+        />
+      </picture>
+    </div>
+    <div class="band-veil tex-grain" aria-hidden="true"></div>
+    <div class="container-x band-content">
+      <SplitWords
+        as="p"
+        class="band-statement"
+        parts={[
+          'El problema no es tu lesión.',
+          { br: 'always' },
+          'Es',
+          { text: 'el enfoque.', accent: true },
+        ]}
+      />
+      <p class="lead band-lead reveal" data-reveal style="--i:4">
+        Ejercicios sueltos y parches cuando duele no te preparan para volver a entrenar.
+      </p>
+      <SectionCta location="why" label="Quiero empezar" />
+    </div>
+  </div>
+
+  <!-- 3C -->
+  <div class="compare section-y" data-theme="light">
+    <div class="container-x">
+      <SplitWords
+        id="compare-title"
+        class="h2-display compare-title"
+        parts={['Lo de siempre', { br: 'always' }, { text: 'vs RehabilityWOD', accent: true }]}
+      />
+
+      <div class="cmp-card" data-reveal>
+        <div class="cmp-col cmp-old">
+          <h3 class="cmp-head">Lo de siempre</h3>
+          <ul class="cmp-list" role="list">
+            {compare.map((row, i) => (
+              <li class="cmp-row" style={`--i:${i}`}>
+                <X size={18} stroke-width={1.75} aria-hidden="true" class="cmp-x" />
+                <span class="cmp-strike">{row.old}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div class="cmp-col cmp-rw" data-theme="dark">
+          <h3 class="cmp-head">
+            Rehability<span class="accent">WOD</span>
+          </h3>
+          <ul class="cmp-list" role="list">
+            {compare.map((row, i) => (
+              <li class="cmp-row" style={`--i:${i + 5}`}>
+                <span class="cmp-check" aria-hidden="true">
+                  <Check size={14} stroke-width={2.25} />
+                </span>
+                <span>{row.rw}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <SectionCta location="compare" />
+    </div>
   </div>
 </section>
 
 <style>
-  .why {
+  /* ---------------- 3A ---------------- */
+  .suena {
     background: var(--paper);
     color: var(--ink);
+    text-align: center;
   }
 
-  .pains {
+  .suena-list {
     display: grid;
-    gap: 0;
-    margin-inline: 0;
-    margin-bottom: 0;
-    padding: 0;
+    grid-auto-flow: column;
+    grid-auto-columns: 82%;
+    gap: 14px;
+    margin: 18px 0 0;
+    padding: 6px var(--gutter) 14px;
     list-style: none;
-    border-top: 1px solid var(--hair-on-light);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--gutter);
+    scrollbar-width: none;
+    text-align: left;
   }
 
-  .pain {
-    display: grid;
-    grid-template-columns: 3.25rem 1fr;
-    align-items: baseline;
-    align-content: start;
-    gap: 12px;
-    padding-block: 22px;
-    border-bottom: 1px solid var(--hair-on-light);
+  .suena-list::-webkit-scrollbar {
+    display: none;
   }
 
-  .pain-num {
-    font-size: 2.75rem;
-    font-weight: 740;
-    line-height: 1;
-    letter-spacing: -0.03em;
+  .suena-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 168px;
+    padding: 98px 24px 20px;
+    border: 1px solid var(--hair-on-light);
+    border-radius: var(--radius);
+    background: #ffffff;
+    box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.22);
+    scroll-snap-align: start;
+    transition:
+      transform 0.5s var(--ease),
+      box-shadow 0.5s var(--ease),
+      opacity 0.8s var(--ease);
+  }
+
+  .suena-num {
+    position: absolute;
+    top: 10px;
+    right: 22px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 6rem; /* 96 px */
+    line-height: 0.9;
     color: var(--brand);
+    opacity: 0.2;
+    transition: opacity 0.5s var(--ease);
   }
 
-  .pain-text {
-    margin: 0;
-    font-size: 1.1875rem;
-    line-height: 1.4;
-    font-weight: 500;
+  .suena-text {
+    position: relative;
+    max-width: 15em;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.3;
     letter-spacing: -0.01em;
   }
 
-  .turn {
-    padding: 32px 24px;
-    border-radius: var(--radius-card);
+  .suena-card:active {
+    transform: scale(0.98);
+  }
+
+  @media (hover: hover) {
+    .suena-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 28px 56px -24px rgba(0, 0, 0, 0.3);
+    }
+
+    .suena-card:hover .suena-num {
+      opacity: 1;
+    }
+  }
+
+  @media (width >= 768px) {
+    .suena-list {
+      grid-auto-columns: calc((100% - 2 * var(--gutter) - 16px) / 2);
+    }
+  }
+
+  @media (width >= 1024px) {
+    .suena-list {
+      grid-auto-flow: row;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+      max-width: calc(1240px + 2 * var(--gutter));
+      margin: 56px auto 0;
+      overflow: visible;
+    }
+
+    .suena-card {
+      min-height: 240px;
+      padding: 32px;
+    }
+  }
+
+  /* ---------------- 3B ---------------- */
+  .band {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    min-height: 80svh;
+    padding-block: 56px;
+    overflow: hidden;
+    color: var(--ink-on-dark);
     background: var(--void);
+    text-align: center;
+  }
+
+  .band-media {
+    position: absolute;
+    z-index: -2;
+    inset: -40px 0;
+    will-change: transform;
+  }
+
+  .band-media picture,
+  .band-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .band-img {
+    object-fit: cover;
+    object-position: 50% 50%;
+    filter: contrast(1.03) saturate(0.95);
+  }
+
+  .band-veil {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.7);
+    --grain: 0.05;
+  }
+
+  .band-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .band-statement {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(3rem, 13vw, 3.5rem);
+    line-height: 0.9;
+    letter-spacing: 0.005em;
+    text-transform: uppercase;
+    text-wrap: balance;
     color: var(--ink-on-dark);
   }
 
-  .turn-title {
-    margin: 0;
-    font-size: clamp(1.75rem, 1.35rem + 2vw, 3rem);
-    font-weight: 720;
-    max-width: 18em;
+  .band-lead {
+    max-width: 26rem;
+    margin-top: 20px;
+    color: rgba(245, 245, 242, 0.84);
   }
 
-  .turn-text-next {
-    margin-top: 10px !important;
+  @media (width >= 768px) {
+    .band {
+      min-height: 70vh;
+      padding-block: 112px;
+    }
+
+    .band-statement {
+      font-size: clamp(4rem, 1.5rem + 5.4vw, 6.5rem);
+    }
+
+    .band-lead {
+      max-width: 34rem;
+      margin-top: 28px;
+    }
   }
 
-  .turn-text {
-    margin: 20px 0 0;
-    max-width: 38rem;
-    color: var(--muted-on-dark);
-    font-size: 1.0625rem;
-    line-height: 1.6;
+  /* ---------------- 3C ---------------- */
+  .compare {
+    background: linear-gradient(180deg, var(--brand-soft) 0%, var(--paper) 100%);
+    color: var(--ink);
+    text-align: center;
   }
 
-  .reasons {
+  .cmp-card {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
-    margin-inline: 0;
+    gap: 8px;
+    max-width: 920px;
+    margin: 20px auto 0;
+    text-align: left;
+  }
+
+  .cmp-col {
+    padding: 16px 20px 10px;
+    border-radius: var(--radius);
+  }
+
+  .cmp-old {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid var(--hair-on-light);
+    color: var(--muted);
+  }
+
+  .cmp-rw {
+    background: var(--void);
+    color: var(--ink-on-dark);
+    box-shadow: 0 30px 60px -30px rgba(6, 34, 26, 0.55);
+  }
+
+  .cmp-head {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.375rem;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+  }
+
+  .cmp-old .cmp-head {
+    color: var(--muted);
+  }
+
+  .cmp-list {
+    display: grid;
+    gap: 0;
+    margin: 8px 0 0;
     padding: 0;
     list-style: none;
   }
 
-  .reason {
-    padding: 24px;
-    border: 1px solid var(--hair-on-light);
-    border-radius: var(--radius-card);
-    background: #ffffff;
-  }
-
-  .reason-icon {
-    display: inline-grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    background: var(--brand-soft);
-    color: var(--brand-strong);
-  }
-
-  .reason-title {
-    margin: 18px 0 0;
-    font-size: 1.25rem;
-    line-height: 1.2;
-    font-weight: 700;
-  }
-
-  .reason-text {
-    margin: 8px 0 0;
-    color: var(--muted);
+  .cmp-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 30px;
     font-size: 1rem;
-    line-height: 1.55;
+    line-height: 1.3;
+  }
+
+  .cmp-old .cmp-row {
+    font-size: 0.9375rem;
+    min-height: 26px;
+  }
+
+  .cmp-row :global(.cmp-x) {
+    flex: none;
+    color: #9a9a9a;
+  }
+
+  .cmp-strike {
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+    text-decoration-color: rgba(91, 91, 91, 0.6);
+  }
+
+  .cmp-rw .cmp-row {
+    font-weight: 500;
+  }
+
+  .cmp-check {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: #ffffff;
+  }
+
+  /* Filas escalonadas (60 ms) al entrar en pantalla. */
+  .cmp-card:global(.reveal-armed) .cmp-row {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+
+  .cmp-card:global(.reveal-armed.is-in) .cmp-row {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 0.7s var(--ease),
+      transform 0.7s var(--ease);
+    transition-delay: calc(var(--i) * 60ms);
   }
 
   @media (width >= 768px) {
-    .pains {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 32px;
-      border-top: 0;
+    .cmp-card {
+      grid-template-columns: 1fr 1.08fr;
+      align-items: center;
+      gap: 0;
+      margin-top: 56px;
     }
 
-    .pain {
-      grid-template-columns: 1fr;
-      gap: 14px;
-      padding-block: 24px 0;
-      border-bottom: 0;
-      border-top: 1px solid var(--hair-on-light);
+    .cmp-col {
+      padding: 36px 36px 30px;
     }
 
-    .pain-num {
-      font-size: 3.5rem;
+    .cmp-old {
+      border-radius: var(--radius) 0 0 var(--radius);
+      border-right: 0;
     }
 
-    .turn {
-      padding: 56px;
+    /* La columna de RehabilityWOD, algo más alta y oscura. */
+    .cmp-rw {
+      padding-block: 52px 46px;
+      border-radius: var(--radius);
     }
 
-    .reasons {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
+    .cmp-head {
+      font-size: 2rem;
     }
 
-    .reason {
-      padding: 32px;
+    .cmp-list {
+      gap: 6px;
+      margin-top: 20px;
+    }
+
+    .cmp-row {
+      min-height: 44px;
+      font-size: 1.0625rem;
+    }
+
+    .cmp-old .cmp-row {
+      min-height: 44px;
+      font-size: 1rem;
     }
   }
 </style>

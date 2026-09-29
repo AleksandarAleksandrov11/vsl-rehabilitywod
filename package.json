@@ -23,6 +23,7 @@
     "@astrojs/sitemap": "^3.7.4",
     "@astrojs/vercel": "^9.0.5",
     "@fontsource-variable/work-sans": "^5.3.0",
+    "@fontsource/big-shoulders-display": "^5.3.0",
     "@lucide/astro": "^1.48.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vercel/analytics": "^2.0.1",

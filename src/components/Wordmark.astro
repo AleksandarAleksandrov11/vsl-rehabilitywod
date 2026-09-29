@@ -1,6 +1,6 @@
 ---
 interface Props {
-  /** Sobre oscuro "WOD" va en --brand-bright; sobre claro, en --brand. */
+  /** Sobre oscuro "WOD" va en --brand-bright; sobre claro, en --brand-strong. */
   tone?: 'dark' | 'light';
   class?: string;
 }
@@ -13,6 +13,7 @@ const { tone = 'dark', class: className = '' } = Astro.props;
 
 <style>
   .wordmark {
+    font-family: var(--font-text);
     font-weight: 800;
     letter-spacing: -0.03em;
     line-height: 1;
@@ -32,6 +33,6 @@ const { tone = 'dark', class: className = '' } = Astro.props;
   }
 
   .wordmark-light .wordmark-wod {
-    color: var(--brand);
+    color: var(--brand-strong);
   }
 </style>

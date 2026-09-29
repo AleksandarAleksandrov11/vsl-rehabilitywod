@@ -9,106 +9,124 @@ interface Props {
 
 const { withStickyGap = false } = Astro.props;
 const year = new Date().getFullYear();
+const giant = 'RehabilityWOD'.toUpperCase().split('');
 ---
 
 <footer class:list={['site-footer', withStickyGap && 'has-sticky-gap']} data-theme="dark">
   <div class="container-x">
-    <div class="footer-top">
-      <div>
-        <a href="/" class="footer-brand" aria-label="RehabilityWOD, ir al inicio">
-          <Wordmark class="text-[1.5rem]" />
-        </a>
-        <p class="footer-tag">Fisioterapia online para atletas de CrossFit.</p>
-      </div>
-      <ul class="footer-contact" role="list">
-        <li>
-          <a class="footer-link" href={`mailto:${CONFIG.email}`}>
-            {CONFIG.email}
-          </a>
-        </li>
-        <li>
-          <a class="footer-link" href={CONFIG.instagram} target="_blank" rel="noopener me">
-            Instagram {CONFIG.instagramHandle}
-            <span class="sr-only"> (se abre en una pestaña nueva)</span>
-          </a>
-        </li>
-      </ul>
-    </div>
-
-    <div class="footer-bottom">
-      <nav aria-label="Legal">
-        <ul class="footer-legal" role="list">
+    <div class="footer-cols">
+      <div class="footer-col">
+        <p class="footer-head">Contacto</p>
+        <ul class="footer-list" role="list">
           <li>
-            <a class="footer-link" href="/aviso-legal">
+            <a class="footer-link link-grow" href={`mailto:${CONFIG.email}`}>
+              {CONFIG.email}
+            </a>
+          </li>
+          <li>
+            <a
+              class="footer-link link-grow"
+              href={CONFIG.instagram}
+              target="_blank"
+              rel="noopener me"
+            >
+              Instagram {CONFIG.instagramHandle}
+              <span class="sr-only"> (se abre en una pestaña nueva)</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <nav class="footer-col" aria-label="Legal">
+        <p class="footer-head">Legal</p>
+        <ul class="footer-list footer-legal" role="list">
+          <li>
+            <a class="footer-link link-grow" href="/aviso-legal">
               Aviso legal
             </a>
           </li>
           <li>
-            <a class="footer-link" href="/privacidad">
+            <a class="footer-link link-grow" href="/privacidad">
               Privacidad
             </a>
           </li>
           <li>
-            <a class="footer-link" href="/cookies">
+            <a class="footer-link link-grow" href="/cookies">
               Cookies
             </a>
           </li>
           <li>
-            <button type="button" class="footer-link footer-button" data-open-cookie-settings>
+            <button
+              type="button"
+              class="footer-link footer-button link-grow"
+              data-open-cookie-settings
+            >
               Configurar cookies
             </button>
           </li>
         </ul>
       </nav>
-      <p class="footer-copy">© {year} Gerard Barrantes Bautista&nbsp;· RehabilityWOD</p>
+
+      <div class="footer-col footer-brand-col">
+        <a href="/" class="footer-brand" aria-label="RehabilityWOD, ir al inicio">
+          <Wordmark class="footer-wordmark" />
+        </a>
+        <p class="footer-tag">Fisioterapia online para atletas de CrossFit</p>
+      </div>
     </div>
+
+    <p class="footer-copy">© {year} Gerard Barrantes Bautista · RehabilityWOD</p>
+  </div>
+
+  <div class="footer-giant" aria-hidden="true">
+    <span class="footer-giant-word">
+      {giant.map((ch, i) => (
+        <span style={`--i:${i}`}>{ch}</span>
+      ))}
+    </span>
   </div>
 </footer>
 
 <style>
   .site-footer {
-    padding-block: 64px 40px;
-    padding-bottom: calc(40px + env(safe-area-inset-bottom));
+    padding-top: 32px;
+    padding-bottom: env(safe-area-inset-bottom);
     background: var(--void);
     color: var(--ink-on-dark);
     border-top: 1px solid var(--hair-on-dark);
+    text-align: center;
+    overflow: hidden;
   }
 
   /* Hueco para que la barra CTA fija (móvil) no tape el footer. */
   @media (width < 768px) {
     .site-footer.has-sticky-gap {
-      padding-bottom: calc(136px + env(safe-area-inset-bottom));
+      padding-bottom: calc(76px + env(safe-area-inset-bottom));
     }
   }
 
-  .footer-top {
+  .footer-cols {
     display: grid;
-    gap: 28px;
+    gap: 12px;
   }
 
-  .footer-brand {
-    display: inline-flex;
-    min-height: 44px;
-    align-items: center;
-    text-decoration: none;
-  }
-
-  .footer-tag {
-    margin: 6px 0 0;
-    font-size: 0.9375rem;
+  .footer-head {
+    margin-bottom: -4px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
     color: var(--muted-on-dark);
   }
 
-  .footer-contact,
-  .footer-legal {
+  .footer-list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    column-gap: 10px;
     margin: 0;
     padding: 0;
     list-style: none;
-  }
-
-  .footer-contact {
-    display: grid;
-    gap: 2px;
   }
 
   .footer-link {
@@ -116,56 +134,109 @@ const year = new Date().getFullYear();
     align-items: center;
     min-height: 44px;
     color: var(--ink-on-dark);
-    font-size: 0.9375rem;
+    font-size: 0.84375rem;
     text-decoration: none;
-  }
-
-  .footer-link:hover {
-    text-decoration: underline;
-    text-underline-offset: 4px;
+    background-position: 0 calc(50% + 0.8em);
   }
 
   .footer-button {
     padding: 0;
     border: 0;
-    background: none;
+    background-color: transparent;
     font: inherit;
+    font-size: 0.84375rem;
+    cursor: pointer;
+  }
+
+  .footer-brand {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    text-decoration: none;
+  }
+
+  .footer-brand :global(.footer-wordmark) {
+    font-size: 1.5rem;
+  }
+
+  .footer-tag {
+    margin-top: 2px;
     font-size: 0.9375rem;
-  }
-
-  .footer-bottom {
-    display: grid;
-    gap: 16px;
-    margin-top: 40px;
-    padding-top: 24px;
-    border-top: 1px solid var(--hair-on-dark);
-  }
-
-  .footer-legal {
-    display: flex;
-    flex-wrap: wrap;
-    column-gap: 22px;
+    color: var(--muted-on-dark);
   }
 
   .footer-copy {
-    margin: 0;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--hair-on-dark);
     font-size: 0.875rem;
     color: var(--muted-on-dark);
   }
 
+  /* "REHABILITYWOD" enorme, recortado por el borde inferior. */
+  .footer-giant {
+    height: 0.62em;
+    margin-top: 8px;
+    overflow: hidden;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: calc((100vw - 2 * var(--gutter)) / 5.5);
+    line-height: 0.8;
+    letter-spacing: 0.005em;
+    color: rgba(245, 245, 242, 0.06);
+    user-select: none;
+  }
+
+  .footer-giant-word {
+    display: inline-flex;
+    white-space: nowrap;
+  }
+
+  .footer-giant-word span {
+    display: inline-block;
+    transition: transform 0.5s var(--ease);
+  }
+
   @media (width >= 768px) {
-    .footer-top {
-      grid-template-columns: 1fr auto;
+    .site-footer {
+      padding-top: 88px;
+      text-align: left;
+    }
+
+    .footer-cols {
+      grid-template-columns: 1fr 1fr 1.2fr;
+      gap: 40px;
       align-items: start;
     }
 
-    .footer-contact {
-      justify-items: end;
+    .footer-list {
+      display: grid;
+      justify-content: start;
     }
 
-    .footer-bottom {
-      grid-template-columns: 1fr auto;
-      align-items: center;
+    .footer-link,
+    .footer-button {
+      font-size: 0.9375rem;
+    }
+
+    .footer-brand-col {
+      text-align: right;
+    }
+
+    .footer-copy {
+      margin-top: 56px;
+    }
+
+    .footer-giant {
+      font-size: min(calc((100vw - 2 * var(--gutter)) / 5.5), 250px);
+      text-align: center;
+    }
+  }
+
+  /* Cada letra sube un 6 % al pasar el ratón (solo escritorio). */
+  @media (hover: hover) and (width >= 1024px) {
+    .footer-giant-word span:hover {
+      transform: translate3d(0, -6%, 0);
     }
   }
 </style>
