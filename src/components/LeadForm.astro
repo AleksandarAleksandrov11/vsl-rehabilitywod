@@ -11,19 +11,19 @@ import ArrowRight from '@lucide/astro/icons/arrow-right';
 import ZoneIcon from './ZoneIcon.astro';
 import { ZONAS, LIMITS } from '../lib/lead';
 
-// Orden visual (los valores no cambian): parejas y "Espalda / lumbar" y "Otro" a lo ancho.
+// Orden visual de arriba abajo del cuerpo (los valores no cambian). Todas las opciones miden
+// lo mismo: 2 columnas x 4 filas en móvil y 4 x 2 desde 768 px.
 const ORDER = [
   'Hombro',
   'Codo',
   'Muñeca',
-  'Cadera',
   'Espalda / lumbar',
+  'Cadera',
   'Rodilla',
   'Tobillo / pie',
   'Otro',
 ];
 const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
-const wide = new Set(['Espalda / lumbar', 'Otro']);
 ---
 
 <div class="form-card" data-form-root data-theme="dark">
@@ -61,7 +61,7 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
         data-chips
       >
         {zonas.map((zona, i) => (
-          <label class:list={['chip', wide.has(zona) && 'chip-wide']}>
+          <label class="chip">
             <input
               type="radio"
               name="zona"
@@ -70,7 +70,8 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
               class="chip-input"
             />
             <ZoneIcon zona={zona} />
-            <span class="chip-text">{zona}</span>
+            {/* "Espalda /" y "Tobillo /" en la primera línea cuando el texto se parte. */}
+            <span class="chip-text">{zona.replace(' / ', '\u00a0/ ')}</span>
             <span class="chip-check" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="14" height="14" focusable="false">
                 <path
@@ -99,7 +100,7 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
           Cuéntame un poco más.
         </h3>
       </legend>
-      <label class="field-label" for="detalle">
+      <label class="sr-only" for="detalle">
         Tu caso <span data-optional>(opcional)</span>
       </label>
       <textarea
@@ -133,7 +134,7 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
           ¿Cómo te llamas?
         </h3>
       </legend>
-      <label class="field-label" for="nombre">
+      <label class="sr-only" for="nombre">
         Nombre
       </label>
       <input
@@ -142,6 +143,7 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
         type="text"
         class="field"
         autocomplete="given-name"
+        placeholder="Tu nombre"
         autocapitalize="words"
         spellcheck="false"
         required
@@ -163,7 +165,7 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
           ¿A qué número te escribo?
         </h3>
       </legend>
-      <label class="field-label" for="telefono">
+      <label class="sr-only" for="telefono">
         Teléfono móvil
       </label>
       <div class="phone-row">
@@ -179,7 +181,6 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
           autocomplete="tel-country-code"
           value="+34"
           maxlength="5"
-          aria-describedby="prefijo-hint"
         />
         <input
           id="telefono"
@@ -188,15 +189,13 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
           inputmode="tel"
           class="field"
           autocomplete="tel"
+          placeholder="Tu móvil"
           required
           maxlength="22"
           enterkeyhint="send"
-          aria-describedby="prefijo-hint err-telefono"
+          aria-describedby="err-telefono"
         />
       </div>
-      <p class="field-hint" id="prefijo-hint">
-        Si tu número no es español, cambia el prefijo.
-      </p>
       <p class="field-error" id="err-telefono" data-error="telefono" hidden>
         <CircleAlert size={16} stroke-width={1.75} aria-hidden="true" />
         <span></span>
@@ -275,29 +274,27 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
     text-align: left;
   }
 
-  /* Altura estable entre pasos (solo en modo un paso por pantalla); form.ts ajusta
-     min-height al paso más alto. */
+  /* Modo un paso por pantalla: la tarjeta mide lo que su paso (sin huecos) y form.ts anima el
+     cambio de alto entre pasos. */
   .form-card:global(.is-enhanced) {
-    min-height: 460px;
-    display: flex;
-    flex-direction: column;
     overflow: hidden;
   }
 
   .form-card:global(.is-enhanced) .lead-form {
     position: relative;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+  }
+
+  .form-card:global(.is-resizing) {
+    transition: height 0.28s var(--ease);
   }
 
   /* Progreso: "Paso 1 de 4" y barra segmentada en 4 tramos. */
   .progress {
-    margin-bottom: 16px;
+    margin-bottom: 22px;
   }
 
   .progress-text {
-    margin: 0 0 6px;
+    margin: 0 0 8px;
   }
 
   .progress-track {
@@ -393,7 +390,7 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
 
   .step-legend {
     padding: 0;
-    margin-bottom: 12px;
+    margin-bottom: 20px;
   }
 
   .step-title {
@@ -411,11 +408,13 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
     outline-offset: 4px;
   }
 
-  /* Opciones de "¿Qué te duele?": tarjetas de 64 px en 2 columnas. */
+  /* Opciones de "¿Qué te duele?": todas iguales. Móvil: 2 columnas x 4 filas, figura a la
+     izquierda. Desde 768 px: 4 x 2, figura arriba y texto debajo. */
   .chips {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    grid-auto-rows: 1fr;
+    gap: 10px;
   }
 
   .chip {
@@ -423,8 +422,8 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
     display: flex;
     align-items: center;
     gap: 10px;
-    min-height: 64px;
-    padding: 8px 34px 8px 12px;
+    min-height: 68px;
+    padding: 8px 30px 8px 10px;
     border: 1px solid var(--hair-on-dark);
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.02);
@@ -439,18 +438,35 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
     -webkit-tap-highlight-color: transparent;
   }
 
-  .chip-wide {
-    grid-column: 1 / -1;
-  }
-
   .chip :global(.zone-icon) {
     flex: none;
-    color: var(--muted-on-dark);
+    width: 30px;
+    height: 48px;
+    color: rgba(255, 255, 255, 0.34);
     transition: color 0.3s var(--ease);
   }
 
   .chip :global(.zone-dot) {
     fill: var(--brand-bright);
+  }
+
+  .chip :global(.zone-halo) {
+    fill: var(--brand-bright);
+    opacity: 0.28;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .chip :global(.zone-spine) {
+    stroke: #121212;
+  }
+
+  .chip :global(.zone-q) {
+    stroke: var(--void);
+  }
+
+  .chip-text {
+    min-width: 0;
   }
 
   .chip:active {
@@ -494,7 +510,23 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
   }
 
   .chip:has(.chip-input:checked) :global(.zone-icon) {
-    color: var(--ink-on-dark);
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  /* La zona elegida late. */
+  .chip:has(.chip-input:checked) :global(.zone-halo) {
+    animation: zone-pulse 1.6s var(--ease) infinite;
+  }
+
+  @keyframes zone-pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.45;
+    }
+    100% {
+      transform: scale(1.8);
+      opacity: 0;
+    }
   }
 
   .chip:has(.chip-input:checked) .chip-check {
@@ -507,18 +539,6 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
   }
 
   /* Campos */
-  .field-label {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: var(--ink-on-dark);
-  }
-
-  .field-label [data-optional] {
-    font-weight: 400;
-    color: var(--muted-on-dark);
-  }
 
   .field {
     display: block;
@@ -581,12 +601,6 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
     font-size: 0.8125rem;
     color: var(--muted-on-dark);
     white-space: nowrap;
-  }
-
-  .field-hint {
-    margin-top: 8px;
-    font-size: 0.875rem;
-    color: var(--muted-on-dark);
   }
 
   .field-error {
@@ -726,11 +740,6 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
     margin-top: 28px;
   }
 
-  .form-card:global(.is-enhanced) .form-nav {
-    margin-top: auto;
-    padding-top: 16px;
-  }
-
   .step-next,
   .step-submit {
     flex: 1;
@@ -781,6 +790,14 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
     }
   }
 
+  /* Pantallas muy estrechas: "Enviar y valorar mi caso" en una sola línea. */
+  @media (width < 360px) {
+    .step-submit {
+      padding-inline: 14px;
+      font-size: 0.9375rem;
+    }
+  }
+
   .spinner {
     width: 18px;
     height: 18px;
@@ -808,11 +825,33 @@ const wide = new Set(['Espalda / lumbar', 'Otro']);
 
   @media (width >= 768px) {
     .form-card {
-      padding: 36px 40px;
+      max-width: 640px;
+      padding: 40px 44px;
     }
 
-    .form-card:global(.is-enhanced) {
-      min-height: 480px;
+    .chips {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .chip {
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: 12px;
+      min-height: 132px;
+      padding: 18px 8px 14px;
+      text-align: center;
+    }
+
+    .chip :global(.zone-icon) {
+      width: 36px;
+      height: 58px;
+    }
+
+    .chip-check {
+      top: 10px;
+      right: 10px;
+      margin-top: 0;
     }
   }
 </style>

@@ -90,7 +90,7 @@ const ogAlt =
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
     <slot name="head" />
   </head>
-  <body>
+  <body id="top">
     <slot />
     <CookieBanner />
     <Analytics />

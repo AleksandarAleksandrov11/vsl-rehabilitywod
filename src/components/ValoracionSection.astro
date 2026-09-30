@@ -45,9 +45,6 @@ const bg = await responsive(formPhoto, WIDTHS.landscape);
       <p class="lead valoracion-lead reveal" data-reveal style="--i:2">
         Rellénalo en 30 segundos y te escribo para la videollamada de valoración.
       </p>
-      <p class="valoracion-note reveal" data-reveal style="--i:3">
-        Abro plazas cuando tengo hueco para darte el seguimiento que mereces.
-      </p>
     </div>
 
     <div class="valoracion-form">
@@ -106,18 +103,11 @@ const bg = await responsive(formPhoto, WIDTHS.landscape);
   }
 
   .valoracion-lead {
-    margin-top: 12px;
-  }
-
-  .valoracion-note {
-    margin-top: 8px;
-    font-size: 0.875rem;
-    line-height: 1.45;
-    color: var(--muted-on-dark);
+    margin-top: 18px;
   }
 
   .valoracion-form {
-    margin-top: 18px;
+    margin-top: var(--title-gap);
   }
 
   @media (width >= 768px) {
@@ -136,18 +126,9 @@ const bg = await responsive(formPhoto, WIDTHS.landscape);
       max-width: 720px;
     }
 
-    .valoracion-lead,
-    .valoracion-note {
-      max-width: 560px;
-      margin-inline: auto;
-    }
-
     .valoracion-lead {
-      margin-top: 20px;
-    }
-
-    .valoracion-form {
-      margin-top: 44px;
+      max-width: 560px;
+      margin: 24px auto 0;
     }
   }
 </style>

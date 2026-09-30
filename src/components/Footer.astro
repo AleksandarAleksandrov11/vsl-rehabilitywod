@@ -1,4 +1,11 @@
 ---
+/**
+ * Footer: marca y redes, tres columnas (Web, Contacto, Legal), barra final con el © y, al
+ * final del todo, "REHABILITYWOD" a todo el ancho. Las letras suben una a una al entrar en
+ * pantalla y después una ola suave las recorre cada pocos segundos (sin movimiento con
+ * prefers-reduced-motion). En escritorio cada letra también sube al pasar el ratón.
+ */
+import ArrowUp from '@lucide/astro/icons/arrow-up';
 import Wordmark from './Wordmark.astro';
 import { CONFIG } from '../config';
 
@@ -9,79 +16,160 @@ interface Props {
 
 const { withStickyGap = false } = Astro.props;
 const year = new Date().getFullYear();
-const giant = 'RehabilityWOD'.toUpperCase().split('');
+
+const giant = [...'REHABILITY'].map((ch) => ({ ch, wod: false }));
+giant.push(...[...'WOD'].map((ch) => ({ ch, wod: true })));
+
+const social = [
+  {
+    name: 'Instagram',
+    href: CONFIG.instagram,
+    paths: [
+      'M7 2.75h10A4.25 4.25 0 0 1 21.25 7v10A4.25 4.25 0 0 1 17 21.25H7A4.25 4.25 0 0 1 2.75 17V7A4.25 4.25 0 0 1 7 2.75Z',
+      'M15.9 11.5a3.9 3.9 0 1 1-7.8 0 3.9 3.9 0 0 1 7.8 0Z',
+      'M17.6 6.4h.01',
+    ],
+  },
+  {
+    name: 'TikTok',
+    href: CONFIG.tiktok,
+    paths: ['M14.6 2.75v11.9a3.85 3.85 0 1 1-3.85-3.85', 'M14.6 2.75c.45 2.75 2.4 4.55 5.15 4.8'],
+  },
+  {
+    name: 'Facebook',
+    href: CONFIG.facebook,
+    paths: [
+      'M17.5 2.75h-2.75a4.5 4.5 0 0 0-4.5 4.5v2.9H7.5v3.9h2.75v8.2h3.9v-8.2h2.8l.7-3.9h-3.5V7.6c0-.6.45-1 1-1h2.35Z',
+    ],
+  },
+];
+
+const web = [
+  { href: '/#video', text: 'Vídeo' },
+  { href: '/#como-funciona', text: 'Cómo funciona' },
+  { href: '/#opiniones', text: 'Opiniones' },
+  { href: '/#valoracion', text: 'Valorar mi caso' },
+];
 ---
 
 <footer class:list={['site-footer', withStickyGap && 'has-sticky-gap']} data-theme="dark">
   <div class="container-x">
-    <div class="footer-cols">
-      <div class="footer-col">
-        <p class="footer-head">Contacto</p>
-        <ul class="footer-list" role="list">
-          <li>
-            <a class="footer-link link-grow" href={`mailto:${CONFIG.email}`}>
-              {CONFIG.email}
-            </a>
-          </li>
-          <li>
-            <a
-              class="footer-link link-grow"
-              href={CONFIG.instagram}
-              target="_blank"
-              rel="noopener me"
-            >
-              Instagram {CONFIG.instagramHandle}
-              <span class="sr-only"> (se abre en una pestaña nueva)</span>
-            </a>
-          </li>
-        </ul>
-      </div>
-
-      <nav class="footer-col" aria-label="Legal">
-        <p class="footer-head">Legal</p>
-        <ul class="footer-list footer-legal" role="list">
-          <li>
-            <a class="footer-link link-grow" href="/aviso-legal">
-              Aviso legal
-            </a>
-          </li>
-          <li>
-            <a class="footer-link link-grow" href="/privacidad">
-              Privacidad
-            </a>
-          </li>
-          <li>
-            <a class="footer-link link-grow" href="/cookies">
-              Cookies
-            </a>
-          </li>
-          <li>
-            <button
-              type="button"
-              class="footer-link footer-button link-grow"
-              data-open-cookie-settings
-            >
-              Configurar cookies
-            </button>
-          </li>
-        </ul>
-      </nav>
-
-      <div class="footer-col footer-brand-col">
+    <div class="footer-top">
+      <div class="footer-brand-col">
         <a href="/" class="footer-brand" aria-label="RehabilityWOD, ir al inicio">
           <Wordmark class="footer-wordmark" />
         </a>
         <p class="footer-tag">Fisioterapia online para atletas de CrossFit</p>
+        <ul class="footer-social" role="list" aria-label="Redes sociales">
+          {social.map(({ name, href, paths }) => (
+            <li>
+              <a class="footer-social-link" href={href} target="_blank" rel="noopener me">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.75"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  {paths.map((d) => (
+                    <path d={d} />
+                  ))}
+                </svg>
+                <span class="sr-only">{name} (se abre en una pestaña nueva)</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div class="footer-cols">
+        <nav class="footer-col" aria-label="Web">
+          <p class="footer-head">Web</p>
+          <ul class="footer-list" role="list">
+            {web.map(({ href, text }) => (
+              <li>
+                <a class="footer-link link-grow" href={href}>
+                  {text}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <nav class="footer-col" aria-label="Legal">
+          <p class="footer-head">Legal</p>
+          <ul class="footer-list" role="list">
+            <li>
+              <a class="footer-link link-grow" href="/aviso-legal">
+                Aviso legal
+              </a>
+            </li>
+            <li>
+              <a class="footer-link link-grow" href="/privacidad">
+                Privacidad
+              </a>
+            </li>
+            <li>
+              <a class="footer-link link-grow" href="/cookies">
+                Cookies
+              </a>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="footer-link footer-button link-grow"
+                data-open-cookie-settings
+              >
+                Configurar cookies
+              </button>
+            </li>
+          </ul>
+        </nav>
+
+        <div class="footer-col footer-contact">
+          <p class="footer-head">Contacto</p>
+          <ul class="footer-list" role="list">
+            <li>
+              <a class="footer-link link-grow" href={`mailto:${CONFIG.email}`}>
+                {CONFIG.email}
+              </a>
+            </li>
+            <li>
+              <a
+                class="footer-link link-grow"
+                href={CONFIG.instagram}
+                target="_blank"
+                rel="noopener"
+              >
+                {CONFIG.instagramHandle}
+                <span class="sr-only"> en Instagram (se abre en una pestaña nueva)</span>
+              </a>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
 
-    <p class="footer-copy">© {year} Gerard Barrantes Bautista · RehabilityWOD</p>
+    <div class="footer-bottom">
+      <p class="footer-copy">© {year} Gerard Barrantes Bautista · RehabilityWOD</p>
+      <a class="footer-top-link link-grow" href="#top">
+        Volver arriba
+        <ArrowUp size={16} stroke-width={1.75} aria-hidden="true" />
+      </a>
+    </div>
   </div>
 
-  <div class="footer-giant" aria-hidden="true">
+  <div class="footer-giant" aria-hidden="true" data-reveal>
     <span class="footer-giant-word">
-      {giant.map((ch, i) => (
-        <span style={`--i:${i}`}>{ch}</span>
+      {giant.map(({ ch, wod }, i) => (
+        <span class:list={['fg-letter', wod && 'fg-wod']} style={`--i:${i}`}>
+          <span class="fg-inner">{ch}</span>
+        </span>
       ))}
     </span>
   </div>
@@ -89,12 +177,11 @@ const giant = 'RehabilityWOD'.toUpperCase().split('');
 
 <style>
   .site-footer {
-    padding-top: 32px;
+    padding-top: 64px;
     padding-bottom: env(safe-area-inset-bottom);
     background: var(--void);
     color: var(--ink-on-dark);
     border-top: 1px solid var(--hair-on-dark);
-    text-align: center;
     overflow: hidden;
   }
 
@@ -105,47 +192,9 @@ const giant = 'RehabilityWOD'.toUpperCase().split('');
     }
   }
 
-  .footer-cols {
+  .footer-top {
     display: grid;
-    gap: 12px;
-  }
-
-  .footer-head {
-    margin-bottom: -4px;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--muted-on-dark);
-  }
-
-  .footer-list {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    column-gap: 10px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .footer-link {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    color: var(--ink-on-dark);
-    font-size: 0.84375rem;
-    text-decoration: none;
-    background-position: 0 calc(50% + 0.8em);
-  }
-
-  .footer-button {
-    padding: 0;
-    border: 0;
-    background-color: transparent;
-    font: inherit;
-    font-size: 0.84375rem;
-    cursor: pointer;
+    gap: 40px;
   }
 
   .footer-brand {
@@ -156,87 +205,237 @@ const giant = 'RehabilityWOD'.toUpperCase().split('');
   }
 
   .footer-brand :global(.footer-wordmark) {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
   }
 
   .footer-tag {
-    margin-top: 2px;
-    font-size: 0.9375rem;
+    margin-top: 6px;
+    font-size: 1rem;
+    line-height: 1.5;
     color: var(--muted-on-dark);
   }
 
-  .footer-copy {
-    margin-top: 18px;
-    padding-top: 14px;
+  .footer-social {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .footer-social-link {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--hair-strong-on-dark);
+    border-radius: 50%;
+    color: var(--ink-on-dark);
+    transition:
+      background-color 0.3s var(--ease),
+      border-color 0.3s var(--ease),
+      color 0.3s var(--ease),
+      transform 0.3s var(--ease);
+  }
+
+  .footer-social-link:hover {
+    border-color: var(--brand-bright);
+    background: var(--brand-bright);
+    color: var(--void);
+    transform: translateY(-2px);
+  }
+
+  .footer-cols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 32px 20px;
+  }
+
+  .footer-contact {
+    grid-column: 1 / -1;
+  }
+
+  .footer-head {
+    margin-bottom: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted-on-dark);
+  }
+
+  .footer-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .footer-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+    color: var(--ink-on-dark);
+    font-size: 0.9375rem;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    background-position: 0 calc(50% + 0.8em);
+  }
+
+  .footer-button {
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+    font: inherit;
+    font-size: 0.9375rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .footer-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 24px;
+    margin-top: 48px;
+    padding-top: 20px;
     border-top: 1px solid var(--hair-on-dark);
+  }
+
+  .footer-copy {
     font-size: 0.875rem;
     color: var(--muted-on-dark);
   }
 
-  /* "REHABILITYWOD" enorme, recortado por el borde inferior. */
+  .footer-top-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    color: var(--ink-on-dark);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    background-position: 0 calc(50% + 0.8em);
+  }
+
+  /* "REHABILITYWOD" a todo el ancho del contenedor. */
   .footer-giant {
-    height: 0.62em;
-    margin-top: 8px;
-    overflow: hidden;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: calc((100vw - 2 * var(--gutter)) / 5.5);
-    line-height: 0.8;
-    letter-spacing: 0.005em;
-    color: rgba(245, 245, 242, 0.06);
+    container-type: inline-size;
+    width: min(100% - 2 * var(--gutter), 1240px);
+    margin: 40px auto 0;
+    padding-bottom: 20px;
     user-select: none;
   }
 
   .footer-giant-word {
-    display: inline-flex;
-    white-space: nowrap;
+    display: flex;
+    justify-content: space-between;
+    padding-top: 0.08em;
+    overflow: hidden;
+    font-family: var(--font-display);
+    font-weight: 800;
+    /* "REHABILITYWOD" en Big Shoulders 800 mide 5,42 veces su tamaño de letra. */
+    font-size: calc(100cqi / 5.5);
+    line-height: 0.82;
+    letter-spacing: 0;
+    color: var(--ink-on-dark);
   }
 
-  .footer-giant-word span {
-    display: inline-block;
-    transition: transform 0.5s var(--ease);
+  .fg-letter {
+    display: block;
+  }
+
+  .fg-inner {
+    display: block;
+  }
+
+  .fg-wod {
+    color: var(--brand-bright);
+  }
+
+  /* Entrada: las letras suben una a una desde debajo de la línea. */
+  .footer-giant:global(.reveal-armed) .fg-letter {
+    transform: translate3d(0, 105%, 0);
+  }
+
+  .footer-giant:global(.reveal-armed.is-in) .fg-letter {
+    transform: none;
+    transition: transform 0.9s var(--ease);
+    transition-delay: calc(var(--i) * 45ms);
+  }
+
+  /* Después, una ola suave recorre la palabra cada 5 s. */
+  .fg-inner {
+    animation: fg-wave 5s var(--ease) infinite;
+    animation-delay: calc(1.2s + var(--i) * 70ms);
+  }
+
+  @keyframes fg-wave {
+    0%,
+    16%,
+    100% {
+      transform: none;
+    }
+    8% {
+      transform: translate3d(0, -7%, 0);
+    }
+  }
+
+  @media (hover: hover) and (width >= 1024px) {
+    .fg-letter {
+      transition: transform 0.5s var(--ease);
+    }
+
+    .fg-letter:hover,
+    .footer-giant:global(.reveal-armed.is-in) .fg-letter:hover {
+      transform: translate3d(0, -6%, 0);
+      transition-delay: 0s;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fg-inner {
+      animation: none;
+    }
   }
 
   @media (width >= 768px) {
     .site-footer {
-      padding-top: 88px;
-      text-align: left;
+      padding-top: 96px;
+    }
+
+    .footer-top {
+      gap: 48px;
     }
 
     .footer-cols {
-      grid-template-columns: 1fr 1fr 1.2fr;
-      gap: 40px;
-      align-items: start;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 32px;
     }
 
-    .footer-list {
-      display: grid;
-      justify-content: start;
+    .footer-contact {
+      grid-column: auto;
     }
 
-    .footer-link,
-    .footer-button {
-      font-size: 0.9375rem;
-    }
-
-    .footer-brand-col {
-      text-align: right;
-    }
-
-    .footer-copy {
-      margin-top: 56px;
+    .footer-bottom {
+      margin-top: 72px;
     }
 
     .footer-giant {
-      font-size: min(calc((100vw - 2 * var(--gutter)) / 5.5), 250px);
-      text-align: center;
+      margin-top: 56px;
+      padding-bottom: 32px;
     }
   }
 
-  /* Cada letra sube un 6 % al pasar el ratón (solo escritorio). */
-  @media (hover: hover) and (width >= 1024px) {
-    .footer-giant-word span:hover {
-      transform: translate3d(0, -6%, 0);
+  /* Escritorio: marca a la izquierda y las tres columnas a la derecha. */
+  @media (width >= 1024px) {
+    .footer-top {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+      gap: 64px;
+      align-items: start;
     }
   }
 </style>

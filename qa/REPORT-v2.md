@@ -201,3 +201,53 @@ Foto de Gerard: no llegó adjunta. Se usa el recorte provisional de `rehabilityw
   un reto anti-bot (Anubis). No se ha intentado saltar ninguna protección: las candidatas se
   reunieron leyendo las páginas de búsqueda con la herramienta de lectura web y las fotos se
   descargaron del CDN público de Unsplash (`images.unsplash.com`). Por eso las 6 son de Unsplash.
+
+## 9. Ajustes v3 (29/09/2026, a petición del cliente)
+
+### Qué se ha cambiado
+
+- **Más aire**: secciones con 72 px de padding vertical en móvil (antes 34) y 128 px en escritorio
+  (antes 112), más separación entre titular y contenido, entre textos y en tarjetas, FAQ y footer.
+- **App**: 4 capturas reales grandes (64 % del ancho en móvil, 240 px en escritorio) en marcos finos
+  sin isla ni muesca que tapen la pantalla, con pie de foto; carrusel con snap en móvil y fila en
+  escritorio. Se quita "Programas de 8, 12 o 24 semanas. El precio lo vemos en la valoración.".
+- **Quién está detrás**: la foto de Gerard (fotograma de su VSL, 576x720) va en grande justo después
+  del titular, con su nombre encima; "+120 atletas recuperados" pasa a ser un dato más, con el mismo
+  estilo que los otros tres (2x2).
+- **Formulario**: figura articulada más detallada con la zona resaltada (la espalda se ve de
+  espaldas); las 8 opciones miden lo mismo (2x4 en móvil, 4x2 desde 768 px); cada paso mide lo
+  que su contenido y el cambio de alto se anima; fuera las etiquetas redundantes (quedan para
+  lectores de pantalla), la ayuda del prefijo y "Abro plazas cuando tengo hueco…".
+- **Vídeo**: portada real del vídeo (servida desde la web) con el play centrado y sin título encima.
+- **Footer**: marca y redes (Instagram, TikTok, Facebook), columnas Web, Legal y Contacto, barra con
+  el © y "Volver arriba", y "REHABILITYWOD" a todo el ancho: las letras suben una a una al entrar
+  y una ola suave las recorre cada 5 s (sin movimiento con `reduced-motion`).
+
+### Problemas encontrados en el QA de v3 y arreglo
+
+| #   | Problema                                                                 | Arreglo                                                              |
+| --- | ------------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| 1   | A 1024 px las 4 capturas no cabían en la fila y el último pie se cortaba | Rejilla de 4 columnas de hasta 240 px con hueco fluido               |
+| 2   | Email de contacto cortado en el footer entre 768 y 1023 px               | La marca va en su propia fila hasta 1024 px; el email puede partirse |
+| 3   | Enlace "Vídeo" del footer con 41 px de ancho (mínimo 44)                 | `min-width: 44px` en los enlaces del footer                          |
+| 4   | Ancla `#top` sin destino para el test de enlaces                         | `id="top"` en el `<body>`                                            |
+| 5   | "Enviar y valorar mi caso" en dos líneas a 320 px                        | Menos padding lateral en el botón por debajo de 360 px               |
+| 6   | En "Espalda / lumbar" la figura quedaba más alta que en el resto (4x2)   | Opciones alineadas arriba                                            |
+| 7   | Captura de "Quién está detrás" a 1920 tomada a mitad del reveal          | El test espera 250 ms tras cada scroll antes de capturar             |
+
+### Resultados
+
+| Medida                               | Resultado                                                             |
+| ------------------------------------ | --------------------------------------------------------------------- |
+| Tests (12 viewports)                 | **59/59** en verde, `astro check`, ESLint y Prettier limpios          |
+| Lighthouse móvil (mediana de 3)      | **98** / 100 / 100 / 100 · FCP 1,33 s · LCP 2,25 s · TBT 6 ms · CLS 0 |
+| Lighthouse escritorio (mediana de 3) | **100** / 100 / 100 / 100 · LCP 0,62 s · CLS 0                        |
+| Peor interacción (CPU x4)            | 120 ms (chip "Rodilla")                                               |
+| JS de la home / de animación         | 10,8 KB brotli / 1,25 KB gzip                                         |
+| Palabras de la home                  | 347 (máx. 420)                                                        |
+| Altura en 390x844                    | 9795 px (el test vigila ahora 10 000 px; el cliente pidió más aire)   |
+| Contraste del nombre sobre la foto   | 4,51:1 en el peor punto (texto grande, mínimo 3:1); cargo 6,16:1      |
+
+Las fotos de ambiente siguen siendo de Unsplash salvo el póster del vídeo, que ahora es la portada
+real de la VSL. La portada y la foto de Gerard son fotogramas de su propio vídeo publicado en
+YouTube (imágenes públicas del vídeo, sin retoques).

@@ -62,8 +62,8 @@ const [photo, photoMobile] = await Promise.all([
     isolation: isolate;
     display: flex;
     align-items: center;
-    min-height: 60svh;
-    padding-block: 64px;
+    min-height: 70svh;
+    padding-block: 96px;
     overflow: hidden;
     background: var(--void);
     color: var(--ink-on-dark);
@@ -121,12 +121,12 @@ const [photo, photoMobile] = await Promise.all([
   }
 
   .closing .section-cta {
-    margin-top: 28px;
+    margin-top: 36px;
   }
 
   @media (width >= 768px) {
     .closing {
-      padding-block: 96px;
+      padding-block: 144px;
     }
 
     .closing-phrase {
@@ -134,7 +134,7 @@ const [photo, photoMobile] = await Promise.all([
     }
 
     .closing .section-cta {
-      margin-top: 44px;
+      margin-top: 56px;
     }
   }
 </style>
