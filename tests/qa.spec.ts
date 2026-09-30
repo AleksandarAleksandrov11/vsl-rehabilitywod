@@ -1661,7 +1661,7 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       'Ver el vídeo',
       '+120 atletas recuperados',
       'Sin parar de entrenar',
-      'Desde 2017 fisio y atleta de CrossFit',
+      '+10 años en CrossFit',
       '100 % online',
       'Diario seguimiento por app y WhatsApp',
       'Cada semana reajustes del plan',
@@ -1704,7 +1704,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       'Quién está detrás',
       'Conozco el box por dentro.',
       'Fisioterapeuta titulado',
-      'Atleta desde 2017',
       'Especialista en CrossFit',
       '+120 atletas recuperados',
       'Gerard Barrantes Fundador de RehabilityWOD',
@@ -1748,6 +1747,7 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     expect(text).not.toContain('Vídeo · 7 min');
     expect(text).not.toContain('El problema no es tu lesión');
     expect(text).not.toContain('Soy Gerard Barrantes');
+    expect(text).not.toMatch(/desde 2017/i);
     const hero = norm(await page.locator('#inicio').innerText());
     expect(hero.toLowerCase()).not.toContain('fisioterapia online para atletas de crossfit');
     const sticky = norm(
