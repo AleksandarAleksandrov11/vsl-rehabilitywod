@@ -8,10 +8,14 @@ Un solo objetivo: que el atleta rellene el formulario de valoración.
   reveals y parallax sutil. Informe en [`qa/REPORT-v2.md`](qa/REPORT-v2.md).
 - **Ajustes v3** (a petición del cliente): más aire entre secciones y textos, capturas de la app
   grandes y sin tapar, "Quién está detrás" con la foto de Gerard en grande y 4 datos iguales,
-  formulario con figuras detalladas y opciones iguales, portada real del vídeo con el play
-  centrado, footer reordenado con redes y el nombre grande animado.
+  formulario con figuras detalladas y opciones iguales, footer reordenado con redes y el nombre
+  grande animado.
+- **Ajustes v4**: reproductor de YouTube tal cual (sin botón de play propio ni etiqueta de
+  duración), fotos reales de Gerard en "Quién está detrás" y en la banda de cierre, FAQ en su propia
+  sección con fondo verde claro, cinta de stats con el texto pequeño debajo, sin la banda "El
+  problema no es tu lesión" y hoja de Google con las columnas pedidas y pestaña Resumen.
 - 6 secciones (hero + cinta de stats, VSL, por qué, cómo funciona, opiniones + quién está detrás,
-  valoración + FAQ), banda de cierre y footer.
+  valoración), preguntas frecuentes, banda de cierre y footer.
 - Formulario de 4 pasos, uno por pantalla, que funciona también sin JavaScript.
 - Leads a Google Sheets vía `/api/lead` → Google Apps Script, con aviso por email.
 - Meta Pixel solo tras el consentimiento de cookies (criterios AEPD).
@@ -30,25 +34,35 @@ Un solo objetivo: que el atleta rellene el formulario de valoración.
 
 ---
 
-## Lista de `TODO(Gerard)`
+## Checklist para publicar
 
-Lo único que falta para publicar. Cada punto está marcado en el código con `TODO(Gerard)`.
+Lo que falta, en orden. Los puntos que dependen de Gerard están marcados en el código con
+`TODO(Gerard)`.
 
-1. **Foto profesional de Gerard (recomendado).** "Quién está detrás" usa ahora en grande un
-   fotograma real de su VSL (Gerard en el box, recorte 4:5 de **576x720 px**), que se ve bien pero
-   algo blando en pantallas retina a más de 400 px. Si hay una foto profesional, **sustituir
-   `src/assets/photos/gerard.jpg`** (retrato 4:5, cara en el tercio superior, **1600 px de ancho o
-   más**, sin filtros); el `srcset` se genera solo. **Nunca una foto de stock de otra persona.**
-   - Opcional: `src/assets/images/app-1.jpg` a `app-4.jpg` si hay capturas más recientes
-     de la app (1080x2340).
-2. **Número de WhatsApp** (`src/config.ts`, `whatsapp`). La web actual enlaza `wa.me/640995494`
-   (sin prefijo 34, no funciona) y el aviso legal da el 636 748 147. Ahora está `34640995494`.
-3. **URL del script de Google.** Crear el Apps Script y poner `GOOGLE_SCRIPT_URL` y `LEAD_SECRET` en
-   Vercel. **Sin ellos la API funciona en modo mock: responde "ok" pero el lead no se guarda** (solo
-   queda en el log de Vercel con un aviso). Pasos: [`apps-script/README-apps-script.md`](apps-script/README-apps-script.md).
-4. **Revisión legal.** Que un profesional (abogado o consultor RGPD) revise `/aviso-legal`,
-   `/privacidad` y `/cookies` antes de publicar. Se tratan datos de salud (art. 9 RGPD).
-5. **Dominio.** Apuntar `rehabilitywod.com` a Vercel y confirmar `SITE_URL` (ver más abajo).
+1. **Hoja de Google y Apps Script** (10 minutos): crear la hoja, pegar
+   [`apps-script/Code.gs`](apps-script/Code.gs), crear las propiedades `LEAD_SECRET` y
+   `NOTIFY_EMAIL`, ejecutar `testLead` y publicarlo como aplicación web. Paso a paso en
+   [`apps-script/README-apps-script.md`](apps-script/README-apps-script.md). La hoja «Leads» sale con
+   estas columnas: **Fecha y hora · Nombre · Teléfono · Zona de dolor · Qué le pasa · utm_source ·
+   utm_medium · utm_campaign · utm_content · utm_term · fbclid**, y después Estado, Notas y datos
+   técnicos. La pestaña «Resumen» cuenta los leads por día, zona y campaña.
+2. **Vercel**: importar el repositorio y crear las variables `SITE_URL`, `GOOGLE_SCRIPT_URL` y
+   `LEAD_SECRET` (sección 2). **Sin las dos últimas el formulario responde «ok» pero el lead no se
+   guarda.** Recomendado: `META_CAPI_TOKEN` (Events Manager → Configuración → API de conversiones →
+   Generar identificador de acceso) para enviar también el `Lead` desde el servidor.
+3. **Dominio**: apuntar `rehabilitywod.com` a Vercel (sección 4) y hacer Redeploy.
+4. **Número de WhatsApp** (`src/config.ts`, `whatsapp`), que sale en `/gracias`. La web actual
+   enlaza `wa.me/640995494` (sin prefijo 34, no funciona) y el aviso legal da el 636 748 147.
+   Ahora está `34640995494`: confirmar cuál es.
+5. **Revisión legal**: que un profesional revise `/aviso-legal`, `/privacidad` y `/cookies`. Se
+   tratan datos de salud (art. 9 RGPD).
+6. **Meta**: verificar el dominio en el Business Manager (Seguridad de la marca → Dominios, con el
+   registro TXT en el DNS), poner los **parámetros de URL** en los anuncios (paso 7 de la guía del
+   Apps Script) y probar los eventos con Pixel Helper o «Probar eventos» (sección 5).
+7. **Prueba real**: rellenar el formulario desde el móvil con tu teléfono y comprobar la fila en la
+   hoja, el email de aviso y el `Lead` en Events Manager (sección 6).
+8. **Opcional**: activar Web Analytics y Speed Insights en Vercel (sección 3) y cambiar
+   `src/assets/images/app-1.jpg` a `app-4.jpg` si hay capturas más recientes de la app (1080x2340).
 
 ---
 
@@ -60,26 +74,27 @@ se comprobó en su página. Se eligieron con una hoja de miniaturas por hueco (8
 una) que está en [`qa/photo-sheets/`](qa/photo-sheets/), y la hoja final de la serie en
 [`qa/photo-sheets/final-series.jpg`](qa/photo-sheets/final-series.jpg).
 
-| Hueco              | Archivo (`src/assets/photos/`)                | Foto                                                                       | Autor                             | Por qué esta                                                                                                                |
-| ------------------ | --------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 1 Hero móvil       | `hero-mobile.jpg` (2000x2999)                 | [unsplash.com/photos/03b61PY89hs](https://unsplash.com/photos/03b61PY89hs) | Ambitious Studio\* · Rick Barrett | Rig, barra y discos de un box real, sin personas; mitad inferior oscura para el texto.                                      |
-| 2 Hero escritorio  | `hero-desktop.jpg` (3200x2134)                | [unsplash.com/photos/w7jYaN7GqyA](https://unsplash.com/photos/w7jYaN7GqyA) | Ambitious Studio\* · Rick Barrett | Mismo box y misma sesión que la 1 (misma luz y revelado); suelo oscuro abajo y centro limpio.                               |
-| 3 Banda 3B         | `band-statement.jpg` + `band-statement-m.jpg` | [unsplash.com/photos/gNvNsHIckSc](https://unsplash.com/photos/gNvNsHIckSc) | HamZa NOUASRIA                    | Mano con magnesio agarrando la barra, poca luz, sin logos; admite el recorte vertical para móvil.                           |
-| 5 Fondo formulario | `form-bg.jpg` (2400x1800)                     | [unsplash.com/photos/uH8JDWuxFX8](https://unsplash.com/photos/uH8JDWuxFX8) | Julien Dumas                      | Anillas bajo la estructura del box: textura tranquila y neutra que aguanta el velo al 88 %.                                 |
-| 6 Cierre           | `closing.jpg` + `closing-m.jpg`               | [unsplash.com/photos/h4i9G-de7Po](https://unsplash.com/photos/h4i9G-de7Po) | John Arano                        | Atleta de espaldas en posición de press bajo el rig: vuelta al rendimiento, sin cara. El rótulo del rig queda bajo el velo. |
+| Hueco              | Archivo (`src/assets/photos/`) | Foto                                                                       | Autor                             | Por qué esta                                                                                  |
+| ------------------ | ------------------------------ | -------------------------------------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------- |
+| 1 Hero móvil       | `hero-mobile.jpg` (2000x2999)  | [unsplash.com/photos/03b61PY89hs](https://unsplash.com/photos/03b61PY89hs) | Ambitious Studio\* · Rick Barrett | Rig, barra y discos de un box real, sin personas; mitad inferior oscura para el texto.        |
+| 2 Hero escritorio  | `hero-desktop.jpg` (3200x2134) | [unsplash.com/photos/w7jYaN7GqyA](https://unsplash.com/photos/w7jYaN7GqyA) | Ambitious Studio\* · Rick Barrett | Mismo box y misma sesión que la 1 (misma luz y revelado); suelo oscuro abajo y centro limpio. |
+| 5 Fondo formulario | `form-bg.jpg` (2400x1800)      | [unsplash.com/photos/uH8JDWuxFX8](https://unsplash.com/photos/uH8JDWuxFX8) | Julien Dumas                      | Anillas bajo la estructura del box: textura tranquila y neutra que aguanta el velo al 88 %.   |
 
 - Descargadas del original a máxima resolución y reducidas (sin filtros ni retoques). Los archivos
   `-m` son recortes verticales de la misma foto para móvil.
-- En v3 el póster de Unsplash (Anastase Maragos) se sustituyó por la **portada real del vídeo**, a
-  petición del cliente.
-- **Fotos propias de RehabilityWOD** (de su VSL en YouTube, sin retoques): `vsl-cover.jpg` es la
-  portada del vídeo (1280x720) y `gerard.jpg` un recorte 4:5 (576x720) de otro fotograma del mismo
-  vídeo. Se sirven desde la web, así que antes del clic no hay ninguna petición a YouTube.
+- A petición del cliente se quitaron fotos de Unsplash que ya no se usan: el póster del vídeo (v3,
+  Anastase Maragos), la banda 3B (v4, HamZa NOUASRIA) y el cierre (v4, John Arano).
+- **Fotos propias de RehabilityWOD** (sin retoques, solo recortadas):
+  - `gerard.jpg`: foto de Gerard que envió el cliente (recorte 4:5 de 1717x2146).
+  - `closing.jpg` (recorte 16:9 de 1717x966) y `closing-m.jpg` (entera, 1440x2160): foto de Gerard
+    en el rig que envió el cliente, para la banda "Vuelve a entrenar sin dolor".
+  - `vsl-cover.jpg`: portada del propio vídeo (1280x720). Se ve hasta que carga el reproductor de
+    YouTube, que se inserta al acercarse al vídeo.
 - En la web se sirven por `astro:assets` en AVIF (calidad 60) y WebP (78): verticales a 480, 768,
   1080 y 1440 px y horizontales a 768, 1280, 1920 y 2560 px, nunca por encima del tamaño natural.
   El hero pesa 89 KB en AVIF a 1080 px.
 - Solo se aplica `contrast(1.03) saturate(.95)` en CSS para unificar la serie.
-- La foto de Gerard **no es de stock**: es un fotograma de su propio vídeo (ver `TODO(Gerard)`).
+- Las fotos de Gerard **no son de stock**: son las que envió el cliente.
 
 ## 1. Instalar y arrancar en local
 
@@ -161,7 +176,7 @@ El Pixel **no se carga hasta que el visitante acepta** las cookies de marketing.
 
 1. Abre la web en una ventana de incógnito. Pixel Helper no debe detectar nada.
 2. Pulsa **Aceptar** en el banner → aparece `PageView` (sin recargar).
-3. Pulsa play en el vídeo → `ViewContent` (`content_name: VSL`).
+3. Pulsa play en el reproductor de YouTube → `ViewContent` (`content_name: VSL`).
 4. Envía el formulario → `Lead`, con un `eventID` (el mismo `event_id` que llega a la hoja).
 
 **Con Events Manager → Probar eventos:** introduce la URL de la web, repite los pasos anteriores y
@@ -196,7 +211,7 @@ src/
   layouts/Legal.astro    Plantilla de las páginas legales
   pages/                 index, gracias (noindex), aviso-legal, privacidad, cookies, 404,
                          og.jpg (imagen OG generada en build), robots.txt, api/lead.ts
-  components/            Intro, Header, Hero, StatsTicker, VslSection, WhySection (3A/3B/3C),
+  components/            Intro, Header, Hero, StatsTicker, VslSection, WhySection (3A/3C),
                          HowItWorks, Testimonials, AboutGerard, ValoracionSection, LeadForm,
                          ZoneIcon, Faq, ClosingBand, Footer, StickyCta, CookieBanner,
                          CtaButton, SectionCta, SplitWords (word-up en build), Wordmark, TitularData
@@ -242,9 +257,12 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
   adelantado. Sin JS no se puede medir y solo se aplica el honeypot.
 - **Prefijo telefónico** en un campo aparte (+34 por defecto, editable). Si el número empieza por
   `+` se ignora el prefijo.
-- **Portada de la VSL**: la del propio vídeo, servida desde la web con el play centrado; antes del
-  clic no hay ninguna petición a YouTube; al hacer clic se carga `youtube-nocookie` con un fundido
-  de 250 ms.
+- **VSL con el reproductor de YouTube tal cual** (modo de privacidad mejorada,
+  `youtube-nocookie.com`). Para no cargar YouTube en la primera pintura (rendimiento), el iframe se
+  inserta cuando el vídeo se acerca a la pantalla; hasta entonces se ve la portada del vídeo servida
+  desde la web, y un clic en ella carga el reproductor con autoplay. El play se detecta por
+  `postMessage` (API de iframes de YouTube, sin cargar su script) y envía `vsl_play` y
+  `ViewContent`. La política de cookies explica este comportamiento.
 - **Hero con dirección de arte**: foto vertical hasta 1023 px y horizontal desde 1024 px, con
   precarga responsive (`imagesrcset` + `media`) de la AVIF. En pantallas bajas y en tablet el velo es
   algo más denso que el del encargo para mantener el contraste AA en el peor punto (el texto sube
@@ -296,6 +314,19 @@ táctiles, H1, viudas en H1/H2, axe-core, contraste AA del texto sobre fotos, CT
 flujos de consentimiento y Pixel, VSL, formulario (camino feliz, casos límite, sin JS), barra fija,
 páginas legales, cabeceras y presupuesto de JS. `npm run qa:lighthouse` guarda los informes en
 `qa/lighthouse-v2/` y `node scripts/inp.mjs` mide la latencia de interacción.
+
+Dos comprobaciones más para antes de publicar (necesitan un build con `ASTRO_ADAPTER=node`):
+
+- `npm run qa:sheets`: ejecuta el `Code.gs` real con una hoja de Google simulada, envía el
+  formulario llegando desde un anuncio de Meta (UTM y `fbclid`) y comprueba la fila columna a
+  columna, la pestaña Resumen, el email, el envío sin JavaScript y el rechazo de un secreto
+  incorrecto.
+- `npm run qa:pixel` (con red): carga el `fbevents.js` real de Meta y la configuración real del
+  Pixel y comprueba el consentimiento, `PageView`, `ViewContent` al dar al play del reproductor de
+  YouTube, `FormStart`, `Lead` con el mismo `eventID` que el servidor y la retirada del
+  consentimiento. Las llamadas de eventos se responden en local para no meter datos de prueba en el
+  Pixel.
+
 Resultados en [`qa/REPORT-v2.md`](qa/REPORT-v2.md).
 
 ## Contacto del titular

@@ -46,10 +46,7 @@ await step('Escribir nombre', () => page.locator('#nombre').pressSequentially('A
 await step('Continuar', () => page.getByRole('button', { name: 'Continuar' }).tap());
 await step('Abrir FAQ', () => page.locator('.faq-q').first().tap());
 await step('Hover/tap tarjeta', () => page.locator('.suena-card').first().tap());
-await step('Play VSL', async () => {
-  await page.locator('#video').scrollIntoViewIfNeeded();
-  await page.locator('[data-vsl-play]').tap();
-});
+// El vídeo es el reproductor de YouTube (iframe de otro origen): sus clics no son de esta web.
 const worst = Math.max(...steps.map((s) => s.maxMs));
 console.table(steps);
 console.log('Peor interacción (ms):', worst);

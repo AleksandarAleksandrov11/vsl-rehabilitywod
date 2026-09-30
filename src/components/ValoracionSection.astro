@@ -4,7 +4,6 @@
  * resplandor verde tenue arriba. En móvil la foto solo asoma arriba para no restar legibilidad.
  */
 import LeadForm from './LeadForm.astro';
-import Faq from './Faq.astro';
 import SplitWords from './SplitWords.astro';
 import formPhoto from '../assets/photos/form-bg.jpg';
 import { WIDTHS, responsive } from '../lib/images';
@@ -43,15 +42,13 @@ const bg = await responsive(formPhoto, WIDTHS.landscape);
         parts={['Cuéntame', { br: 'always' }, { text: 'qué te pasa.', accent: true }]}
       />
       <p class="lead valoracion-lead reveal" data-reveal style="--i:2">
-        Rellénalo en 30 segundos y te escribo para la videollamada de valoración.
+        Rellénalo en 30 segundos y únete a los más de 120 atletas recuperados.
       </p>
     </div>
 
     <div class="valoracion-form">
       <LeadForm />
     </div>
-
-    <Faq />
   </div>
 </section>
 

@@ -3,12 +3,11 @@
  * 5B: quién está detrás. La foto es SIEMPRE de Gerard (nunca stock) y es lo principal del
  * bloque: va grande justo después del titular.
  *
- * TODO(Gerard): si hay una foto profesional suya (retrato 4:5, cara en el tercio superior,
- * 1600 px de ancho o más), sustituir src/assets/photos/gerard.jpg. La actual es un fotograma
- * de su VSL (576x720 px); el srcset nunca pasa del tamaño natural.
+ * La foto (src/assets/photos/gerard.jpg) es un recorte 4:5 de la foto que envió el cliente
+ * (1717x2146); el srcset nunca pasa del tamaño natural.
  *
- * Móvil: titular, foto a todo el ancho, texto, 4 datos (2x2) y CTA.
- * Escritorio: titular arriba, foto a la izquierda con el texto y los datos a la derecha, y el
+ * Móvil: titular, foto a todo el ancho, 4 datos (2x2) y CTA.
+ * Escritorio: titular arriba, foto a la izquierda y los 4 datos en columna a la derecha, y el
  * CTA centrado debajo.
  */
 import { getImage } from 'astro:assets';
@@ -27,7 +26,8 @@ const [avif, webp] = await Promise.all([
   getImage({ src: gerard, widths, format: 'webp', quality: QUALITY.webp }),
 ]);
 const sizes = '(min-width: 1024px) 460px, (min-width: 768px) 440px, calc(100vw - 40px)';
-const alt = 'Gerard Barrantes, fisioterapeuta y fundador de RehabilityWOD, en el box';
+const alt =
+  'Gerard Barrantes, fisioterapeuta y fundador de RehabilityWOD, en una competición de CrossFit';
 
 const facts = [
   { Icon: Users, text: '+120 atletas recuperados' },
@@ -73,11 +73,6 @@ const facts = [
       </figure>
 
       <div class="about-copy">
-        <div class="about-text reveal" data-reveal>
-          <p>Soy Gerard Barrantes, fisioterapeuta y atleta de CrossFit desde 2017.</p>
-          <p>He trabajado en clínicas privadas y en la red sanitaria de Tarragona.</p>
-        </div>
-
         <ul class="about-facts" role="list">
           {facts.map(({ Icon, text }, i) => (
             <li class="about-fact reveal" data-reveal style={`--i:${i + 1}`}>
@@ -184,15 +179,6 @@ const facts = [
     margin-top: 32px;
   }
 
-  .about-text {
-    display: grid;
-    gap: 6px;
-    max-width: 24rem;
-    font-size: 1.0625rem;
-    line-height: 1.55;
-    color: var(--muted-on-dark);
-  }
-
   /* 4 datos con el mismo estilo: 2x2 en móvil y tablet. */
   .about-facts {
     display: grid;
@@ -200,7 +186,7 @@ const facts = [
     gap: 12px;
     width: 100%;
     max-width: 30rem;
-    margin: 28px 0 0;
+    margin: 0;
     padding: 0;
     list-style: none;
   }
@@ -248,11 +234,6 @@ const facts = [
     .about-copy {
       margin-top: 40px;
     }
-
-    .about-text {
-      max-width: 36rem;
-      font-size: 1.125rem;
-    }
   }
 
   /* Escritorio: foto a la izquierda y el resto a la derecha. */
@@ -271,21 +252,31 @@ const facts = [
     }
 
     .about-copy {
+      width: 100%;
       align-items: flex-start;
       margin-top: 0;
       text-align: left;
     }
 
+    /* Los 4 datos en columna junto a la foto. */
     .about-facts {
-      max-width: none;
-      margin-top: 36px;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      max-width: 440px;
     }
 
     .about-fact {
       grid-template-columns: auto minmax(0, 1fr);
       justify-items: start;
       align-items: center;
-      padding: 18px;
+      gap: 16px;
+      padding: 22px 24px;
+      font-size: 1.125rem;
+    }
+
+    .about-fact :global(.icon-ring) {
+      width: 48px;
+      height: 48px;
     }
   }
 </style>
