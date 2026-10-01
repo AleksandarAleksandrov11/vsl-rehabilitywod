@@ -7,11 +7,12 @@ import CtaButton from './CtaButton.astro';
 import SplitWords from './SplitWords.astro';
 import closingPhoto from '../assets/photos/closing.jpg';
 import closingPhotoMobile from '../assets/photos/closing-m.jpg';
-import { WIDTHS, responsive } from '../lib/images';
+import { WIDTHS, QUALITY_VEILED, responsive } from '../lib/images';
 
+// Va bajo un velo fuerte: calidad más baja, mismo resultado en pantalla.
 const [photo, photoMobile] = await Promise.all([
-  responsive(closingPhoto, WIDTHS.landscape),
-  responsive(closingPhotoMobile, WIDTHS.portrait),
+  responsive(closingPhoto, WIDTHS.landscape, QUALITY_VEILED),
+  responsive(closingPhotoMobile, WIDTHS.portrait, QUALITY_VEILED),
 ]);
 ---
 
@@ -39,6 +40,7 @@ const [photo, photoMobile] = await Promise.all([
         alt=""
         loading="lazy"
         decoding="async"
+        fetchpriority="low"
         class="closing-img"
       />
     </picture>

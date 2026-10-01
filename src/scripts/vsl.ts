@@ -107,18 +107,33 @@ window.addEventListener('message', (event) => {
   if (typeof state === 'number' && PLAY_STATES.has(state)) onPlay();
 });
 
+/** Abre la conexión con YouTube un poco antes de insertar el reproductor. */
+function warmUp(): void {
+  for (const host of [YT_ORIGIN, 'https://i.ytimg.com']) {
+    const link = document.createElement('link');
+    link.rel = 'preconnect';
+    link.href = host;
+    link.crossOrigin = '';
+    document.head.append(link);
+  }
+}
+
 if (frame) {
   facade?.addEventListener('click', () => load(true));
   if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        io.disconnect();
-        load(false);
-      },
-      { rootMargin: '0px 0px 150px 0px' },
-    );
-    io.observe(frame);
+    const observe = (margin: string, run: () => void) => {
+      const io = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+          io.disconnect();
+          run();
+        },
+        { rootMargin: margin },
+      );
+      io.observe(frame);
+    };
+    observe('0px 0px 700px 0px', warmUp);
+    observe('0px 0px 150px 0px', () => load(false));
   } else {
     load(false);
   }

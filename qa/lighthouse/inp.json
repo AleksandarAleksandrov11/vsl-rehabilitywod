@@ -3,36 +3,36 @@
   "steps": [
     {
       "label": "Rechazar cookies (banner)",
-      "maxMs": 40
+      "maxMs": 64
     },
     {
       "label": "CTA hero → #valoracion",
-      "maxMs": 32
+      "maxMs": 48
     },
     {
       "label": "Chip \"Rodilla\"",
-      "maxMs": 80
+      "maxMs": 88
     },
     {
       "label": "Saltar paso",
-      "maxMs": 40
+      "maxMs": 144
     },
     {
       "label": "Escribir nombre",
-      "maxMs": 32
+      "maxMs": 48
     },
     {
       "label": "Continuar",
-      "maxMs": 48
+      "maxMs": 88
     },
     {
       "label": "Abrir FAQ",
-      "maxMs": 40
+      "maxMs": 48
     },
     {
-      "label": "Play VSL",
-      "maxMs": 48
+      "label": "Hover/tap tarjeta",
+      "maxMs": 72
     }
   ],
-  "worstMs": 80
+  "worstMs": 144
 }

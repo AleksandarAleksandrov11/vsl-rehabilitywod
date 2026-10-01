@@ -52,7 +52,7 @@ const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve,
 function init(root: HTMLElement, form: HTMLFormElement): void {
   const steps = [...form.querySelectorAll<HTMLFieldSetElement>('fieldset[data-step]')];
   const total = steps.length;
-  const bar = root.querySelector<HTMLElement>('[data-progress-bar]');
+  const segments = [...root.querySelectorAll<HTMLElement>('[data-progress-seg]')];
   const progressText = root.querySelector<HTMLElement>('[data-progress-text]');
   const progress = root.querySelector<HTMLElement>('[data-progress]');
   const live = root.querySelector<HTMLElement>('[data-live]');
@@ -231,7 +231,9 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     }
     applyNav(step);
     if (animate) animateHeight(fromHeight);
-    if (bar) bar.style.transform = `scaleX(${step / total})`;
+    segments.forEach((seg) =>
+      seg.classList.toggle('is-done', Number(seg.dataset.progressSeg) <= step),
+    );
     if (progressText) progressText.textContent = `Paso ${step} de ${total}`;
     if (announce && live) live.textContent = `Paso ${step} de ${total}`;
     if (focus) {

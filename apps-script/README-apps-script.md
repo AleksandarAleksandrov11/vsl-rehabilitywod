@@ -5,7 +5,8 @@ programa de Google (Apps Script) que:
 
 - los guarda en una fila nueva de la hoja **Leads**: fecha y hora, nombre, teléfono, zona de
   dolor, qué le pasa y los UTM del anuncio de Meta,
-- te manda un email con todos los datos y un botón para escribir por WhatsApp,
+- manda un email a `aaswebmarketing@gmail.com` con todos los datos y un botón para responder por
+  WhatsApp,
 - deja la columna **Estado** en «Nuevo» (con color) para que la uses como mini-CRM
   (Nuevo, Contactado, Videollamada agendada, Cliente, Descartado),
 - crea una pestaña **Resumen** con los leads de hoy, de los últimos 7 días, pendientes de
@@ -15,17 +16,14 @@ Tardas unos 10 minutos. Solo hay que hacerlo una vez.
 
 ---
 
-## 1. Crea la hoja de cálculo
+## 1. Abre la hoja de cálculo
 
-1. Entra en [Google Sheets](https://sheets.google.com) con la cuenta donde quieres guardar los
-   leads.
-2. Crea una hoja en blanco y llámala **Leads RehabilityWOD**.
+La hoja de los leads es
+[Leads RehabilityWOD](https://docs.google.com/spreadsheets/d/1yXt7gCggwLjPPN55o0Q9dlNhUlENz4gDpcd0NW4I3Kc/edit).
+Ábrela con la cuenta de Google desde la que vas a instalar el script.
 
-No hace falta que crees columnas: el script crea las pestañas «Leads» y «Resumen» con la
-cabecera, la fija arriba y le da formato la primera vez.
-
-> Si ya tenías una pestaña «Leads» de una versión anterior del script y está vacía, bórrala para
-> que se cree con las columnas nuevas.
+No hace falta crear columnas: el script crea las pestañas «Leads» y «Resumen» con la cabecera, la
+fija arriba y le da formato la primera vez que se ejecuta.
 
 ## 2. Pega el script
 
@@ -43,7 +41,7 @@ cabecera, la fija arriba y le da formato la primera vez.
 | Propiedad      | Valor                                                                                  |
 | -------------- | -------------------------------------------------------------------------------------- |
 | `LEAD_SECRET`  | Una cadena larga y aleatoria (ver abajo). Es la «contraseña» entre la web y el script. |
-| `NOTIFY_EMAIL` | El correo donde quieres recibir los avisos (por ejemplo, `info@rehabilitywod.com`).    |
+| `NOTIFY_EMAIL` | `aaswebmarketing@gmail.com` (el correo que recibe el aviso de cada lead nuevo).        |
 
 4. Pulsa **Guardar propiedades del script**.
 

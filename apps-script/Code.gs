@@ -7,14 +7,14 @@
  *
  * Propiedades del script (Configuración del proyecto > Propiedades del script):
  *   LEAD_SECRET   Cadena larga y aleatoria. La misma que la variable LEAD_SECRET de Vercel.
- *   NOTIFY_EMAIL  Correo donde llegan los avisos. Si no existe: info@rehabilitywod.com
+ *   NOTIFY_EMAIL  Correo donde llegan los avisos. Si no existe: aaswebmarketing@gmail.com
  *
  * Instrucciones completas en README-apps-script.md.
  */
 
 var SHEET_NAME = 'Leads';
 var SUMMARY_NAME = 'Resumen';
-var DEFAULT_NOTIFY_EMAIL = 'info@rehabilitywod.com';
+var DEFAULT_NOTIFY_EMAIL = 'aaswebmarketing@gmail.com';
 var TIMEZONE = 'Europe/Madrid';
 var DATE_FORMAT = 'dd/MM/yyyy HH:mm';
 

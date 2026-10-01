@@ -1,18 +1,17 @@
 /**
- * Configuración central de la landing.
- * Todo lo que Gerard puede querer cambiar sin tocar componentes está aquí.
- * Los `TODO(Gerard)` se listan también en el README.
+ * Configuración central de la landing: datos de contacto, redes, vídeo y datos legales.
+ * Cambiando este archivo se actualiza toda la web (cabecera, footer, SEO, legales y WhatsApp).
  */
 
 const env = import.meta.env;
 
 export const CONFIG = {
-  // TODO(Gerard): apuntar el dominio a Vercel y confirmar la URL final (variable SITE_URL).
-  siteUrl: String(env.SITE_URL ?? 'https://rehabilitywod.com').replace(/\/+$/, ''),
+  /** Dominio de la landing. En Vercel se fija con la variable SITE_URL. */
+  siteUrl: String(env.SITE_URL ?? 'https://vsl.rehabilitywod.com').replace(/\/+$/, ''),
   pixelId: String(env.PUBLIC_META_PIXEL_ID ?? '1433154668778788'),
-  // TODO(Gerard): confirmar el número de WhatsApp. La web actual enlaza
-  // wa.me/640995494 (sin prefijo 34, el enlace no funciona) y el aviso legal da el 636748147.
+  /** Teléfono de contacto y de WhatsApp (el mismo en toda la web). */
   whatsapp: '34640995494',
+  telefono: '+34 640 99 54 94',
   email: 'info@rehabilitywod.com',
   instagram: 'https://www.instagram.com/rehability_wod/',
   instagramHandle: '@rehability_wod',
@@ -21,12 +20,6 @@ export const CONFIG = {
   vslYoutubeId: 'V3AgSalCNJs',
   vslMinutes: 7,
   vslTitle: '¿Por qué sigues con dolor al entrenar CrossFit?',
-
-  // TODO(Gerard): crear el Apps Script y poner GOOGLE_SCRIPT_URL y LEAD_SECRET en Vercel
-  // (pasos en apps-script/README-apps-script.md). Sin ellos, /api/lead funciona en modo mock.
-
-  // TODO(Gerard): si hay una foto profesional suya (retrato 4:5, 1600 px de ancho o más),
-  // sustituir src/assets/photos/gerard.jpg. La actual es un fotograma de su VSL (576x720 px).
 
   legal: {
     titular: 'GERARD BARRANTES BAUTISTA',
@@ -37,12 +30,11 @@ export const CONFIG = {
     ciudad: 'Tarragona',
     codigoPostal: '43007',
     pais: 'ES',
-    telefono: '636 748 147',
-    telefonoE164: '+34636748147',
+    telefono: '640 99 54 94',
+    telefonoE164: '+34640995494',
     email: 'info@rehabilitywod.com',
     actividad: 'Fisioterapia y readaptación online',
-    // TODO(Gerard): que un profesional revise los textos legales antes de publicar.
-    ultimaActualizacion: 'Septiembre de 2026',
+    ultimaActualizacion: 'Octubre de 2026',
   },
 } as const;
 
@@ -54,3 +46,6 @@ export const SEO = {
 
 export const whatsappLink = (text?: string) =>
   `https://wa.me/${CONFIG.whatsapp}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
+
+/** Mensaje con el que se abre WhatsApp desde los botones de la web. */
+export const WHATSAPP_TEXT = 'Hola Gerard, quiero información sobre la valoración.';

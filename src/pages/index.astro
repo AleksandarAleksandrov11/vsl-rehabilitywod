@@ -12,6 +12,7 @@ import Faq from '../components/Faq.astro';
 import ClosingBand from '../components/ClosingBand.astro';
 import Footer from '../components/Footer.astro';
 import StickyCta from '../components/StickyCta.astro';
+import WhatsappButton from '../components/WhatsappButton.astro';
 import { heroSources, HERO_MEDIA } from '../lib/hero';
 import { CONFIG, SEO } from '../config';
 
@@ -83,6 +84,7 @@ const jsonLd = {
   </main>
   <Footer withStickyGap />
   <StickyCta />
+  <WhatsappButton location="float" tabindex={-1} />
   <script>
     import '../scripts/home';
   </script>

@@ -1,15 +1,12 @@
 /**
  * Movimiento de la home (solo transform, con requestAnimationFrame):
  * - Parallax sutil (±40 px) en la banda de cierre.
- * - Línea de los pasos (escritorio): el punto avanza con el scroll.
  * Con prefers-reduced-motion no hay parallax ni avance animado.
  */
 const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const MAX_SHIFT = 40;
 
 const layers = [...document.querySelectorAll<HTMLElement>('[data-parallax]')];
-const rail = document.querySelector<HTMLElement>('[data-rail]');
-const railDot = rail?.querySelector<HTMLElement>('[data-rail-dot]');
 const visible = new Set<Element>();
 let ticking = false;
 
@@ -25,12 +22,6 @@ function frame(): void {
     const shift = Math.max(-1, Math.min(1, t)) * MAX_SHIFT;
     layer.style.transform = `translate3d(0, ${shift.toFixed(1)}px, 0)`;
   }
-  if (rail && railDot && visible.has(rail) && rail.offsetWidth > 0) {
-    const rect = rail.getBoundingClientRect();
-    const p = Math.max(0, Math.min(1, (vh * 0.85 - rect.top) / (vh * 0.5)));
-    rail.style.setProperty('--p', p.toFixed(3));
-    railDot.style.setProperty('--x', `${(p * rect.width).toFixed(1)}px`);
-  }
 }
 
 function request(): void {
@@ -40,7 +31,7 @@ function request(): void {
   }
 }
 
-if (!reduce && (layers.length || rail) && 'IntersectionObserver' in window) {
+if (!reduce && layers.length && 'IntersectionObserver' in window) {
   const io = new IntersectionObserver((entries) => {
     for (const entry of entries) {
       if (entry.isIntersecting) visible.add(entry.target);
@@ -49,11 +40,8 @@ if (!reduce && (layers.length || rail) && 'IntersectionObserver' in window) {
     request();
   });
   layers.forEach((layer) => layer.parentElement && io.observe(layer.parentElement));
-  if (rail) io.observe(rail);
   window.addEventListener('scroll', request, { passive: true });
   window.addEventListener('resize', request, { passive: true });
-} else if (rail) {
-  rail.style.setProperty('--p', '1');
 }
 
 export {};

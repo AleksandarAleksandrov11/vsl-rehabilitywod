@@ -8,7 +8,8 @@ const proxy = process.env.HTTPS_PROXY
 export default defineConfig({
   testDir: 'tests',
   outputDir: 'qa/.tmp/test-results',
-  timeout: 120_000,
+  // El QA por viewport (5 páginas, axe, capturas y formulario) es el test más largo.
+  timeout: 180_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
   workers: process.env.CI ? 2 : 4,

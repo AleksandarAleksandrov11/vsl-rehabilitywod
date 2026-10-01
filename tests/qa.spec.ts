@@ -1,5 +1,5 @@
 /**
- * QA de la landing (sección 11 del encargo de rediseño; conserva los flujos del QA original).
+ * QA de la landing: 12 viewports, capturas, accesibilidad, rendimiento, copy y flujos críticos.
  * Se ejecuta con `npm run qa` (compila con el adaptador de Node y sirve dist/ aplicando vercel.json).
  */
 import { test, expect, type Page, type BrowserContext, type Request } from '@playwright/test';
@@ -37,7 +37,7 @@ const SECTIONS = [
 ] as const;
 
 const LEADS_FILE = 'qa/.tmp/leads.jsonl';
-const SHOTS = 'qa/screenshots-v2';
+const SHOTS = 'qa/screenshots';
 const CONSENT_REJECTED = { v: 1, marketing: false, ts: Date.now() };
 const CONSENT_ACCEPTED = { v: 1, marketing: true, ts: Date.now() };
 
@@ -508,6 +508,7 @@ test.describe('Viewports', () => {
         await chip(fp, 'Rodilla').click();
         await fp.locator('fieldset[data-step="2"]').waitFor();
         await fp.getByRole('button', { name: 'Saltar este paso' }).click();
+        await fp.locator('fieldset[data-step="3"]').waitFor();
         await fp.locator('#nombre').fill('Test');
         await fp.getByRole('button', { name: 'Continuar' }).click();
         await fp.locator('fieldset[data-step="4"]').waitFor();
@@ -1616,6 +1617,11 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       .locator('a[data-cta]')
       .evaluateAll((els) => els.map((a) => [a.getAttribute('data-cta'), a.getAttribute('href')]));
     for (const [cta, href] of hrefs) {
+      // Los botones de WhatsApp abren el chat; el resto lleva al formulario (o al vídeo).
+      if (String(cta).startsWith('whatsapp')) {
+        expect(href, String(cta)).toMatch(/^https:\/\/wa\.me\/34640995494\?text=/);
+        continue;
+      }
       expect(href, String(cta)).toBe(cta === 'hero_video' ? '#video' : '#valoracion');
     }
     await ctx.close();
@@ -1647,7 +1653,7 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     expect(off).toEqual([]);
   });
 
-  test('copy del rediseño y textos eliminados', async ({ browser }) => {
+  test('copy de la home y textos que no deben aparecer', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     await skipIntro(ctx);
     const page = await ctx.newPage();
@@ -1701,10 +1707,10 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       'Registro de dolor y sueño',
       'Valorar mi caso',
       'Atletas reales. Vuelta real al box.',
-      'Quién está detrás',
       'Conozco el box por dentro.',
       'Fisioterapeuta titulado',
-      'Especialista en CrossFit',
+      'Readaptación deportiva',
+      'Soy Gerard Barrantes, fisioterapeuta y atleta de CrossFit.',
       '+120 atletas recuperados',
       'Gerard Barrantes Fundador de RehabilityWOD',
       'Cuéntame qué te pasa.',
@@ -1738,23 +1744,26 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     expect(text).not.toContain('Te escribo yo por WhatsApp');
     expect(text).not.toContain('Sin compromiso');
     expect(text).not.toMatch(/Valoración inicial gratuita/i);
-    // Quitados a petición del cliente (v3).
+    // Textos retirados: no deben reaparecer.
     expect(text).not.toContain('Programas de 8, 12 o 24 semanas. El precio');
     expect(text).not.toContain('Abro plazas cuando tengo hueco');
     expect(text).not.toContain('Mira esto antes de volver al box');
     expect(text).not.toContain('Si tu número no es español');
-    // Quitados en v4.
     expect(text).not.toContain('Vídeo · 7 min');
     expect(text).not.toContain('El problema no es tu lesión');
-    expect(text).not.toContain('Soy Gerard Barrantes');
+    expect(text).not.toContain('Especialista en CrossFit');
+    expect(text).not.toContain('636 748 147');
     expect(text).not.toMatch(/desde 2017/i);
     const hero = norm(await page.locator('#inicio').innerText());
     expect(hero.toLowerCase()).not.toContain('fisioterapia online para atletas de crossfit');
+    // Barra fija: el CTA y, a su derecha, WhatsApp con el mensaje ya escrito.
     const sticky = norm(
       await page.locator('[data-sticky-cta]').evaluate((el) => el.textContent ?? ''),
     ).trim();
-    expect(sticky).toBe('Quiero valorar mi caso');
-    expect(await page.locator('[data-sticky-cta] a').count()).toBe(1);
+    expect(sticky).toContain('Quiero valorar mi caso');
+    expect(await page.locator('[data-sticky-cta] a').count()).toBe(2);
+    const wa = page.locator('[data-sticky-cta] [data-cta="whatsapp_sticky"]');
+    await expect(wa).toHaveAttribute('href', /^https:\/\/wa\.me\/34640995494\?text=/);
     for (const z of [
       'Hombro',
       'Codo',
@@ -1823,7 +1832,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     await ctx.close();
   });
 
-  // El encargo v2 fijaba 7200 px; en v3 el cliente pidió más aire entre secciones y textos.
   test('home: altura total en 390x844 ≤ 10 000 px', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     await setConsent(ctx, CONSENT_REJECTED);
@@ -1943,7 +1951,7 @@ test.describe('Páginas legales y rutas', () => {
       expect(text).toContain('GERARD BARRANTES BAUTISTA');
       expect(text).toContain('48010022Y');
       expect(text).toContain('43007 Tarragona');
-      expect(text).toContain('636 748 147');
+      expect(text).toContain('640 99 54 94');
       expect(text).toContain('info@rehabilitywod.com');
       expect(text).toMatch(/Última actualización: \S+/);
     });

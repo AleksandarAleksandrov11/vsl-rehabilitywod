@@ -16,7 +16,17 @@ function ensureQueue(): void {
 }
 
 export type CtaLocation =
-  'header' | 'hero' | 'hero_video' | 'vsl' | 'compare' | 'how' | 'about' | 'closing' | 'sticky';
+  | 'header'
+  | 'hero'
+  | 'hero_video'
+  | 'vsl'
+  | 'compare'
+  | 'how'
+  | 'about'
+  | 'closing'
+  | 'sticky'
+  | 'whatsapp_float'
+  | 'whatsapp_sticky';
 
 export function trackEvent(name: string, data?: Record<string, Primitive>): void {
   try {

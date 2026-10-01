@@ -6,9 +6,10 @@
 import LeadForm from './LeadForm.astro';
 import SplitWords from './SplitWords.astro';
 import formPhoto from '../assets/photos/form-bg.jpg';
-import { WIDTHS, responsive } from '../lib/images';
+import { WIDTHS, QUALITY_VEILED, responsive } from '../lib/images';
 
-const bg = await responsive(formPhoto, WIDTHS.landscape);
+// Va bajo un velo casi opaco: con calidad alta no se notaría y pesaría el doble.
+const bg = await responsive(formPhoto, WIDTHS.landscape, QUALITY_VEILED);
 ---
 
 <section
@@ -28,6 +29,7 @@ const bg = await responsive(formPhoto, WIDTHS.landscape);
         alt=""
         loading="lazy"
         decoding="async"
+        fetchpriority="low"
         class="valoracion-img"
       />
     </picture>
@@ -38,7 +40,7 @@ const bg = await responsive(formPhoto, WIDTHS.landscape);
     <div class="valoracion-head">
       <SplitWords
         id="valoracion-title"
-        class="h2-display"
+        class="h2-display valoracion-title"
         parts={['Cuéntame', { br: 'always' }, { text: 'qué te pasa.', accent: true }]}
       />
       <p class="lead valoracion-lead reveal" data-reveal style="--i:2">
@@ -91,6 +93,11 @@ const bg = await responsive(formPhoto, WIDTHS.landscape);
     background:
       radial-gradient(70% 420px at 50% 0%, rgba(5, 148, 103, 0.18), rgba(5, 148, 103, 0) 100%),
       linear-gradient(180deg, rgba(10, 10, 10, 0.84) 0, rgba(10, 10, 10, 0.9) 360px, #0a0a0a 720px);
+  }
+
+  /* Con line-height 0.9 la tilde de "QUÉ" toca "CUÉNTAME": un poco más de aire. */
+  .valoracion-title {
+    line-height: 1.04;
   }
 
   .valoracion-head {
