@@ -29,7 +29,7 @@ import { CONFIG } from '../../config';
 export const prerender = false;
 
 const MAX_BODY_BYTES = 16 * 1024;
-const GOOGLE_TIMEOUT_MS = 8000;
+const GOOGLE_TIMEOUT_MS = 12000;
 const CAPI_TIMEOUT_MS = 4000;
 const META_GRAPH_VERSION = 'v24.0';
 
@@ -289,14 +289,12 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     });
 
   const mock = !GOOGLE_SCRIPT_URL || LEAD_MOCK === '1' || LEAD_MOCK === 'true';
-  if (mock) {
-    await mockSave(lead);
-  } else {
-    const saved = await sendToGoogle(lead);
-    if (!saved) return fail(502, 'upstream');
-  }
-
-  await sendCapi(lead, request, clientAddress);
+  // Guardar el lead y avisar a Meta a la vez: la respuesta tarda lo que tarde el más lento.
+  const [saved] = await Promise.all([
+    mock ? mockSave(lead).then(() => true) : sendToGoogle(lead),
+    sendCapi(lead, request, clientAddress).catch(() => undefined),
+  ]);
+  if (!saved) return fail(502, 'upstream');
   return ok();
 };
 

@@ -114,7 +114,13 @@ Instagram, Messenger o Audience Network), `utm_campaign` con el nombre de la cam
 `fbclid` por su cuenta. Consejo: pon nombres claros a campañas y anuncios, porque son los que verás
 en la hoja.
 
-## 8. Si cambias el script
+## 8. Si ya tenías una versión anterior
+
+Si la hoja ya tiene pestañas «Leads» y «Resumen» de una versión anterior, **bórralas** (clic derecho
+en la pestaña → Eliminar) y ejecuta `testLead`: se crean de nuevo con las columnas actuales. Si solo
+falla la pestaña Resumen, ejecuta la función `rebuildSummary`.
+
+## 9. Si cambias el script
 
 Cada vez que modifiques `Code.gs`:
 
@@ -137,7 +143,7 @@ incorrecto.
 
 | Columna              | Qué es                                                                                                 |
 | -------------------- | ------------------------------------------------------------------------------------------------------ |
-| A Fecha y hora       | Día y hora (Madrid) de la solicitud, `dd/MM/yyyy HH:mm`. Es una fecha real: se ordena y filtra         |
+| A Fecha y hora       | Día y hora (Madrid) de la solicitud. Es una fecha real: se ordena y filtra                             |
 | B Nombre             | Nombre                                                                                                 |
 | C Teléfono           | En formato internacional, p. ej. `+34612345678`                                                        |
 | D Zona de dolor      | Hombro, Codo, Muñeca, Espalda / lumbar, Cadera, Rodilla, Tobillo / pie u Otro                          |
@@ -147,15 +153,13 @@ incorrecto.
 | H utm_campaign       | Nombre de la campaña                                                                                   |
 | I utm_content        | Nombre del anuncio                                                                                     |
 | J utm_term           | Nombre del conjunto de anuncios                                                                        |
-| K fbclid             | Identificador de clic de Meta                                                                          |
-| L Estado             | Desplegable con color para tu seguimiento. Empieza en «Nuevo»                                          |
-| M Notas              | Libre, para ti                                                                                         |
-| N Landing            | Página en la que rellenó el formulario                                                                 |
-| O Referrer           | Web de la que venía, si la hay                                                                         |
-| P Dispositivo        | mobile, tablet o desktop                                                                               |
-| Q Consent. salud     | Si aceptó el tratamiento de sus datos de salud (siempre «Sí»)                                          |
-| R Consent. marketing | Si aceptó las cookies de Meta                                                                          |
-| S Event ID           | Identificador del envío: es el mismo `eventID` del evento Lead del Pixel (y de la API de conversiones) |
+| K Estado             | Desplegable con color para tu seguimiento. Empieza en «Nuevo»                                          |
+| L Notas              | Libre, para ti                                                                                         |
+| M Landing            | Página en la que rellenó el formulario                                                                 |
+| N Dispositivo        | mobile, tablet o desktop                                                                               |
+| O Consent. salud     | Si aceptó el tratamiento de sus datos de salud (siempre «Sí»)                                          |
+| P Consent. marketing | Si aceptó las cookies de Meta                                                                          |
+| Q Event ID           | Identificador del envío: es el mismo `eventID` del evento Lead del Pixel (y de la API de conversiones) |
 
 ## Problemas frecuentes
 
@@ -165,7 +169,7 @@ incorrecto.
   «Cualquier usuario».
 - **No llegan los emails**: revisa `NOTIFY_EMAIL` y la carpeta de spam. Google limita los emails
   diarios de Apps Script (unos 100 al día en cuentas gratuitas; más en Google Workspace).
-- **Has cambiado el script y no se nota**: tienes que publicar una nueva versión (paso 8).
+- **Has cambiado el script y no se nota**: tienes que publicar una nueva versión (paso 9).
 
 ## Privacidad
 
