@@ -5,10 +5,16 @@
 
 const env = import.meta.env;
 
+/** Variable de entorno con valor por defecto: una variable vacía también usa el valor por defecto. */
+const fromEnv = (value: unknown, fallback: string): string => {
+  const text = typeof value === 'string' ? value.trim() : '';
+  return text || fallback;
+};
+
 export const CONFIG = {
   /** Dominio de la landing. En Vercel se fija con la variable SITE_URL. */
-  siteUrl: String(env.SITE_URL ?? 'https://vsl.rehabilitywod.com').replace(/\/+$/, ''),
-  pixelId: String(env.PUBLIC_META_PIXEL_ID ?? '1433154668778788'),
+  siteUrl: fromEnv(env.SITE_URL, 'https://vsl.rehabilitywod.com').replace(/\/+$/, ''),
+  pixelId: fromEnv(env.PUBLIC_META_PIXEL_ID, '1433154668778788'),
   /** Teléfono de contacto y de WhatsApp (el mismo en toda la web). */
   whatsapp: '34640995494',
   telefono: '+34 640 99 54 94',

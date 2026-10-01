@@ -537,6 +537,13 @@ test.describe('Viewports', () => {
 test.describe('Consentimiento y Pixel', () => {
   const vp = VIEWPORTS[3]; // 390x844
 
+  test('el ID del Pixel está en la página (aunque la variable de entorno esté vacía)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-pixel-id', /^\d{10,}$/);
+  });
+
   test('sin decidir: ninguna petición a Meta ni cookie _fbp', async ({ browser }) => {
     const ctx = await newCtx(browser, vp);
     const page = await ctx.newPage();
