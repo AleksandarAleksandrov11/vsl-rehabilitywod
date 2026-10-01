@@ -26,7 +26,9 @@ export default defineConfig({
   adapter:
     process.env.ASTRO_ADAPTER === 'node'
       ? (await import('@astrojs/node')).default({ mode: 'middleware' })
-      : vercel(),
+      : vercel({
+          webAnalytics: { enabled: true },
+        }),
   integrations: [
     sitemap({
       filter: (page) => !page.includes('/gracias'),
