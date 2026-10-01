@@ -92,7 +92,7 @@ const sha256 = (value: string) => createHash('sha256').update(value).digest('hex
 
 async function sendCapi(lead: Lead, request: Request, clientAddress: string | undefined) {
   const token = META_CAPI_TOKEN;
-  const pixelId = String(import.meta.env.PUBLIC_META_PIXEL_ID ?? CONFIG.pixelId);
+  const pixelId = CONFIG.pixelId;
   if (!token || !pixelId || !lead.consentimiento_marketing) return;
 
   const cookies = request.headers.get('cookie');
