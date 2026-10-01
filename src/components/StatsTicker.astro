@@ -16,7 +16,7 @@ import CalendarRange from '@lucide/astro/icons/calendar-range';
 const items = [
   { Icon: Users, strong: '+120', label: 'atletas recuperados' },
   { Icon: Dumbbell, strong: 'Sin parar', label: 'de entrenar' },
-  { Icon: Activity, strong: 'Desde 2017', label: 'fisio y atleta de CrossFit' },
+  { Icon: Activity, strong: '+10 años', label: 'en CrossFit' },
   { Icon: Smartphone, strong: '100 %', label: 'online' },
   { Icon: MessageCircle, strong: 'Diario', label: 'seguimiento por app y WhatsApp' },
   { Icon: RefreshCw, strong: 'Cada semana', label: 'reajustes del plan' },
@@ -99,17 +99,19 @@ const copies = [false, true] as const;
     scroll-snap-align: start;
   }
 
+  /* Número o dato grande arriba y la explicación pequeña debajo, a la derecha del icono. */
   .tk-text {
     display: flex;
-    align-items: baseline;
-    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
     white-space: nowrap;
   }
 
   .tk-strong {
     font-family: var(--font-display);
     font-weight: 800;
-    font-size: 2.125rem; /* 34 px */
+    font-size: 1.875rem; /* 30 px */
     line-height: 1;
     letter-spacing: 0.005em;
     text-transform: uppercase;
@@ -117,8 +119,8 @@ const copies = [false, true] as const;
   }
 
   .tk-label {
-    font-size: 0.875rem;
-    line-height: 1.3;
+    font-size: 0.8125rem;
+    line-height: 1.2;
     color: var(--muted-on-dark);
   }
 

@@ -17,7 +17,9 @@
     "format:check": "prettier --check .",
     "qa": "node scripts/qa.mjs",
     "qa:lighthouse": "node scripts/lighthouse.mjs",
-    "qa:server": "node scripts/qa-server.mjs"
+    "qa:server": "node scripts/qa-server.mjs",
+    "qa:sheets": "node scripts/sheets-e2e.mjs",
+    "qa:pixel": "node scripts/pixel-check.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

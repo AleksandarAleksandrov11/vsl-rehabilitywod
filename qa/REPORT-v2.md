@@ -251,3 +251,68 @@ Foto de Gerard: no llegó adjunta. Se usa el recorte provisional de `rehabilityw
 Las fotos de ambiente siguen siendo de Unsplash salvo el póster del vídeo, que ahora es la portada
 real de la VSL. La portada y la foto de Gerard son fotogramas de su propio vídeo publicado en
 YouTube (imágenes públicas del vídeo, sin retoques).
+
+## 10. Ajustes v4 (30/09/2026, a petición del cliente)
+
+### Qué se ha cambiado
+
+- **Vídeo**: sin la etiqueta "Vídeo · 7 min" ni el botón de play propio. Se ve el reproductor de
+  YouTube tal cual (modo de privacidad mejorada). Para no cargar YouTube en la primera pintura, el
+  iframe se inserta cuando el vídeo se acerca a la pantalla (antes se ve la portada del vídeo desde
+  la web). El play se detecta por `postMessage` y envía `vsl_play` y `ViewContent`. La política de
+  cookies se ha actualizado.
+- **Quién está detrás**: sin el párrafo "Soy Gerard Barrantes…"; la foto es la que envió el cliente
+  (recorte 4:5 de 1717x2146). En escritorio, los 4 datos van en columna junto a la foto.
+- **Banda de cierre**: foto de Gerard en el rig enviada por el cliente (recorte 16:9 en escritorio
+  y la foto entera en móvil).
+- **Valoración**: "Rellénalo en 30 segundos y únete a los más de 120 atletas recuperados."
+- **Preguntas frecuentes**: sección propia con fondo verde claro (`--brand-soft`) entre el
+  formulario y la banda de cierre.
+- **Hero**: "Estés donde estés." en su propia línea.
+- **Cinta de stats**: el texto pequeño va debajo del grande, a la derecha del icono.
+- **Eliminada** la banda "El problema no es tu lesión. Es el enfoque." (y sus fotos).
+- **Google Sheets**: columnas en el orden pedido (Fecha y hora, Nombre, Teléfono, Zona de dolor,
+  Qué le pasa, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid), fecha real,
+  Estado con colores y pestaña Resumen (hoy, 7 días, pendientes, por zona, campaña, anuncio y
+  origen). Guía con los parámetros de URL para los anuncios de Meta.
+
+### Pruebas nuevas
+
+| Prueba                                                                               | Resultado                                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run qa:sheets` (Code.gs real, hoja simulada, envío desde anuncio de Meta)       | **25/25**: fila columna a columna, Resumen, email, sin JS, secreto incorrecto e inyección de fórmulas                                                                                                                       |
+| `npm run qa:pixel` (fbevents.js y configuración reales del Pixel `1433154668778788`) | **13/13**: nada sin consentimiento o al rechazar, `PageView`, `_fbp`, `ViewContent` al dar al play del reproductor real de YouTube, `FormStart`, `Lead` con el mismo `eventID` que el servidor, retirada del consentimiento |
+| Pixel en Meta                                                                        | La configuración del Pixel existe y es específica (359 KB, frente a 30 KB genéricos de un ID inventado), sin eventos restringidos ni fuentes bloqueadas                                                                     |
+
+Las llamadas de eventos del Pixel se responden en local en las pruebas para no meter leads de prueba
+en las estadísticas del cliente. La recepción en Events Manager se comprueba con el dominio real
+(README, sección 5).
+
+### Problemas encontrados y arreglo
+
+| #   | Problema                                                                                         | Arreglo                                                                                      |
+| --- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| 1   | El navegador de pruebas no confiaba en el certificado del proxy del entorno (YouTube no cargaba) | Se añadió el certificado del proxy al almacén del navegador (sin desactivar la verificación) |
+| 2   | Si YouTube no carga, la portada se quitaba a los 2,5 s y quedaba un recuadro vacío               | La portada solo se retira cuando el reproductor ha cargado                                   |
+| 3   | Destello negro al aparecer el reproductor (YouTube pinta un instante después del `load`)         | El fundido empieza 500 ms después                                                            |
+| 4   | En Chromium sin navegador real el reproductor se queda "cargando" y no llega a "reproduciendo"   | El play cuenta con el primer estado "cargando" o "reproduciendo" (solo aparecen tras pulsar) |
+| 5   | axe y la consola marcaban fallos dentro del reproductor de YouTube                               | El iframe de YouTube se excluye de axe y su aviso de GPU se trata como de terceros           |
+| 6   | "Preguntas frecuentes" en dos líneas contaba como viuda                                          | Un titular de dos palabras en dos líneas no se considera viuda                               |
+| 7   | Capturas de sección tomadas a mitad de un reveal o con fotos lazy sin cargar                     | Las capturas esperan a las fotos y muestran los reveals en su estado final                   |
+
+En la captura `844x390/home-02-video.jpg` el reproductor sale vacío: Chromium no pinta un iframe de
+otro origen que queda fuera de la pantalla al capturar una sección más alta que la ventana. Al hacer
+scroll se ve la portada y después el reproductor de YouTube (comprobado a 100 ms, 1,2 s y 5 s).
+
+### Resultados
+
+| Medida                               | Resultado                                                      |
+| ------------------------------------ | -------------------------------------------------------------- |
+| Tests (12 viewports)                 | **60/60** en verde, `astro check`, ESLint y Prettier limpios   |
+| Lighthouse móvil (mediana de 3)      | **98** / 100 / 100 / 100 · LCP 2,18 s · TBT 0 ms · CLS 0       |
+| Lighthouse escritorio (mediana de 3) | **100** / 100 / 100 / 100 · LCP 0,63 s · CLS 0                 |
+| Peor interacción (CPU x4)            | 104 ms                                                         |
+| JS de la home / de animación         | 11,2 KB brotli / 1,25 KB gzip                                  |
+| Palabras de la home                  | 298 (máx. 420)                                                 |
+| Altura en 390x844                    | 9013 px                                                        |
+| Contraste peor punto                 | Texto grande 3,49:1 (acento del H1 a 320); texto normal 5,52:1 |

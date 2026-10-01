@@ -1,10 +1,10 @@
 ---
 /**
- * Sección 2: VSL. La portada es la del propio vídeo, servida desde la web (no desde YouTube):
- * antes del clic no hay iframe ni ninguna petición a YouTube. Al hacer clic, vsl.ts carga el
- * iframe de youtube-nocookie con autoplay y un fundido de 250 ms.
+ * Sección 2: VSL con el reproductor de YouTube tal cual (modo de privacidad mejorada).
+ * Para no cargar YouTube en la primera pintura, vsl.ts inserta el iframe cuando el vídeo se
+ * acerca a la pantalla; hasta entonces se ve la portada del vídeo servida desde la web (un
+ * clic en ella carga el reproductor y lo pone en marcha).
  */
-import Play from '@lucide/astro/icons/play';
 import RotateCcw from '@lucide/astro/icons/rotate-ccw';
 import Crosshair from '@lucide/astro/icons/crosshair';
 import Route from '@lucide/astro/icons/route';
@@ -15,7 +15,7 @@ import { WIDTHS, responsive } from '../lib/images';
 import { CONFIG } from '../config';
 
 const id = CONFIG.vslYoutubeId;
-const embedSrc = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
+const embedSrc = `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&enablejsapi=1`;
 const poster = await responsive(coverPhoto, WIDTHS.landscape);
 const sizes = '(min-width: 1088px) 1040px, calc(100vw - 24px)';
 
@@ -30,10 +30,6 @@ const keys = [
   <div class="vsl-glow" aria-hidden="true"></div>
 
   <div class="container-x vsl-head">
-    <p class="vsl-pill reveal" data-reveal>
-      <Play size={14} stroke-width={1.75} aria-hidden="true" class="vsl-pill-icon" />
-      Vídeo · {CONFIG.vslMinutes} min
-    </p>
     <SplitWords
       id="vsl-title"
       class="h2-display vsl-title"
@@ -65,15 +61,6 @@ const keys = [
           class="vsl-poster"
         />
       </picture>
-      <span class="vsl-veil" aria-hidden="true"></span>
-      <span class="vsl-play" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="30" height="30" class="vsl-play-icon" focusable="false">
-          <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.4-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"></path>
-        </svg>
-      </span>
-      <span class="vsl-duration tabular" aria-hidden="true">
-        7:00
-      </span>
     </button>
     <noscript>
       <a class="vsl-noscript" href={`https://www.youtube.com/watch?v=${id}`}>
@@ -126,29 +113,6 @@ const keys = [
     text-align: center;
   }
 
-  .vsl-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 30px;
-    padding: 0 14px;
-    border: 1px solid var(--hair-strong-on-dark);
-    border-radius: 999px;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    color: var(--ink-on-dark);
-  }
-
-  .vsl-pill :global(.vsl-pill-icon) {
-    color: var(--brand-bright);
-    fill: currentColor;
-  }
-
-  .vsl-title {
-    margin-top: 18px;
-  }
-
   .vsl-lead {
     margin-top: 16px;
   }
@@ -181,6 +145,7 @@ const keys = [
     text-align: left;
     overflow: hidden;
     border-radius: inherit;
+    cursor: pointer;
   }
 
   .vsl-facade:focus-visible {
@@ -197,85 +162,6 @@ const keys = [
 
   .vsl-poster {
     object-fit: cover;
-    transition: transform 0.9s var(--ease);
-  }
-
-  /* Portada tal cual; solo un velo muy suave que se aclara al pasar el ratón. */
-  .vsl-veil {
-    position: absolute;
-    inset: 0;
-    background: rgba(10, 10, 10, 0.12);
-    transition: opacity 0.6s var(--ease);
-  }
-
-  /* Play: 84 px en --brand-strong con un anillo que late cada 2,2 s. */
-  .vsl-play {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    display: grid;
-    place-items: center;
-    width: 84px;
-    height: 84px;
-    margin: -42px 0 0 -42px;
-    border-radius: 50%;
-    background: var(--brand-strong);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-    transition: transform 0.5s var(--ease);
-  }
-
-  .vsl-play::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    border: 2px solid var(--brand-bright);
-    opacity: 0;
-    animation: vsl-ring 2.2s var(--ease) infinite;
-  }
-
-  .vsl-play-icon {
-    position: relative;
-    margin-left: 4px;
-    fill: #ffffff;
-  }
-
-  @keyframes vsl-ring {
-    0% {
-      transform: scale(1);
-      opacity: 0.5;
-    }
-    70%,
-    100% {
-      transform: scale(1.35);
-      opacity: 0;
-    }
-  }
-
-  .vsl-duration {
-    position: absolute;
-    right: 14px;
-    bottom: 14px;
-    padding: 5px 11px;
-    border-radius: 999px;
-    background: rgba(10, 10, 10, 0.72);
-    font-size: 0.8125rem;
-    font-weight: 600;
-    line-height: 1.2;
-  }
-
-  @media (hover: hover) {
-    .vsl-facade:hover .vsl-poster {
-      transform: scale(1.03);
-    }
-
-    .vsl-facade:hover .vsl-play {
-      transform: scale(1.08);
-    }
-
-    .vsl-facade:hover .vsl-veil {
-      opacity: 0;
-    }
   }
 
   .vsl-frame :global(iframe) {

@@ -3,6 +3,7 @@
  *
  * La web (/api/lead en Vercel) envía cada solicitud de valoración a esta aplicación web.
  * El script comprueba el secreto, guarda el lead en la hoja "Leads" y avisa por email.
+ * La pestaña "Resumen" cuenta los leads por día, zona de dolor y campaña de Meta.
  *
  * Propiedades del script (Configuración del proyecto > Propiedades del script):
  *   LEAD_SECRET   Cadena larga y aleatoria. La misma que la variable LEAD_SECRET de Vercel.
@@ -12,37 +13,50 @@
  */
 
 var SHEET_NAME = 'Leads';
+var SUMMARY_NAME = 'Resumen';
 var DEFAULT_NOTIFY_EMAIL = 'info@rehabilitywod.com';
 var TIMEZONE = 'Europe/Madrid';
 var DATE_FORMAT = 'dd/MM/yyyy HH:mm';
 
+// Columnas de la hoja "Leads" (A → S). Las 11 primeras son las que se leen a diario:
+// cuándo, quién, qué le pasa y de qué anuncio de Meta viene.
 var HEADERS = [
-  'Fecha',
-  'Zona',
-  'Detalle',
-  'Nombre',
-  'Teléfono',
-  'Estado',
-  'Notas',
-  'utm_source',
-  'utm_medium',
-  'utm_campaign',
-  'utm_content',
-  'utm_term',
-  'fbclid',
-  'Landing',
-  'Referrer',
-  'Dispositivo',
-  'Consent. salud',
-  'Consent. marketing',
-  'Event ID',
+  'Fecha y hora', // A
+  'Nombre', // B
+  'Teléfono', // C
+  'Zona de dolor', // D
+  'Qué le pasa', // E
+  'utm_source', // F
+  'utm_medium', // G
+  'utm_campaign', // H
+  'utm_content', // I
+  'utm_term', // J
+  'fbclid', // K
+  'Estado', // L
+  'Notas', // M
+  'Landing', // N
+  'Referrer', // O
+  'Dispositivo', // P
+  'Consent. salud', // Q
+  'Consent. marketing', // R
+  'Event ID', // S
 ];
 
+// Posición (1-based) de las columnas con formato especial.
+var COL = { fecha: 1, telefono: 3, detalle: 5, estado: 12, notas: 13, eventId: 19 };
+
 var ESTADOS = ['Nuevo', 'Contactado', 'Videollamada agendada', 'Cliente', 'Descartado'];
+var ESTADO_COLORES = {
+  Nuevo: '#FFF4CC',
+  Contactado: '#DDEBFF',
+  'Videollamada agendada': '#E8DDFF',
+  Cliente: '#D1FAE5',
+  Descartado: '#EEEEEE',
+};
 
 // Anchos de columna (px) para que la hoja se lea bien desde el primer día.
 var COLUMN_WIDTHS = [
-  130, 110, 320, 140, 140, 170, 260, 110, 110, 140, 120, 110, 140, 200, 160, 100, 110, 130, 280,
+  135, 140, 140, 130, 320, 110, 110, 160, 160, 140, 140, 170, 240, 200, 160, 100, 110, 130, 280,
 ];
 
 /* ------------------------------------------------------------------ */
@@ -72,7 +86,7 @@ function doPost(e) {
 
   try {
     var lead = normalizeLead_(data);
-    appendLead_(lead);
+    appendLead_(lead, new Date());
     notify_(lead, props.getProperty('NOTIFY_EMAIL') || DEFAULT_NOTIFY_EMAIL);
     return json_({ ok: true });
   } catch (err) {
@@ -101,6 +115,7 @@ function getSheet_() {
   } else if (sheet.getLastRow() === 0) {
     setupSheet_(sheet);
   }
+  if (!ss.getSheetByName(SUMMARY_NAME)) setupSummary_(ss);
   return sheet;
 }
 
@@ -121,14 +136,21 @@ function setupSheet_(sheet) {
   for (var i = 0; i < COLUMN_WIDTHS.length; i++) {
     sheet.setColumnWidth(i + 1, COLUMN_WIDTHS[i]);
   }
-  // Teléfono y Event ID como texto (sin notación científica ni fórmulas).
-  sheet.getRange('E:E').setNumberFormat('@');
-  sheet.getRange('S:S').setNumberFormat('@');
-  sheet.getRange('A:A').setNumberFormat(DATE_FORMAT);
-  // Detalle y Notas con ajuste de texto.
-  sheet.getRange('C:C').setWrap(true);
-  sheet.getRange('G:G').setWrap(true);
+  // Fecha como fecha real (se puede ordenar y filtrar); teléfono y Event ID como texto.
+  columnRange_(sheet, COL.fecha).setNumberFormat(DATE_FORMAT);
+  columnRange_(sheet, COL.telefono).setNumberFormat('@');
+  columnRange_(sheet, COL.eventId).setNumberFormat('@');
+  // "Qué le pasa" y Notas con ajuste de texto.
+  columnRange_(sheet, COL.detalle).setWrap(true);
+  columnRange_(sheet, COL.notas).setWrap(true);
+  sheet.getRange(1, 1, sheet.getMaxRows(), HEADERS.length).setVerticalAlignment('top');
   applyEstadoValidation_(sheet);
+  applyEstadoColors_(sheet);
+}
+
+/** Filas 2 en adelante de una columna. */
+function columnRange_(sheet, col) {
+  return sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1);
 }
 
 /** Desplegable en la columna Estado (mini-CRM). */
@@ -138,26 +160,38 @@ function applyEstadoValidation_(sheet) {
     .setAllowInvalid(false)
     .setHelpText('Estado del lead: ' + ESTADOS.join(', '))
     .build();
-  sheet.getRange(2, 6, sheet.getMaxRows() - 1, 1).setDataValidation(rule);
+  columnRange_(sheet, COL.estado).setDataValidation(rule);
 }
 
-function appendLead_(lead) {
-  var sheet = getSheet_();
-  var fecha = Utilities.formatDate(new Date(), TIMEZONE, DATE_FORMAT);
-  var row = [
+/** Color de fondo según el Estado (se ve de un vistazo qué falta por contactar). */
+function applyEstadoColors_(sheet) {
+  var range = columnRange_(sheet, COL.estado);
+  var rules = ESTADOS.map(function (estado) {
+    return SpreadsheetApp.newConditionalFormatRule()
+      .whenTextEqualTo(estado)
+      .setBackground(ESTADO_COLORES[estado])
+      .setRanges([range])
+      .build();
+  });
+  sheet.setConditionalFormatRules(rules);
+}
+
+/** Fila de la hoja en el orden de HEADERS. */
+function buildRow_(lead, fecha) {
+  return [
     fecha,
-    lead.zona,
-    lead.detalle,
     lead.nombre,
     lead.telefono,
-    'Nuevo',
-    '',
+    lead.zona,
+    lead.detalle,
     lead.utm_source,
     lead.utm_medium,
     lead.utm_campaign,
     lead.utm_content,
     lead.utm_term,
     lead.fbclid,
+    'Nuevo',
+    '',
     lead.landing_url,
     lead.referrer,
     lead.device,
@@ -165,18 +199,81 @@ function appendLead_(lead) {
     lead.consentimiento_marketing ? 'Sí' : 'No',
     lead.event_id,
   ].map(sanitize_);
+}
+
+function appendLead_(lead, fecha) {
+  var sheet = getSheet_();
+  var row = buildRow_(lead, fecha);
 
   var next = sheet.getLastRow() + 1;
   var range = sheet.getRange(next, 1, 1, row.length);
-  // Teléfono y Event ID como texto antes de escribir.
-  sheet.getRange(next, 5).setNumberFormat('@');
-  sheet.getRange(next, 19).setNumberFormat('@');
+  // Formatos de la fila antes de escribir (por si la hoja ha crecido más allá del formato).
+  sheet.getRange(next, COL.fecha).setNumberFormat(DATE_FORMAT);
+  sheet.getRange(next, COL.telefono).setNumberFormat('@');
+  sheet.getRange(next, COL.eventId).setNumberFormat('@');
   range.setValues([row]);
 
   // Si la fila cae fuera del rango con validación (hoja crecida), se vuelve a aplicar.
-  if (!sheet.getRange(next, 6).getDataValidation()) {
+  if (!sheet.getRange(next, COL.estado).getDataValidation()) {
     applyEstadoValidation_(sheet);
+    applyEstadoColors_(sheet);
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Resumen                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Pestaña "Resumen": totales y leads por zona de dolor, campaña, anuncio y origen. Son fórmulas
+ * sobre la hoja Leads, así que se actualizan solas. (Las fórmulas van en inglés y con comas:
+ * Apps Script las traduce al idioma de la hoja.)
+ */
+function setupSummary_(ss) {
+  var sheet = ss.getSheetByName(SUMMARY_NAME) || ss.insertSheet(SUMMARY_NAME);
+  sheet.clear();
+  var empty = '"Sin datos todavía"';
+  var query = function (col, label) {
+    return (
+      '=IFERROR(QUERY(Leads!A2:S, "select ' +
+      col +
+      ', count(A) where A is not null group by ' +
+      col +
+      ' order by count(A) desc label ' +
+      col +
+      " '" +
+      label +
+      "', count(A) 'Leads'\", 0), " +
+      empty +
+      ')'
+    );
+  };
+
+  sheet.getRange('A1').setValue('Resumen de leads').setFontWeight('bold').setFontSize(14);
+  sheet.getRange('A3:B6').setValues([
+    ['Leads totales', '=COUNTA(Leads!A2:A)'],
+    ['Leads hoy', '=COUNTIFS(Leads!A2:A, ">="&TODAY(), Leads!A2:A, "<"&(TODAY()+1))'],
+    ['Últimos 7 días', '=COUNTIFS(Leads!A2:A, ">="&(TODAY()-6))'],
+    ['Pendientes de contactar', '=COUNTIF(Leads!L2:L, "Nuevo")'],
+  ]);
+  sheet.getRange('A3:A6').setFontWeight('bold');
+
+  var blocks = [
+    ['A8', 'Por zona de dolor', 'D', 'Zona de dolor'],
+    ['D8', 'Por campaña (utm_campaign)', 'H', 'Campaña'],
+    ['G8', 'Por anuncio (utm_content)', 'I', 'Anuncio'],
+    ['J8', 'Por origen (utm_source)', 'F', 'Origen'],
+  ];
+  blocks.forEach(function (b) {
+    var head = sheet.getRange(b[0]);
+    head.setValue(b[1]).setFontWeight('bold');
+    head.offset(1, 0).setFormula(query(b[2], b[3]));
+  });
+  [1, 4, 7, 10].forEach(function (col) {
+    sheet.setColumnWidth(col, 220);
+    sheet.setColumnWidth(col + 1, 70);
+  });
+  sheet.setFrozenRows(1);
 }
 
 /* ------------------------------------------------------------------ */
@@ -233,8 +330,8 @@ function notify_(lead, to) {
     'Nombre: ' + lead.nombre,
     'Teléfono: ' + lead.telefono,
     'WhatsApp: ' + wa,
-    'Zona: ' + lead.zona,
-    'Detalle: ' + (lead.detalle || '(sin detalle)'),
+    'Zona de dolor: ' + lead.zona,
+    'Qué le pasa: ' + (lead.detalle || '(sin detalle)'),
     '',
     'Consentimiento datos de salud: ' + (lead.consentimiento_salud ? 'Sí' : 'No'),
     'Consentimiento marketing: ' + (lead.consentimiento_marketing ? 'Sí' : 'No'),
@@ -270,8 +367,8 @@ function notify_(lead, to) {
     [
       ['Nombre', lead.nombre],
       ['Teléfono', lead.telefono],
-      ['Zona', lead.zona],
-      ['Detalle', lead.detalle || '(sin detalle)'],
+      ['Zona de dolor', lead.zona],
+      ['Qué le pasa', lead.detalle || '(sin detalle)'],
       ['Consent. salud', lead.consentimiento_salud ? 'Sí' : 'No'],
       ['Consent. marketing', lead.consentimiento_marketing ? 'Sí' : 'No'],
       ['utm_source', lead.utm_source],
@@ -321,7 +418,8 @@ function json_(obj) {
 
 /**
  * Ejecútala una vez desde el editor (botón "Ejecutar") para dar permisos y comprobar la
- * instalación: crea la hoja "Leads" si no existe, inserta una fila de prueba y envía el aviso.
+ * instalación: crea las hojas "Leads" y "Resumen" si no existen, inserta una fila de prueba y
+ * envía el aviso.
  */
 function testLead() {
   var props = PropertiesService.getScriptProperties();
@@ -333,17 +431,17 @@ function testLead() {
     consentimiento_salud: true,
     consentimiento_marketing: false,
     utm_source: 'test',
-    utm_medium: '',
-    utm_campaign: '',
-    utm_content: '',
-    utm_term: '',
+    utm_medium: 'paid_social',
+    utm_campaign: 'Prueba campaña',
+    utm_content: 'Prueba anuncio',
+    utm_term: 'Prueba conjunto',
     fbclid: '',
     landing_url: 'https://rehabilitywod.com/',
     referrer: '',
     device: 'desktop',
     event_id: Utilities.getUuid(),
   });
-  appendLead_(lead);
+  appendLead_(lead, new Date());
   notify_(lead, props.getProperty('NOTIFY_EMAIL') || DEFAULT_NOTIFY_EMAIL);
   Logger.log('Fila de prueba añadida en "' + SHEET_NAME + '" y aviso enviado.');
   if (!props.getProperty('LEAD_SECRET')) {

@@ -3,10 +3,13 @@
 Cada vez que alguien rellena el formulario de valoración, la web envía los datos a un pequeño
 programa de Google (Apps Script) que:
 
-- los guarda en una fila nueva de la hoja **Leads**,
+- los guarda en una fila nueva de la hoja **Leads**: fecha y hora, nombre, teléfono, zona de
+  dolor, qué le pasa y los UTM del anuncio de Meta,
 - te manda un email con todos los datos y un botón para escribir por WhatsApp,
-- deja la columna **Estado** en «Nuevo» para que la uses como mini-CRM
-  (Nuevo, Contactado, Videollamada agendada, Cliente, Descartado).
+- deja la columna **Estado** en «Nuevo» (con color) para que la uses como mini-CRM
+  (Nuevo, Contactado, Videollamada agendada, Cliente, Descartado),
+- crea una pestaña **Resumen** con los leads de hoy, de los últimos 7 días, pendientes de
+  contactar y por zona de dolor, campaña, anuncio y origen (Facebook, Instagram…).
 
 Tardas unos 10 minutos. Solo hay que hacerlo una vez.
 
@@ -18,8 +21,11 @@ Tardas unos 10 minutos. Solo hay que hacerlo una vez.
    leads.
 2. Crea una hoja en blanco y llámala **Leads RehabilityWOD**.
 
-No hace falta que crees columnas: el script crea la pestaña «Leads» con la cabecera, la fija
-arriba y le da formato la primera vez.
+No hace falta que crees columnas: el script crea las pestañas «Leads» y «Resumen» con la
+cabecera, la fija arriba y le da formato la primera vez.
+
+> Si ya tenías una pestaña «Leads» de una versión anterior del script y está vacía, bórrala para
+> que se cree con las columnas nuevas.
 
 ## 2. Pega el script
 
@@ -56,6 +62,7 @@ caracteres o más, solo con letras y números. Guárdala: la necesitarás en el 
 Comprueba que:
 
 - en la hoja aparece la pestaña **Leads** con una fila de prueba («Prueba», zona «Hombro»),
+- aparece la pestaña **Resumen** con las cifras,
 - te ha llegado el email «Nuevo lead: Prueba · Hombro».
 
 Puedes borrar esa fila de prueba cuando quieras.
@@ -93,7 +100,23 @@ Para comprobar que responde, abre esa URL en el navegador: debe mostrar
 Haz una prueba real: rellena el formulario de la web con tu teléfono. En unos segundos debe
 aparecer la fila en la hoja y llegarte el email.
 
-## 7. Si cambias el script
+## 7. Pon los UTM en los anuncios de Meta
+
+Para que cada lead diga de qué campaña, conjunto y anuncio viene, en el **Administrador de
+anuncios**, en cada anuncio (o en todos a la vez: selecciónalos y edita), baja a **Seguimiento →
+Parámetros de URL** y pega exactamente esto:
+
+```
+utm_source={{site_source_name}}&utm_medium=paid_social&utm_campaign={{campaign.name}}&utm_content={{ad.name}}&utm_term={{adset.name}}
+```
+
+Meta rellena los valores solo: `utm_source` sale como `fb`, `ig`, `msg` o `an` (Facebook,
+Instagram, Messenger o Audience Network), `utm_campaign` con el nombre de la campaña,
+`utm_content` con el del anuncio y `utm_term` con el del conjunto de anuncios. Meta añade además
+`fbclid` por su cuenta. Consejo: pon nombres claros a campañas y anuncios, porque son los que verás
+en la hoja.
+
+## 8. Si cambias el script
 
 Cada vez que modifiques `Code.gs`:
 
@@ -103,27 +126,38 @@ Implementar.**
 Así la URL no cambia y no tienes que tocar nada en Vercel. (Si haces «Nueva implementación» en
 lugar de editar la existente, se crea una URL distinta.)
 
+## Prueba sin cuenta de Google
+
+`npm run qa:sheets` (tras `ASTRO_ADAPTER=node npx astro build`) ejecuta este mismo `Code.gs` en
+local con una hoja simulada, envía el formulario llegando con UTM de Meta y comprueba columna a
+columna la fila, la pestaña Resumen, el email, el envío sin JavaScript y el rechazo de un secreto
+incorrecto.
+
 ---
 
 ## Qué guarda cada columna
 
-| Columna               | Qué es                                                                                      |
-| --------------------- | ------------------------------------------------------------------------------------------- |
-| Fecha                 | Día y hora (Madrid) de la solicitud, `dd/MM/yyyy HH:mm`                                     |
-| Zona                  | Qué le duele (Hombro, Codo, Muñeca, Espalda / lumbar, Cadera, Rodilla, Tobillo / pie, Otro) |
-| Detalle               | Lo que ha escrito sobre su caso (puede estar vacío)                                         |
-| Nombre                | Nombre                                                                                      |
-| Teléfono              | En formato internacional, p. ej. `+34612345678`                                             |
-| Estado                | Desplegable para tu seguimiento. Empieza en «Nuevo»                                         |
-| Notas                 | Libre, para ti                                                                              |
-| utm_source … utm_term | De qué anuncio o campaña viene                                                              |
-| fbclid                | Identificador de clic de Meta                                                               |
-| Landing               | Página en la que rellenó el formulario                                                      |
-| Referrer              | Web de la que venía, si la hay                                                              |
-| Dispositivo           | mobile, tablet o desktop                                                                    |
-| Consent. salud        | Si aceptó el tratamiento de sus datos de salud (siempre «Sí»)                               |
-| Consent. marketing    | Si aceptó las cookies de Meta                                                               |
-| Event ID              | Identificador del envío (sirve para cuadrar con Meta)                                       |
+| Columna              | Qué es                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| A Fecha y hora       | Día y hora (Madrid) de la solicitud, `dd/MM/yyyy HH:mm`. Es una fecha real: se ordena y filtra         |
+| B Nombre             | Nombre                                                                                                 |
+| C Teléfono           | En formato internacional, p. ej. `+34612345678`                                                        |
+| D Zona de dolor      | Hombro, Codo, Muñeca, Espalda / lumbar, Cadera, Rodilla, Tobillo / pie u Otro                          |
+| E Qué le pasa        | Lo que ha escrito sobre su caso (puede estar vacío salvo si elige «Otro»)                              |
+| F utm_source         | Plataforma: `fb`, `ig`, `msg` o `an` con los parámetros del paso 7                                     |
+| G utm_medium         | `paid_social`                                                                                          |
+| H utm_campaign       | Nombre de la campaña                                                                                   |
+| I utm_content        | Nombre del anuncio                                                                                     |
+| J utm_term           | Nombre del conjunto de anuncios                                                                        |
+| K fbclid             | Identificador de clic de Meta                                                                          |
+| L Estado             | Desplegable con color para tu seguimiento. Empieza en «Nuevo»                                          |
+| M Notas              | Libre, para ti                                                                                         |
+| N Landing            | Página en la que rellenó el formulario                                                                 |
+| O Referrer           | Web de la que venía, si la hay                                                                         |
+| P Dispositivo        | mobile, tablet o desktop                                                                               |
+| Q Consent. salud     | Si aceptó el tratamiento de sus datos de salud (siempre «Sí»)                                          |
+| R Consent. marketing | Si aceptó las cookies de Meta                                                                          |
+| S Event ID           | Identificador del envío: es el mismo `eventID` del evento Lead del Pixel (y de la API de conversiones) |
 
 ## Problemas frecuentes
 
@@ -133,7 +167,7 @@ lugar de editar la existente, se crea una URL distinta.)
   «Cualquier usuario».
 - **No llegan los emails**: revisa `NOTIFY_EMAIL` y la carpeta de spam. Google limita los emails
   diarios de Apps Script (unos 100 al día en cuentas gratuitas; más en Google Workspace).
-- **Has cambiado el script y no se nota**: tienes que publicar una nueva versión (paso 7).
+- **Has cambiado el script y no se nota**: tienes que publicar una nueva versión (paso 8).
 
 ## Privacidad
 

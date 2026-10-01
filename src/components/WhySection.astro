@@ -1,21 +1,13 @@
 ---
 /**
- * Sección 3: por qué. Tres bloques con fondos distintos:
- * 3A "¿Te suena?" (claro con rejilla), 3B frase a pantalla completa (foto con parallax)
- * y 3C comparativa (degradado suave de --brand-soft a --paper).
+ * Sección 3: por qué. Dos bloques con fondos distintos:
+ * 3A "¿Te suena?" (claro con rejilla) y 3C comparativa (degradado suave de --brand-soft a
+ * --paper). La banda 3B ("El problema no es tu lesión") se quitó a petición del cliente.
  */
 import X from '@lucide/astro/icons/x';
 import Check from '@lucide/astro/icons/check';
 import SplitWords from './SplitWords.astro';
 import SectionCta from './SectionCta.astro';
-import bandPhoto from '../assets/photos/band-statement.jpg';
-import bandPhotoMobile from '../assets/photos/band-statement-m.jpg';
-import { WIDTHS, responsive } from '../lib/images';
-
-const [band, bandMobile] = await Promise.all([
-  responsive(bandPhoto, WIDTHS.landscape),
-  responsive(bandPhotoMobile, WIDTHS.portrait),
-]);
 
 const suena = [
   'Evitas ejercicios que antes hacías sin pensar.',
@@ -52,54 +44,6 @@ const compare = [
         </li>
       ))}
     </ul>
-  </div>
-
-  <!-- 3B -->
-  <div class="band" data-theme="dark">
-    <div class="band-media" aria-hidden="true" data-parallax>
-      <picture>
-        <source
-          media="(max-width: 767.98px)"
-          type="image/avif"
-          srcset={bandMobile.avif}
-          sizes="100vw"
-        />
-        <source
-          media="(max-width: 767.98px)"
-          type="image/webp"
-          srcset={bandMobile.webp}
-          sizes="100vw"
-        />
-        <source type="image/avif" srcset={band.avif} sizes="100vw" />
-        <source type="image/webp" srcset={band.webp} sizes="100vw" />
-        <img
-          src={band.fallback}
-          width={band.width}
-          height={band.height}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          class="band-img"
-        />
-      </picture>
-    </div>
-    <div class="band-veil tex-grain" aria-hidden="true"></div>
-    <div class="container-x band-content">
-      <SplitWords
-        as="p"
-        class="band-statement"
-        parts={[
-          'El problema no es tu lesión.',
-          { br: 'always' },
-          'Es',
-          { text: 'el enfoque.', accent: true },
-        ]}
-      />
-      <p class="lead band-lead reveal" data-reveal style="--i:4">
-        Ejercicios sueltos y parches cuando duele no te preparan para volver a entrenar.
-      </p>
-      <SectionCta location="why" label="Quiero empezar" />
-    </div>
   </div>
 
   <!-- 3C -->
@@ -246,87 +190,6 @@ const compare = [
     .suena-card {
       min-height: 240px;
       padding: 32px;
-    }
-  }
-
-  /* ---------------- 3B ---------------- */
-  .band {
-    position: relative;
-    isolation: isolate;
-    display: flex;
-    align-items: center;
-    min-height: 88svh;
-    padding-block: 96px;
-    overflow: hidden;
-    color: var(--ink-on-dark);
-    background: var(--void);
-    text-align: center;
-  }
-
-  .band-media {
-    position: absolute;
-    z-index: -2;
-    inset: -40px 0;
-    will-change: transform;
-  }
-
-  .band-media picture,
-  .band-img {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-
-  .band-img {
-    object-fit: cover;
-    object-position: 50% 50%;
-    filter: contrast(1.03) saturate(0.95);
-  }
-
-  .band-veil {
-    position: absolute;
-    z-index: -1;
-    inset: 0;
-    background: rgba(10, 10, 10, 0.7);
-    --grain: 0.05;
-  }
-
-  .band-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .band-statement {
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: clamp(3rem, 13vw, 3.5rem);
-    line-height: 0.9;
-    letter-spacing: 0.005em;
-    text-transform: uppercase;
-    text-wrap: balance;
-    color: var(--ink-on-dark);
-  }
-
-  .band-lead {
-    max-width: 26rem;
-    margin-top: 24px;
-    color: rgba(245, 245, 242, 0.84);
-  }
-
-  @media (width >= 768px) {
-    .band {
-      min-height: 76vh;
-      padding-block: 144px;
-    }
-
-    .band-statement {
-      font-size: clamp(4rem, 1.5rem + 5.4vw, 6.5rem);
-    }
-
-    .band-lead {
-      max-width: 34rem;
-      margin-top: 28px;
     }
   }
 

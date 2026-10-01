@@ -1,9 +1,11 @@
 ---
 /**
- * Preguntas frecuentes: acordeón con separadores --hair, "+" que rota 45° y altura animada con
+ * Preguntas frecuentes: sección propia sobre --brand-soft (verde muy claro), entre el formulario
+ * y la banda de cierre. Acordeón con separadores, "+" que rota 45° y altura animada con
  * grid-template-rows (0fr → 1fr). Sin JS (sin la clase .js en <html>) las respuestas se ven.
  */
 import Plus from '@lucide/astro/icons/plus';
+import SplitWords from './SplitWords.astro';
 
 const faqs = [
   {
@@ -25,54 +27,66 @@ const faqs = [
 ];
 ---
 
-<div class="faq" data-faq>
-  <h3 class="faq-title">Preguntas frecuentes</h3>
-  <div class="faq-list">
-    {faqs.map((item, i) => (
-      <div class="faq-item">
-        <h4 class="faq-h">
-          <button
-            type="button"
-            class="faq-q"
-            id={`faq-q-${i}`}
-            aria-expanded="false"
-            aria-controls={`faq-a-${i}`}
-            data-faq-toggle
-          >
-            <span>{item.q}</span>
-            <Plus size={22} stroke-width={1.75} aria-hidden="true" class="faq-icon" />
-          </button>
-        </h4>
-        <div class="faq-panel" id={`faq-a-${i}`} role="region" aria-labelledby={`faq-q-${i}`}>
-          <div class="faq-inner">
-            <p class="faq-a">{item.a}</p>
+<section id="faq" class="faq-section section-y" data-theme="light" aria-labelledby="faq-title">
+  <div class="container-x">
+    <div class="faq" data-faq>
+      <SplitWords
+        as="h2"
+        id="faq-title"
+        class="h2-display faq-title"
+        parts={['Preguntas', { text: 'frecuentes', accent: true }]}
+      />
+      <div class="faq-list">
+        {faqs.map((item, i) => (
+          <div class="faq-item">
+            <h3 class="faq-h">
+              <button
+                type="button"
+                class="faq-q"
+                id={`faq-q-${i}`}
+                aria-expanded="false"
+                aria-controls={`faq-a-${i}`}
+                data-faq-toggle
+              >
+                <span>{item.q}</span>
+                <Plus size={22} stroke-width={1.75} aria-hidden="true" class="faq-icon" />
+              </button>
+            </h3>
+            <div class="faq-panel" id={`faq-a-${i}`} role="region" aria-labelledby={`faq-q-${i}`}>
+              <div class="faq-inner">
+                <p class="faq-a">{item.a}</p>
+              </div>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
-    ))}
+    </div>
   </div>
-</div>
+</section>
 
 <style>
+  .faq-section {
+    background: var(--brand-soft);
+    color: var(--ink);
+  }
+
   .faq {
-    max-width: 720px;
-    margin: 72px auto 0;
+    max-width: 760px;
+    margin: 0 auto;
     text-align: left;
   }
 
   .faq-title {
-    margin-bottom: 16px;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 2rem; /* 32 px */
-    line-height: 0.9;
-    letter-spacing: 0.005em;
-    text-transform: uppercase;
+    margin-bottom: var(--title-gap);
     text-align: center;
   }
 
+  .faq-list {
+    border-top: 1px solid rgba(6, 34, 26, 0.14);
+  }
+
   .faq-item {
-    border-bottom: 1px solid var(--hair-on-dark);
+    border-bottom: 1px solid rgba(6, 34, 26, 0.14);
   }
 
   .faq-h {
@@ -90,9 +104,9 @@ const faqs = [
     padding: 16px 0;
     border: 0;
     background: none;
-    color: var(--ink-on-dark);
+    color: var(--ink);
     font: inherit;
-    font-size: 1rem;
+    font-size: 1.0625rem;
     font-weight: 600;
     line-height: 1.35;
     text-align: left;
@@ -100,7 +114,7 @@ const faqs = [
 
   .faq-q :global(.faq-icon) {
     flex: none;
-    color: var(--brand-bright);
+    color: var(--brand-strong);
     transition: transform 0.4s var(--ease);
   }
 
@@ -142,16 +156,17 @@ const faqs = [
     padding: 0 38px 22px 0;
     font-size: 1rem;
     line-height: 1.55;
-    color: var(--muted-on-dark);
+    color: var(--muted);
   }
 
   @media (width >= 768px) {
-    .faq {
-      margin-top: 112px;
+    .faq-q {
+      min-height: 64px;
+      font-size: 1.1875rem;
     }
 
-    .faq-title {
-      margin-bottom: 24px;
+    .faq-a {
+      font-size: 1.0625rem;
     }
   }
 </style>

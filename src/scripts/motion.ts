@@ -1,6 +1,6 @@
 /**
  * Movimiento de la home (solo transform, con requestAnimationFrame):
- * - Parallax sutil (±40 px) en la banda 3B y en el cierre.
+ * - Parallax sutil (±40 px) en la banda de cierre.
  * - Línea de los pasos (escritorio): el punto avanza con el scroll.
  * Con prefers-reduced-motion no hay parallax ni avance animado.
  */

@@ -26,12 +26,12 @@ const SECTIONS = [
   ['01-hero', '#inicio'],
   ['02-video', '#video'],
   ['03a-te-suena', '#por-que .suena'],
-  ['03b-banda', '#por-que .band'],
   ['03c-comparativa', '#por-que .compare'],
   ['04-como-funciona', '#como-funciona'],
   ['05a-opiniones', '#opiniones .reviews'],
   ['05b-gerard', '#opiniones .about'],
   ['06-valoracion', '#valoracion'],
+  ['06b-faq', '#faq'],
   ['07-cierre', 'main .closing'],
   ['08-footer', 'footer.site-footer'],
 ] as const;
@@ -131,7 +131,9 @@ function watchConsole(page: Page) {
     if (msg.type() !== 'error' && msg.type() !== 'warning') return;
     const url = msg.location()?.url ?? '';
     const line = `${msg.type()}: ${msg.text()} (${url})`;
-    if (!url || url.startsWith(origin) || url.startsWith('about:')) problems.push(line);
+    // Aviso de Chromium sin GPU al iniciar el reproductor de YouTube (no es código de la web).
+    if (/Failed to create WebGPU Context Provider/.test(msg.text())) thirdParty.push(line);
+    else if (!url || url.startsWith(origin) || url.startsWith('about:')) problems.push(line);
     else thirdParty.push(line);
   });
   page.on('pageerror', (err) => problems.push(`pageerror: ${err.message}`));
@@ -314,7 +316,8 @@ async function pageChecks(page: Page, vp: Vp, path: string) {
         lines[lines.length - 1]!.push(w.t);
         lastTop = w.top;
       }
-      if (lines.length > 1 && lines[lines.length - 1]!.length === 1) {
+      // Un titular de dos palabras en dos líneas no tiene viuda (p. ej. "Preguntas / frecuentes").
+      if (words.length > 2 && lines.length > 1 && lines[lines.length - 1]!.length === 1) {
         out.push(
           `${el.tagName} "${el.textContent?.trim().replace(/\s+/g, ' ')}" → última línea: ${lines[lines.length - 1]![0]}`,
         );
@@ -325,8 +328,10 @@ async function pageChecks(page: Page, vp: Vp, path: string) {
   for (const w of widows) issues.push(`viuda: ${w}`);
 
   // axe-core: sin violaciones serias ni críticas
+  // El reproductor de YouTube es un iframe de otro origen: su accesibilidad es cosa de YouTube.
   const axe = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'])
+    .exclude('#video iframe')
     .analyze();
   for (const v of axe.violations) {
     if (v.impact === 'serious' || v.impact === 'critical') {
@@ -412,15 +417,36 @@ test.describe('Viewports', () => {
           .locator(sel)
           .first()
           .evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
-        // Da tiempo al IntersectionObserver a disparar los reveals antes de capturar.
+        // La captura es de la sección entera (también lo que queda bajo el pliegue): sus reveals se
+        // muestran en el estado final, como los vería alguien al hacer scroll. Espera a las fotos
+        // (lazy), como mucho 3 s (las del carrusel fuera de pantalla no llegan a cargarse).
         await page.waitForTimeout(250);
+        await page
+          .locator(sel)
+          .first()
+          .evaluate((el) => {
+            [el, ...el.querySelectorAll('.reveal-armed')].forEach((n) => {
+              if (n.classList.contains('reveal-armed')) n.classList.add('is-in');
+            });
+            return Promise.race([
+              Promise.all(
+                [...el.querySelectorAll('img')].map((img) =>
+                  img.complete
+                    ? img.decode().catch(() => null)
+                    : new Promise((r) => (img.onload = img.onerror = r)),
+                ),
+              ),
+              new Promise((r) => setTimeout(r, 3000)),
+            ]);
+          });
         await page
           .locator(sel)
           .first()
           .screenshot({
             path: `${dir}/home-${name}.jpg`,
             animations: 'disabled',
-            style: `${hideFixed} .site-header { display: none !important; }`,
+            // Los reveals ya disparados se ven en su estado final (sin la transición a medias).
+            style: `${hideFixed} .site-header { display: none !important; } .reveal-armed { transition: none !important; }`,
           });
       }
       // Barra CTA fija visible (móvil) a mitad de página.
@@ -668,9 +694,14 @@ test.describe('Consentimiento y Pixel', () => {
     expect(names).not.toContain('_fbc');
 
     const before = fb.length;
-    await page.locator('[data-vsl-play]').click();
+    await page.locator('#valoracion').scrollIntoViewIfNeeded();
+    await page
+      .locator('#lead-form label.chip')
+      .filter({ has: page.locator('input[value="Codo"]') })
+      .click();
+    await page.getByRole('button', { name: 'Continuar' }).click();
     await page.waitForTimeout(2500);
-    expect(trEvents(fb.slice(before), 'ViewContent')).toHaveLength(0);
+    expect(trEvents(fb.slice(before), 'FormStart')).toHaveLength(0);
     expect(fb.slice(before).filter((r) => r.url().includes('/tr'))).toHaveLength(0);
     await ctx.close();
   });
@@ -681,7 +712,7 @@ test.describe('Consentimiento y Pixel', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('VSL', () => {
-  test('fachada: nada de YouTube antes del clic; iframe nocookie con autoplay después', async ({
+  test('reproductor de YouTube tal cual: nada de YouTube en la primera carga; se carga al acercarse', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, VIEWPORTS[10]);
@@ -693,22 +724,48 @@ test.describe('VSL', () => {
     page.on('request', (r) => {
       if (/youtube|ytimg|googlevideo|ggpht/.test(new URL(r.url()).hostname)) yt.push(r.url());
     });
-    const fb = fbRequests(page);
     await page.goto('/', { waitUntil: 'networkidle' });
-    await scrollThrough(page);
-    await page.locator('#video').scrollIntoViewIfNeeded();
     await page.waitForTimeout(500);
     expect(yt).toEqual([]);
     expect(await page.locator('#video iframe').count()).toBe(0);
+    // Sin botón de play propio ni etiqueta de duración: la portada es la del vídeo.
+    await expect(
+      page.locator('#video .vsl-play, #video .vsl-pill, #video .vsl-duration'),
+    ).toHaveCount(0);
 
-    await page.locator('[data-vsl-play]').click();
+    await page.locator('#video').scrollIntoViewIfNeeded();
     const iframe = page.locator('#video iframe');
     await expect(iframe).toHaveCount(1);
     const src = (await iframe.getAttribute('src')) ?? '';
     expect(src).toContain('https://www.youtube-nocookie.com/embed/V3AgSalCNJs');
-    expect(src).toContain('autoplay=1');
+    expect(src).toContain('enablejsapi=1');
     expect(src).toContain('playsinline=1');
+    expect(src).toContain(`origin=${encodeURIComponent(new URL(page.url()).origin)}`);
+    expect(src).not.toContain('autoplay=1');
     await expect.poll(() => yt.some((u) => u.includes('youtube-nocookie.com'))).toBe(true);
+    await page.waitForTimeout(3000); // reproductor cargado
+    const csp = await page.evaluate(() => (window as unknown as { __csp: string[] }).__csp);
+    expect(csp).toEqual([]);
+    expect(con.problems).toEqual([]);
+    test
+      .info()
+      .annotations.push({ type: 'third-party-console', description: con.thirdParty.join('\n') });
+    await ctx.close();
+  });
+
+  test('clic en la portada antes de que cargue: autoplay, vsl_play y ViewContent', async ({
+    browser,
+  }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[10]);
+    await setConsent(ctx, CONSENT_ACCEPTED);
+    const page = await ctx.newPage();
+    const fb = fbRequests(page);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    // Clic sin desplazar la página (el reproductor aún no se ha insertado).
+    await page.locator('[data-vsl-play]').evaluate((el) => (el as HTMLButtonElement).click());
+    const iframe = page.locator('#video iframe');
+    await expect(iframe).toHaveCount(1);
+    expect((await iframe.getAttribute('src')) ?? '').toContain('autoplay=1');
     await expect
       .poll(() => trEvents(fb, 'ViewContent').length, { timeout: 15_000 })
       .toBeGreaterThan(0);
@@ -716,13 +773,6 @@ test.describe('VSL', () => {
     expect(decodeURIComponent(`${vc.url()} ${vc.postData() ?? ''}`)).toContain('VSL');
     const vaq = await page.evaluate(() => JSON.stringify(window.vaq ?? []));
     expect(vaq).toContain('vsl_play');
-    await page.waitForTimeout(3000); // vídeo reproduciéndose
-    const csp = await page.evaluate(() => (window as unknown as { __csp: string[] }).__csp);
-    expect(csp).toEqual([]);
-    expect(con.problems).toEqual([]);
-    test
-      .info()
-      .annotations.push({ type: 'third-party-console', description: con.thirdParty.join('\n') });
     await ctx.close();
   });
 });
@@ -1381,9 +1431,11 @@ test.describe('Animación inicial y movimiento', () => {
     await page.goto('/', { waitUntil: 'networkidle' });
     expect(await page.locator('html').getAttribute('data-intro')).toBeNull();
     await expect(page.locator('.intro')).toBeHidden();
-    await page.locator('#por-que .band').scrollIntoViewIfNeeded();
+    await page.locator('main .closing').scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
-    const band = await page.locator('.band-media').evaluate((el) => getComputedStyle(el).transform);
+    const band = await page
+      .locator('.closing-media')
+      .evaluate((el) => getComputedStyle(el).transform);
     expect(['none', 'matrix(1, 0, 0, 1, 0, 0)']).toContain(band);
     expect(await page.locator('.reveal-armed').count()).toBe(0);
     await ctx.close();
@@ -1442,7 +1494,6 @@ test('hover de tarjetas y botones (capturas)', async ({ browser }) => {
     ['boton-primario', '#inicio [data-cta="hero"]', '#inicio .hero-ctas'],
     ['boton-secundario', '#inicio [data-cta="hero_video"]', '#inicio .hero-ctas'],
     ['header-cta', '.site-header [data-cta="header"]', '.site-header'],
-    ['poster-vsl', '[data-vsl-play]', '[data-vsl]'],
     ['tarjeta-te-suena', '.suena-card >> nth=0', '.suena-list'],
     ['paso', '.step >> nth=1', '.steps'],
     ['capturas-app', '.app >> nth=0', '.apps'],
@@ -1518,7 +1569,15 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     const page = await ctx.newPage();
     await page.goto('/');
     const ids = await page.locator('main > section[id]').evaluateAll((els) => els.map((e) => e.id));
-    expect(ids).toEqual(['inicio', 'video', 'por-que', 'como-funciona', 'opiniones', 'valoracion']);
+    expect(ids).toEqual([
+      'inicio',
+      'video',
+      'por-que',
+      'como-funciona',
+      'opiniones',
+      'valoracion',
+      'faq',
+    ]);
     const ctas = await page
       .locator('main > section')
       .evaluateAll((els) =>
@@ -1529,9 +1588,10 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     expect(ctas).toEqual([
       ['hero', 'hero_video'],
       ['vsl'],
-      ['why', 'compare'],
+      ['compare'],
       ['how'],
       ['about'],
+      [],
       [],
       ['closing'],
     ]);
@@ -1601,16 +1661,14 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       'Ver el vídeo',
       '+120 atletas recuperados',
       'Sin parar de entrenar',
-      'Desde 2017 fisio y atleta de CrossFit',
+      '+10 años en CrossFit',
       '100 % online',
       'Diario seguimiento por app y WhatsApp',
       'Cada semana reajustes del plan',
       '1 a 1 videollamadas de seguimiento',
       '8, 12 o 24 semanas según tu caso',
-      'Vídeo · 7 min',
       '¿Por qué sigues con dolor?',
       'Lo que nadie te ha explicado de tu lesión.',
-      '7:00',
       'Por qué recaes',
       'Qué falla en tu enfoque',
       'Qué hacer desde hoy',
@@ -1618,9 +1676,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       'Evitas ejercicios que antes hacías sin pensar.',
       'Mejoras, vuelves a entrenar normal y recaes.',
       'Empiezas a pensar que lo tuyo es crónico.',
-      'El problema no es tu lesión. Es el enfoque.',
-      'Ejercicios sueltos y parches cuando duele no te preparan para volver a entrenar.',
-      'Quiero empezar',
       'Lo de siempre vs RehabilityWOD',
       'Parar de entrenar',
       'Sigues entrenando, con adaptaciones',
@@ -1648,15 +1703,12 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       'Atletas reales. Vuelta real al box.',
       'Quién está detrás',
       'Conozco el box por dentro.',
-      'Soy Gerard Barrantes, fisioterapeuta y atleta de CrossFit desde 2017.',
-      'He trabajado en clínicas privadas y en la red sanitaria de Tarragona.',
       'Fisioterapeuta titulado',
-      'Atleta desde 2017',
       'Especialista en CrossFit',
       '+120 atletas recuperados',
       'Gerard Barrantes Fundador de RehabilityWOD',
       'Cuéntame qué te pasa.',
-      'Rellénalo en 30 segundos y te escribo para la videollamada de valoración.',
+      'Rellénalo en 30 segundos y únete a los más de 120 atletas recuperados.',
       'Paso 1 de 4',
       '¿Qué te duele?',
       'Cuéntame un poco más.',
@@ -1691,6 +1743,11 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     expect(text).not.toContain('Abro plazas cuando tengo hueco');
     expect(text).not.toContain('Mira esto antes de volver al box');
     expect(text).not.toContain('Si tu número no es español');
+    // Quitados en v4.
+    expect(text).not.toContain('Vídeo · 7 min');
+    expect(text).not.toContain('El problema no es tu lesión');
+    expect(text).not.toContain('Soy Gerard Barrantes');
+    expect(text).not.toMatch(/desde 2017/i);
     const hero = norm(await page.locator('#inicio').innerText());
     expect(hero.toLowerCase()).not.toContain('fisioterapia online para atletas de crossfit');
     const sticky = norm(
@@ -1714,9 +1771,7 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     // Tipografía: H1, H2 y números en Big Shoulders; texto en Work Sans.
     const fonts = await page.evaluate(() => ({
       h: [
-        ...document.querySelectorAll(
-          'h1, h2, .tk-strong, .step-num, .suena-num, .band-statement, .about-phrase',
-        ),
+        ...document.querySelectorAll('h1, h2, .tk-strong, .step-num, .suena-num, .about-phrase'),
       ].map((el) => getComputedStyle(el).fontFamily.split(',')[0]),
       body: getComputedStyle(document.body).fontFamily.split(',')[0],
       transform: [...document.querySelectorAll('h1, h2')].map(
@@ -1790,8 +1845,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       ['.hero-title', 3],
       ['.hero-title .accent', 3],
       ['.hero-sub', 4.5],
-      ['.band-statement', 3],
-      ['.band-lead', 4.5],
       ['.closing-phrase', 3],
       ['.closing-phrase .accent', 3],
       ['.valoracion-head h2', 3],
