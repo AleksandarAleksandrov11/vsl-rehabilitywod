@@ -1,16 +1,15 @@
 ---
 /**
  * Sección 4: cómo funciona. Única sección teñida de verde (--brand-deep, rejilla y grano).
- * 3 pasos (en escritorio unidos por una línea con un punto que avanza con el scroll) y
- * 4 capturas reales de la app en marcos finos (carrusel en móvil, en fila en escritorio).
+ * 3 pasos y 4 capturas reales de la app en marcos finos (carrusel en móvil, fila en escritorio).
  */
-import { Image } from 'astro:assets';
 import SplitWords from './SplitWords.astro';
 import SectionCta from './SectionCta.astro';
 import app1 from '../assets/images/app-1.jpg';
 import app2 from '../assets/images/app-2.jpg';
 import app3 from '../assets/images/app-3.jpg';
 import app4 from '../assets/images/app-4.jpg';
+import { WIDTHS, responsive } from '../lib/images';
 
 const steps = [
   {
@@ -31,7 +30,8 @@ const steps = [
 ];
 
 // Capturas reales de la app (1080x2340). La barra de navegación de Android se recorta con CSS.
-const shots = [
+const SHOT_SIZES = '(min-width: 1024px) 240px, (min-width: 768px) 280px, 64vw';
+const shotList = [
   {
     src: app1,
     caption: 'Tu plan de hoy',
@@ -53,6 +53,9 @@ const shots = [
     alt: 'Captura de la app: registro diario de dolor, estrés y calidad del sueño',
   },
 ];
+const shots = await Promise.all(
+  shotList.map(async (shot) => ({ ...shot, img: await responsive(shot.src, WIDTHS.appShot) })),
+);
 ---
 
 <section
@@ -69,10 +72,6 @@ const shots = [
     />
 
     <div class="steps-wrap">
-      <div class="steps-rail" aria-hidden="true" data-rail>
-        <span class="steps-rail-fill" data-rail-fill></span>
-        <span class="steps-rail-dot" data-rail-dot></span>
-      </div>
       <ol class="steps" role="list">
         {steps.map((step, i) => (
           <li class="step reveal" data-reveal style={`--i:${i}`}>
@@ -108,16 +107,21 @@ const shots = [
         <figure class="app-figure">
           <div class="device">
             <div class="device-screen">
-              <Image
-                src={shot.src}
-                alt={shot.alt}
-                widths={[320, 480, 640, 840, 1080]}
-                sizes="(min-width: 1024px) 240px, (min-width: 768px) 280px, 64vw"
-                quality={85}
-                loading="lazy"
-                decoding="async"
-                class="device-img"
-              />
+              {/* Van muy abajo: prioridad baja para no competir con el hero ni con las fuentes. */}
+              <picture>
+                <source type="image/avif" srcset={shot.img.avif} sizes={SHOT_SIZES} />
+                <source type="image/webp" srcset={shot.img.webp} sizes={SHOT_SIZES} />
+                <img
+                  src={shot.img.fallback}
+                  width={shot.img.width}
+                  height={shot.img.height}
+                  alt={shot.alt}
+                  loading="lazy"
+                  decoding="async"
+                  fetchpriority="low"
+                  class="device-img"
+                />
+              </picture>
             </div>
           </div>
           <figcaption class="app-caption">{shot.caption}</figcaption>
@@ -146,10 +150,6 @@ const shots = [
   .steps-wrap {
     position: relative;
     margin-top: var(--title-gap);
-  }
-
-  .steps-rail {
-    display: none;
   }
 
   .steps {
@@ -347,10 +347,6 @@ const shots = [
 
   /* ---------------- Escritorio ---------------- */
   @media (width >= 1024px) {
-    .steps-wrap {
-      padding-top: 36px;
-    }
-
     .steps {
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 24px;
@@ -371,37 +367,6 @@ const shots = [
     .step-text {
       margin-top: 10px;
       font-size: 1.0625rem;
-    }
-
-    /* Línea horizontal que une los pasos, con un punto que avanza al hacer scroll. */
-    .steps-rail {
-      position: absolute;
-      top: 0;
-      left: calc((100% - 48px) / 6);
-      right: calc((100% - 48px) / 6);
-      display: block;
-      height: 1px;
-      background: rgba(255, 255, 255, 0.14);
-    }
-
-    .steps-rail-fill {
-      position: absolute;
-      inset: 0;
-      background: var(--brand-bright);
-      transform-origin: 0 50%;
-      transform: scaleX(var(--p, 0));
-    }
-
-    .steps-rail-dot {
-      position: absolute;
-      top: -5px;
-      left: -5px;
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-      background: var(--brand-bright);
-      box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.16);
-      transform: translate3d(var(--x, 0px), 0, 0);
     }
 
     /* Las 4 capturas en fila, hasta 240 px cada una. */

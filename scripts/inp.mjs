@@ -50,7 +50,7 @@ await step('Hover/tap tarjeta', () => page.locator('.suena-card').first().tap())
 const worst = Math.max(...steps.map((s) => s.maxMs));
 console.table(steps);
 console.log('Peor interacción (ms):', worst);
-const OUT = process.env.LH_OUT ?? 'qa/lighthouse-v2';
+const OUT = process.env.LH_OUT ?? 'qa/lighthouse';
 mkdirSync(OUT, { recursive: true });
 writeFileSync(
   `${OUT}/inp.json`,

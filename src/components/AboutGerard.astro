@@ -14,7 +14,7 @@ import { getImage } from 'astro:assets';
 import Users from '@lucide/astro/icons/users';
 import GraduationCap from '@lucide/astro/icons/graduation-cap';
 import Dumbbell from '@lucide/astro/icons/dumbbell';
-import Target from '@lucide/astro/icons/target';
+import HeartPulse from '@lucide/astro/icons/heart-pulse';
 import CtaButton from './CtaButton.astro';
 import SplitWords from './SplitWords.astro';
 import gerard from '../assets/photos/gerard.jpg';
@@ -33,20 +33,16 @@ const facts = [
   { Icon: Users, text: '+120 atletas recuperados' },
   { Icon: GraduationCap, text: 'Fisioterapeuta titulado' },
   { Icon: Dumbbell, text: '+10 años en CrossFit' },
-  { Icon: Target, text: 'Especialista en CrossFit' },
+  { Icon: HeartPulse, text: 'Readaptación deportiva' },
 ];
 ---
 
 <div class="about section-y" data-theme="dark">
   <div class="container-x">
     <div class="about-head">
-      <p class="eyebrow reveal" data-reveal>
-        Quién está detrás
-      </p>
       <SplitWords
         as="p"
         class="about-phrase"
-        start={1}
         parts={['Conozco el box', { br: 'always' }, { text: 'por dentro.', accent: true }]}
       />
     </div>
@@ -63,6 +59,7 @@ const facts = [
             alt={alt}
             loading="lazy"
             decoding="async"
+            fetchpriority="low"
             class="about-img"
           />
         </picture>
@@ -73,6 +70,13 @@ const facts = [
       </figure>
 
       <div class="about-copy">
+        <div class="about-text reveal" data-reveal>
+          <p>
+            Soy <strong>Gerard Barrantes</strong>, fisioterapeuta y atleta de CrossFit. He trabajado
+            en clínicas privadas y en la red sanitaria de Tarragona.
+          </p>
+        </div>
+
         <ul class="about-facts" role="list">
           {facts.map(({ Icon, text }, i) => (
             <li class="about-fact reveal" data-reveal style={`--i:${i + 1}`}>
@@ -106,7 +110,6 @@ const facts = [
   }
 
   .about-phrase {
-    margin-top: 16px;
     font-family: var(--font-display);
     font-weight: 800;
     font-size: clamp(3rem, 12.5vw, 3.5rem);
@@ -179,6 +182,19 @@ const facts = [
     margin-top: 32px;
   }
 
+  /* Presentación de Gerard: grande, junto a la foto. */
+  .about-text {
+    max-width: 30rem;
+    font-size: 1.1875rem;
+    line-height: 1.5;
+    color: var(--muted-on-dark);
+  }
+
+  .about-text strong {
+    font-weight: 600;
+    color: var(--ink-on-dark);
+  }
+
   /* 4 datos con el mismo estilo: 2x2 en móvil y tablet. */
   .about-facts {
     display: grid;
@@ -186,7 +202,7 @@ const facts = [
     gap: 12px;
     width: 100%;
     max-width: 30rem;
-    margin: 0;
+    margin: 28px 0 0;
     padding: 0;
     list-style: none;
   }
@@ -223,8 +239,11 @@ const facts = [
 
   @media (width >= 768px) {
     .about-phrase {
-      margin-top: 20px;
       font-size: clamp(3.75rem, 1.5rem + 4vw, 6rem);
+    }
+
+    .about-text {
+      font-size: 1.3125rem;
     }
 
     .about-photo {
@@ -258,11 +277,16 @@ const facts = [
       text-align: left;
     }
 
+    .about-text {
+      max-width: 440px;
+    }
+
     /* Los 4 datos en columna junto a la foto. */
     .about-facts {
       grid-template-columns: 1fr;
       gap: 14px;
       max-width: 440px;
+      margin-top: 32px;
     }
 
     .about-fact {

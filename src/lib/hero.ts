@@ -4,7 +4,7 @@
  */
 import heroMobile from '../assets/photos/hero-mobile.jpg';
 import heroDesktop from '../assets/photos/hero-desktop.jpg';
-import { WIDTHS, responsive, type ResponsiveSource } from './images';
+import { WIDTHS, QUALITY_HERO, responsive, type ResponsiveSource } from './images';
 
 export const HERO_MEDIA = {
   mobile: '(max-width: 1023.98px)',
@@ -15,8 +15,8 @@ let cache: Promise<{ mobile: ResponsiveSource; desktop: ResponsiveSource }> | un
 
 export function heroSources() {
   cache ??= Promise.all([
-    responsive(heroMobile, WIDTHS.portrait),
-    responsive(heroDesktop, WIDTHS.landscape),
+    responsive(heroMobile, WIDTHS.portrait, QUALITY_HERO),
+    responsive(heroDesktop, WIDTHS.landscape, QUALITY_HERO),
   ]).then(([mobile, desktop]) => ({ mobile, desktop }));
   return cache;
 }
