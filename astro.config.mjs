@@ -7,10 +7,11 @@ import { loadEnv } from 'vite';
 
 // astro.config se evalúa antes de cargar .env: se lee a mano (Vercel lo pasa por process.env).
 const fileEnv = loadEnv(process.env.NODE_ENV ?? 'production', process.cwd(), '');
-const SITE_URL = (process.env.SITE_URL || fileEnv.SITE_URL || 'https://vsl.rehabilitywod.com').replace(
-  /\/+$/,
-  '',
-);
+const SITE_URL = (
+  process.env.SITE_URL ||
+  fileEnv.SITE_URL ||
+  'https://vsl.rehabilitywod.com'
+).replace(/\/+$/, '');
 
 export default defineConfig({
   site: SITE_URL,
