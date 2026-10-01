@@ -36,6 +36,12 @@ function parseA1(a1) {
   return [r1, c1, r2 - r1 + 1, c2 - c1 + 1];
 }
 
+/** En una hoja en español los argumentos se separan con ";"; en una en inglés, con ",". */
+function formulaOk(formula, locale) {
+  const outside = formula.replace(/"[^"]*"/g, '""');
+  return /^es/.test(locale ?? '') ? !outside.includes(',') : !outside.includes(';');
+}
+
 class Range {
   constructor(sheet, row, col, rows, cols) {
     Object.assign(this, { sheet, row, col, rows, cols });
@@ -53,7 +59,15 @@ class Range {
     return this;
   }
   getValue() {
-    return this.sheet.get(this.row, this.col);
+    const v = this.sheet.get(this.row, this.col);
+    if (typeof v === 'string' && v.startsWith('=')) {
+      return formulaOk(v, this.sheet.ss.locale) ? 3 : '#ERROR!';
+    }
+    return v;
+  }
+  clear() {
+    this.sheet.cells.delete(`${this.row}:${this.col}`);
+    return this;
   }
   setNumberFormat(fmt) {
     for (let i = 0; i < this.rows; i++) this.sheet.formats.set(`${this.row + i}:${this.col}`, fmt);
@@ -162,6 +176,7 @@ function makeGoogle(props) {
       getActiveSpreadsheet: () => ss,
       newDataValidation: () => builder('validation'),
       newConditionalFormatRule: () => builder('conditional'),
+      flush() {},
     },
     PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props[k] ?? null }) },
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
@@ -245,12 +260,16 @@ try {
     'utm_campaign',
     'utm_content',
     'utm_term',
-    'fbclid',
   ];
   check(
-    'Las 11 primeras columnas son las pedidas',
-    JSON.stringify(HEADERS.slice(0, 11)) === JSON.stringify(EXPECTED_HEADERS),
-    HEADERS.slice(0, 11).join(' | '),
+    'Las 10 primeras columnas son las pedidas',
+    JSON.stringify(HEADERS.slice(0, 10)) === JSON.stringify(EXPECTED_HEADERS),
+    HEADERS.slice(0, 10).join(' | '),
+  );
+  check(
+    'No se guardan fbclid ni referrer',
+    !HEADERS.some((h) => /fbclid|referrer/i.test(h)),
+    `${HEADERS.length} columnas`,
   );
 
   // 1) Llegada desde un anuncio de Meta y envío con JavaScript.
@@ -309,7 +328,10 @@ try {
     'Qué le pasa',
     byHeader['Qué le pasa'] === 'Me duele la rodilla en los squats desde hace 3 meses.',
   );
-  for (const [k, v] of Object.entries(utm)) check(k, byHeader[k] === v, byHeader[k]);
+  for (const [k, v] of Object.entries(utm)) {
+    if (k === 'fbclid') continue;
+    check(k, byHeader[k] === v, byHeader[k]);
+  }
   check('Estado empieza en «Nuevo»', byHeader['Estado'] === 'Nuevo');
   check('Consentimiento de salud registrado', byHeader['Consent. salud'] === 'Sí');
   check(
@@ -328,6 +350,11 @@ try {
     ? [...summary.cells.values()].filter((v) => String(v).startsWith('='))
     : [];
   check('Pestaña "Resumen" con sus fórmulas', formulas.length === 8, `${formulas.length} fórmulas`);
+  check(
+    'Todas las fórmulas del Resumen son válidas en una hoja en español (sin #ERROR!)',
+    formulas.every((f) => formulaOk(f, gas.ss.locale)) && formulas.some((f) => f.includes(';')),
+    gas.ss.locale,
+  );
   check(
     'Resumen por campaña usa la columna utm_campaign (H)',
     formulas.some((f) => f.includes('select H, count(A)') && f.includes("label H 'Campaña'")),

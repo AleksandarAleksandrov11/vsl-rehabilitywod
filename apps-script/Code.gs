@@ -31,19 +31,17 @@ var HEADERS = [
   'utm_campaign', // H
   'utm_content', // I
   'utm_term', // J
-  'fbclid', // K
-  'Estado', // L
-  'Notas', // M
-  'Landing', // N
-  'Referrer', // O
-  'Dispositivo', // P
-  'Consent. salud', // Q
-  'Consent. marketing', // R
-  'Event ID', // S
+  'Estado', // K
+  'Notas', // L
+  'Landing', // M
+  'Dispositivo', // N
+  'Consent. salud', // O
+  'Consent. marketing', // P
+  'Event ID', // Q
 ];
 
-// Posición (1-based) de las columnas con formato especial.
-var COL = { fecha: 1, telefono: 3, detalle: 5, estado: 12, notas: 13, eventId: 19 };
+var LAST_COL = HEADERS.length;
+var COL = { fecha: 1, telefono: 3, detalle: 5, estado: 11, notas: 12, eventId: 17 };
 
 var ESTADOS = ['Nuevo', 'Contactado', 'Videollamada agendada', 'Cliente', 'Descartado'];
 var ESTADO_COLORES = {
@@ -56,7 +54,7 @@ var ESTADO_COLORES = {
 
 // Anchos de columna (px) para que la hoja se lea bien desde el primer día.
 var COLUMN_WIDTHS = [
-  135, 140, 140, 130, 320, 110, 110, 160, 160, 140, 140, 170, 240, 200, 160, 100, 110, 130, 280,
+  135, 140, 140, 130, 320, 110, 110, 160, 160, 140, 170, 240, 200, 100, 110, 130, 280,
 ];
 
 /* ------------------------------------------------------------------ */
@@ -84,17 +82,23 @@ function doPost(e) {
     return json_({ ok: false, error: 'busy' });
   }
 
+  var lead;
   try {
-    var lead = normalizeLead_(data);
+    lead = normalizeLead_(data);
     appendLead_(lead, new Date());
-    notify_(lead, props.getProperty('NOTIFY_EMAIL') || DEFAULT_NOTIFY_EMAIL);
-    return json_({ ok: true });
   } catch (err) {
     console.error('Error guardando el lead: ' + (err && err.message));
     return json_({ ok: false, error: 'server_error' });
   } finally {
     lock.releaseLock();
   }
+
+  try {
+    notify_(lead, props.getProperty('NOTIFY_EMAIL') || DEFAULT_NOTIFY_EMAIL);
+  } catch (err) {
+    console.error('Lead guardado, pero el aviso por email falló: ' + (err && err.message));
+  }
+  return json_({ ok: true });
 }
 
 /** Comprueba que el despliegue responde: abre la URL en el navegador. */
@@ -112,10 +116,10 @@ function getSheet_() {
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME, 0);
     setupSheet_(sheet);
+    setupSummary_(ss);
   } else if (sheet.getLastRow() === 0) {
     setupSheet_(sheet);
   }
-  if (!ss.getSheetByName(SUMMARY_NAME)) setupSummary_(ss);
   return sheet;
 }
 
@@ -136,14 +140,17 @@ function setupSheet_(sheet) {
   for (var i = 0; i < COLUMN_WIDTHS.length; i++) {
     sheet.setColumnWidth(i + 1, COLUMN_WIDTHS[i]);
   }
-  // Fecha como fecha real (se puede ordenar y filtrar); teléfono y Event ID como texto.
+  applyFormats_(sheet);
+}
+
+/** Formatos y validaciones de las filas de datos (se aplican al crear la hoja y al ampliarla). */
+function applyFormats_(sheet) {
   columnRange_(sheet, COL.fecha).setNumberFormat(DATE_FORMAT);
   columnRange_(sheet, COL.telefono).setNumberFormat('@');
   columnRange_(sheet, COL.eventId).setNumberFormat('@');
-  // "Qué le pasa" y Notas con ajuste de texto.
   columnRange_(sheet, COL.detalle).setWrap(true);
   columnRange_(sheet, COL.notas).setWrap(true);
-  sheet.getRange(1, 1, sheet.getMaxRows(), HEADERS.length).setVerticalAlignment('top');
+  sheet.getRange(1, 1, sheet.getMaxRows(), LAST_COL).setVerticalAlignment('top');
   applyEstadoValidation_(sheet);
   applyEstadoColors_(sheet);
 }
@@ -189,11 +196,9 @@ function buildRow_(lead, fecha) {
     lead.utm_campaign,
     lead.utm_content,
     lead.utm_term,
-    lead.fbclid,
     'Nuevo',
     '',
     lead.landing_url,
-    lead.referrer,
     lead.device,
     lead.consentimiento_salud ? 'Sí' : 'No',
     lead.consentimiento_marketing ? 'Sí' : 'No',
@@ -204,20 +209,12 @@ function buildRow_(lead, fecha) {
 function appendLead_(lead, fecha) {
   var sheet = getSheet_();
   var row = buildRow_(lead, fecha);
-
   var next = sheet.getLastRow() + 1;
-  var range = sheet.getRange(next, 1, 1, row.length);
-  // Formatos de la fila antes de escribir (por si la hoja ha crecido más allá del formato).
-  sheet.getRange(next, COL.fecha).setNumberFormat(DATE_FORMAT);
-  sheet.getRange(next, COL.telefono).setNumberFormat('@');
-  sheet.getRange(next, COL.eventId).setNumberFormat('@');
-  range.setValues([row]);
-
-  // Si la fila cae fuera del rango con validación (hoja crecida), se vuelve a aplicar.
-  if (!sheet.getRange(next, COL.estado).getDataValidation()) {
-    applyEstadoValidation_(sheet);
-    applyEstadoColors_(sheet);
+  if (next > sheet.getMaxRows()) {
+    sheet.insertRowsAfter(sheet.getMaxRows(), 1000);
+    applyFormats_(sheet);
   }
+  sheet.getRange(next, 1, 1, row.length).setValues([row]);
 }
 
 /* ------------------------------------------------------------------ */
@@ -226,16 +223,28 @@ function appendLead_(lead, fecha) {
 
 /**
  * Pestaña "Resumen": totales y leads por zona de dolor, campaña, anuncio y origen. Son fórmulas
- * sobre la hoja Leads, así que se actualizan solas. (Las fórmulas van en inglés y con comas:
- * Apps Script las traduce al idioma de la hoja.)
+ * sobre la hoja Leads, así que se actualizan solas. Se escriben con el separador de argumentos
+ * que admite la hoja (coma o punto y coma según la configuración regional).
  */
+function formulaSeparator_(sheet) {
+  var cell = sheet.getRange('Z1');
+  cell.setFormula('=SUM(1,2)');
+  SpreadsheetApp.flush();
+  var ok = cell.getValue() === 3;
+  cell.clear();
+  return ok ? ',' : ';';
+}
+
 function setupSummary_(ss) {
   var sheet = ss.getSheetByName(SUMMARY_NAME) || ss.insertSheet(SUMMARY_NAME);
   sheet.clear();
-  var empty = '"Sin datos todavía"';
+  var sep = formulaSeparator_(sheet);
+  var f = function (template) {
+    return template.split('|').join(sep);
+  };
   var query = function (col, label) {
-    return (
-      '=IFERROR(QUERY(Leads!A2:S, "select ' +
+    var q =
+      'select ' +
       col +
       ', count(A) where A is not null group by ' +
       col +
@@ -243,20 +252,22 @@ function setupSummary_(ss) {
       col +
       " '" +
       label +
-      "', count(A) 'Leads'\", 0), " +
-      empty +
-      ')'
-    );
+      "', count(A) 'Leads'";
+    return f('=IFERROR(QUERY(Leads!A2:Q|"' + q + '"|0)|"Sin datos todavía")');
   };
 
   sheet.getRange('A1').setValue('Resumen de leads').setFontWeight('bold').setFontSize(14);
-  sheet.getRange('A3:B6').setValues([
-    ['Leads totales', '=COUNTA(Leads!A2:A)'],
-    ['Leads hoy', '=COUNTIFS(Leads!A2:A, ">="&TODAY(), Leads!A2:A, "<"&(TODAY()+1))'],
-    ['Últimos 7 días', '=COUNTIFS(Leads!A2:A, ">="&(TODAY()-6))'],
-    ['Pendientes de contactar', '=COUNTIF(Leads!L2:L, "Nuevo")'],
-  ]);
-  sheet.getRange('A3:A6').setFontWeight('bold');
+  var totals = [
+    ['A3', 'Leads totales', '=COUNTA(Leads!A2:A)'],
+    ['A4', 'Leads hoy', '=COUNTIFS(Leads!A2:A|">="&TODAY()|Leads!A2:A|"<"&(TODAY()+1))'],
+    ['A5', 'Últimos 7 días', '=COUNTIFS(Leads!A2:A|">="&(TODAY()-6))'],
+    ['A6', 'Pendientes de contactar', '=COUNTIF(Leads!K2:K|"Nuevo")'],
+  ];
+  totals.forEach(function (t) {
+    var cell = sheet.getRange(t[0]);
+    cell.setValue(t[1]).setFontWeight('bold');
+    cell.offset(0, 1).setFormula(f(t[2]));
+  });
 
   var blocks = [
     ['A8', 'Por zona de dolor', 'D', 'Zona de dolor'],
@@ -273,7 +284,11 @@ function setupSummary_(ss) {
     sheet.setColumnWidth(col, 220);
     sheet.setColumnWidth(col + 1, 70);
   });
-  sheet.setFrozenRows(1);
+}
+
+/** Ejecútala desde el editor para volver a crear la pestaña Resumen. */
+function rebuildSummary() {
+  setupSummary_(SpreadsheetApp.getActiveSpreadsheet());
 }
 
 /* ------------------------------------------------------------------ */
@@ -300,9 +315,7 @@ function normalizeLead_(d) {
     utm_campaign: str_(d.utm_campaign, 200),
     utm_content: str_(d.utm_content, 200),
     utm_term: str_(d.utm_term, 200),
-    fbclid: str_(d.fbclid, 300),
     landing_url: str_(d.landing_url, 300),
-    referrer: str_(d.referrer, 300),
     device: str_(d.device, 10),
     event_id: str_(d.event_id, 36),
   };
@@ -341,9 +354,7 @@ function notify_(lead, to) {
     'utm_campaign: ' + lead.utm_campaign,
     'utm_content: ' + lead.utm_content,
     'utm_term: ' + lead.utm_term,
-    'fbclid: ' + lead.fbclid,
     'Landing: ' + lead.landing_url,
-    'Referrer: ' + lead.referrer,
     'Dispositivo: ' + lead.device,
     'Event ID: ' + lead.event_id,
     '',
@@ -376,9 +387,7 @@ function notify_(lead, to) {
       ['utm_campaign', lead.utm_campaign],
       ['utm_content', lead.utm_content],
       ['utm_term', lead.utm_term],
-      ['fbclid', lead.fbclid],
       ['Landing', lead.landing_url],
-      ['Referrer', lead.referrer],
       ['Dispositivo', lead.device],
       ['Event ID', lead.event_id],
     ]
@@ -435,13 +444,12 @@ function testLead() {
     utm_campaign: 'Prueba campaña',
     utm_content: 'Prueba anuncio',
     utm_term: 'Prueba conjunto',
-    fbclid: '',
-    landing_url: 'https://rehabilitywod.com/',
-    referrer: '',
+    landing_url: 'https://vsl.rehabilitywod.com/',
     device: 'desktop',
     event_id: Utilities.getUuid(),
   });
   appendLead_(lead, new Date());
+  if (!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SUMMARY_NAME)) rebuildSummary();
   notify_(lead, props.getProperty('NOTIFY_EMAIL') || DEFAULT_NOTIFY_EMAIL);
   Logger.log('Fila de prueba añadida en "' + SHEET_NAME + '" y aviso enviado.');
   if (!props.getProperty('LEAD_SECRET')) {

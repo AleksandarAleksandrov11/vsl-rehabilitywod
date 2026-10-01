@@ -75,8 +75,8 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   const consent = form.querySelector<HTMLInputElement>('#consentimiento_salud');
   const honeypot = form.querySelector<HTMLInputElement>('#website');
 
-  const startedAt = Date.now();
-  const eventId = uuidv4();
+  let startedAt = Date.now();
+  let eventId = uuidv4();
   const completed = new Set<number>();
   let current = 1;
   let submitting = false;
@@ -299,6 +299,21 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
 
   showStep(1, { focus: false, announce: false });
 
+  // Al volver atrás desde /gracias el navegador restaura la página con el botón bloqueado:
+  // se deja el formulario limpio y listo para enviar otra solicitud (con otro identificador).
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+    form.reset();
+    completed.clear();
+    startedAt = Date.now();
+    eventId = uuidv4();
+    setSubmitting(false);
+    if (submitLabel) submitLabel.textContent = 'Enviar y valorar mi caso';
+    if (formError) formError.hidden = true;
+    syncOtro();
+    showStep(1, { focus: false, announce: false });
+  });
+
   // Vuelta desde el fallback sin JS con error.
   const params = new URLSearchParams(window.location.search);
   if (params.get('error') === '1' && notice) {
@@ -434,7 +449,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
 
     try {
       const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 15000);
+      const timer = window.setTimeout(() => controller.abort(), 20000);
       const res = await fetch('/api/lead', {
         method: 'POST',
         headers: { 'content-type': 'application/json', accept: 'application/json' },
@@ -455,7 +470,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
       // Lead con el mismo eventID que el lead del servidor (deduplicación con la CAPI).
       pixelTrack('Lead', {}, { eventID: payload.event_id });
       // Margen para que salgan las peticiones de analítica antes de cambiar de página.
-      await wait(isPixelActive() ? 600 : 150);
+      await wait(isPixelActive() ? 350 : 0);
       window.location.assign('/gracias');
     } catch (error) {
       setSubmitting(false);

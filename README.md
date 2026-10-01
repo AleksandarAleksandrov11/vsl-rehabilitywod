@@ -61,7 +61,7 @@ y manda el aviso a `aaswebmarketing@gmail.com`.
 Instalación paso a paso: [`apps-script/README-apps-script.md`](apps-script/README-apps-script.md).
 
 Columnas de la pestaña **Leads**: fecha y hora, nombre, teléfono, zona de dolor, qué le pasa,
-`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, `utm_term` y `fbclid`; después, estado
+`utm_source`, `utm_medium`, `utm_campaign`, `utm_content` y `utm_term`; después, estado
 (desplegable con color), notas y datos técnicos del envío. La pestaña **Resumen** cuenta los leads
 de hoy, de los últimos 7 días, los pendientes de contactar y los totales por zona, campaña, anuncio
 y origen.
