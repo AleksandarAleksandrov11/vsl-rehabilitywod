@@ -129,13 +129,23 @@ function watchConsole(page: Page) {
   return { problems, thirdParty };
 }
 
+/**
+ * Recoge las violaciones de CSP en window.__csp. Las conexiones que el propio fbevents.js de Meta
+ * intenta abrir hacia dominios suyos que cambian (p. ej. *.a.run.app o *.on.aws, según la
+ * configuración del Pixel que sirve Meta) se bloquean a propósito y van a window.__cspMeta: no son
+ * un fallo de la web y el Pixel sigue enviando sus eventos a facebook.com/tr.
+ */
 async function installCspProbe(ctx: BrowserContext) {
   await ctx.addInitScript(() => {
-    (window as unknown as { __csp: string[] }).__csp = [];
+    const w = window as unknown as { __csp: string[]; __cspMeta: string[] };
+    w.__csp = [];
+    w.__cspMeta = [];
     document.addEventListener('securitypolicyviolation', (e) => {
-      (window as unknown as { __csp: string[] }).__csp.push(
-        `${e.violatedDirective} ${e.blockedURI} ${e.sourceFile}:${e.lineNumber}`,
-      );
+      const line = `${e.violatedDirective} ${e.blockedURI} ${e.sourceFile}:${e.lineNumber}`;
+      const fromMeta =
+        e.violatedDirective.startsWith('connect-src') &&
+        e.sourceFile.startsWith('https://connect.facebook.net/');
+      (fromMeta ? w.__cspMeta : w.__csp).push(line);
     });
   });
 }
@@ -1034,9 +1044,15 @@ test.describe('Formulario', () => {
       .locator('#website')
       .evaluate((el: HTMLInputElement) => (el.value = 'https://spam.example'));
     await page.waitForTimeout(3100);
-    const resp = page.waitForResponse('**/api/lead');
+    // La respuesta se lee al interceptarla: la página pasa a /gracias en cuanto llega.
+    let body: unknown = null;
+    await page.route('**/api/lead', async (route) => {
+      const res = await route.fetch();
+      body = await res.json();
+      await route.fulfill({ response: res });
+    });
     await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
-    expect(await (await resp).json()).toEqual({ ok: true });
+    await expect.poll(() => body).toEqual({ ok: true });
     await page.waitForURL('**/gracias');
     expect(readLeads().some((l) => l.nombre === 'Bot Honeypot UI')).toBe(false);
 
