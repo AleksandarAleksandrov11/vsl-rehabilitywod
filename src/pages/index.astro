@@ -1,6 +1,5 @@
 ---
 import Base from '../layouts/Base.astro';
-import Intro from '../components/Intro.astro';
 import Header from '../components/Header.astro';
 import Hero from '../components/Hero.astro';
 import VslSection from '../components/VslSection.astro';
@@ -46,7 +45,7 @@ const jsonLd = {
 };
 ---
 
-<Base path="/" jsonLd={jsonLd} intro>
+<Base path="/" jsonLd={jsonLd}>
   <Fragment slot="preload">
     <link
       rel="preload"
@@ -70,7 +69,6 @@ const jsonLd = {
   <a href="#valoracion" class="skip-link">
     Saltar al formulario
   </a>
-  <Intro />
   <Header overlay />
   <main id="main">
     <Hero />

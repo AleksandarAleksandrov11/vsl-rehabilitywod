@@ -283,7 +283,6 @@ try {
   };
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await ctx.addInitScript(() => {
-    sessionStorage.setItem('rw_intro', '1');
     localStorage.setItem('rw_consent', JSON.stringify({ v: 1, marketing: false, ts: Date.now() }));
   });
   const page = await ctx.newPage();

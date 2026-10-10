@@ -148,22 +148,23 @@ src/
   layouts/Legal.astro    Plantilla de las páginas legales
   pages/                 index, gracias (noindex), aviso-legal, privacidad, cookies, 404,
                          og.jpg (imagen OG generada en el build), robots.txt, api/lead.ts
-  components/            Intro, Header, Hero, StatsTicker, VslSection, WhySection, HowItWorks,
+  components/            Header, Hero, StatsTicker, VslSection, WhySection, HowItWorks,
                          Testimonials, AboutGerard, ValoracionSection, LeadForm, ZoneIcon, Faq,
                          ClosingBand, Footer, StickyCta, WhatsappButton, CookieBanner,
                          CtaButton, SectionCta, SplitWords, Wordmark, TitularData
   scripts/               boot, reveal, motion, marquee, dialogs, faq, consent, cookie-banner,
-                         pixel, tracking, utm, form, vsl, sticky, home
-  lib/                   lead.ts (validación compartida), images.ts (AVIF/WebP), hero.ts, intro.ts
+                         pixel, tracking, insights, utm, form, vsl, sticky, home
+  lib/                   lead.ts (validación compartida), images.ts (AVIF/WebP), hero.ts
   data/testimonials.ts   Testimonios (recorte y texto completo)
   styles/global.css      Tokens, tipografía, botones, texturas, reveals y marquees
   assets/photos/         Fotos de la web (créditos más abajo)
   assets/images/         Capturas de la app
+  assets/fonts/          Work Sans variable recortada a los pesos 400 a 800
   og/                    Fuentes para generar la imagen de Open Graph
 apps-script/             Code.gs e instrucciones de instalación
 tests/qa.spec.ts         Suite de QA (Playwright + axe-core)
 scripts/                 qa.mjs, qa-server.mjs, preview.mjs, lighthouse.mjs, inp.mjs,
-                         anim-size.mjs, csp-hash.mjs, sheets-e2e.mjs, pixel-check.mjs
+                         anim-size.mjs, sheets-e2e.mjs, pixel-check.mjs
 qa/                      screenshots/ y lighthouse/ (resultados de la última ejecución)
 public/textures/         grain.svg
 vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
@@ -171,28 +172,37 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
 
 ## Decisiones técnicas
 
-- **CSP sin `'unsafe-inline'` en `script-src`.** Astro está configurado para no incrustar scripts.
-  La única excepción es el script mínimo de la intro en el `<head>` de la home, permitido por su
-  **hash sha256** en `vercel.json`. Si se cambia `src/lib/intro.ts` hay que actualizar el hash con
-  `node scripts/csp-hash.mjs --write`; un test lo comprueba. `style-src-attr 'unsafe-inline'` se
-  mantiene para los atributos `style` que escalonan las animaciones.
+- **CSP sin `'unsafe-inline'` ni hashes en `script-src`.** Astro está configurado para no incrustar
+  scripts: todos son archivos propios o el de Meta. `style-src-attr 'unsafe-inline'` se mantiene
+  para los atributos `style` que escalonan las animaciones.
 - **`security.checkOrigin: false` en Astro.** El `checkOrigin` de Astro 5 reconstruye la URL como
   `localhost` en Vercel y rechazaría el formulario sin JavaScript. `/api/lead` hace su propia
   comprobación de origen.
 - **Antispam.** Honeypot oculto y medición del tiempo de relleno con los dos relojes del cliente
   (`started_at` y `submitted_at`), para no descartar envíos reales si el reloj del móvil va
   adelantado. Sin JavaScript solo se aplica el honeypot.
-- **Vídeo**: reproductor de YouTube en modo de privacidad mejorada (`youtube-nocookie.com`). Para no
-  cargarlo en la primera pintura, el iframe se inserta cuando el vídeo se acerca a la pantalla;
-  hasta entonces se ve la portada servida desde la web, y un clic en ella arranca la reproducción.
-  El play se detecta por `postMessage` y envía `vsl_play` y `ViewContent`.
+- **Vídeo (facade)**: reproductor de YouTube en modo de privacidad mejorada
+  (`youtube-nocookie.com`). Hasta pulsar play solo se ve la portada servida desde la web con el
+  botón de play de YouTube; no se descarga nada de YouTube. Al pulsar se inserta el iframe con
+  autoplay y se envían `vsl_play` y `ViewContent`.
 - **Imágenes**: AVIF y WebP generados en el build, nunca por encima del tamaño natural. Los fondos
   que van bajo un velo usan menos calidad, y las fotos por debajo del pliegue se piden con
   `fetchpriority="low"` para no competir con el hero ni con las fuentes.
 - **Hero con dirección de arte**: foto vertical hasta 1023 px y horizontal desde 1024 px, con
   precarga responsive (`imagesrcset` + `media`) de la versión AVIF.
-- **Animación inicial**: CSS puro, 1,1 s como máximo, una vez por sesión y nunca con
-  `prefers-reduced-motion`.
+- **Hero sin animación de entrada**: titular, subtítulo y botones se pintan en el primer render.
+  Las entradas al hacer scroll (`.reveal`) solo se arman en lo que queda por debajo del pliegue.
+- **Fuentes**: Work Sans (variable, recortada a los pesos 400 a 800 con
+  `fontTools.varLib.instancer`) y Big Shoulders Display 800, las dos con `font-display: swap`,
+  precargadas (se usan en el hero) y con fallbacks de métrica ajustada para que el cambio de fuente
+  no mueva nada.
+- **Scripts no críticos**: todos los scripts son módulos (diferidos). La analítica de Vercel se
+  carga tras el evento `load`, en un momento libre del navegador. El Pixel de Meta se carga en
+  cuanto hay consentimiento de marketing (al instante en visitas que ya lo dieron).
+- **Eventos de Meta**: `PageView` al cargar el Pixel, `ViewContent` al pulsar play en el vídeo y al
+  completar el paso 1 del formulario (`content_name` VSL o Formulario), `FormStart` al completar el
+  paso 1 y `Lead` solo cuando `/api/lead` responde OK, con el mismo `event_id` que el evento de la
+  API de conversiones para deduplicar.
 - **Marquees** (cinta de datos y testimonios): la copia del bucle lleva `aria-hidden` e `inert`.
 - **WhatsApp**: burbuja fija en escritorio y botón junto al CTA en la barra fija de móvil, los dos
   con el mensaje ya escrito. El número y el texto están en `src/config.ts`.
@@ -236,9 +246,9 @@ cambien de forma relevante.
 ## QA
 
 `npm run qa` compila, levanta el servidor de QA y ejecuta `tests/qa.spec.ts`: 12 viewports, capturas
-con y sin intro, scroll horizontal, consola y CSP, enlaces, imágenes, áreas táctiles, encabezados,
+(también del primer render del hero), scroll horizontal, consola y CSP, enlaces, imágenes, áreas táctiles, encabezados,
 axe-core, contraste AA del texto sobre fotos, llamadas a la acción, recuento de palabras, altura de
-la home, intro, marquees, reveals y parallax, estados hover, consentimiento y Pixel, vídeo,
+la home, hero sin animación de entrada, marquees, reveals y parallax, estados hover, consentimiento y Pixel, vídeo,
 formulario (camino feliz, casos límite y sin JavaScript), barra fija, páginas legales, cabeceras y
 presupuesto de JavaScript. Las capturas quedan en `qa/screenshots/`.
 

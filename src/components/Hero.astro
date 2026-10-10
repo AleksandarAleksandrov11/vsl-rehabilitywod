@@ -2,7 +2,7 @@
 /**
  * Sección 1: hero a pantalla completa con foto de box (vertical en móvil y tablet, horizontal
  * desde 1024 px), velo, grano y la cinta de stats pegada abajo. Sin eyebrow.
- * El H1 hace word-up al cargar (CSS, sin JS); si hay intro, arranca cuando se abre el panel.
+ * Sin animaciones de entrada: titular, subtítulo y botones se ven en la primera pintura.
  */
 import CtaButton from './CtaButton.astro';
 import SplitWords from './SplitWords.astro';
@@ -145,22 +145,12 @@ const { mobile, desktop } = await heroSources();
     max-width: 11em;
   }
 
-  .hero-title :global(.w > span) {
-    animation: word-up 0.9s var(--ease) both;
-    animation-delay: calc(0.1s + var(--i) * 70ms);
-  }
-
-  :global(html[data-intro='play']) .hero-title :global(.w > span) {
-    animation-delay: calc(0.65s + var(--i) * 70ms);
-  }
-
   .hero-sub {
     max-width: 22.5rem;
     margin-top: 20px;
     font-size: 1.125rem;
     line-height: 1.45;
     color: #e2e2de;
-    animation: fade-up 0.8s var(--ease) 0.35s both;
   }
 
   .hero-ctas {
@@ -170,27 +160,10 @@ const { mobile, desktop } = await heroSources();
     width: 100%;
     max-width: 360px;
     margin-top: 28px;
-    animation: fade-up 0.8s var(--ease) 0.45s both;
-  }
-
-  :global(html[data-intro='play']) .hero-sub {
-    animation-delay: 1s;
-  }
-
-  :global(html[data-intro='play']) .hero-ctas {
-    animation-delay: 1.1s;
   }
 
   .hero-ctas :global(.hero-cta) {
     width: 100%;
-  }
-
-  .hero :global(.ticker) {
-    animation: fade-up 0.8s var(--ease) 0.55s both;
-  }
-
-  :global(html[data-intro='play']) .hero :global(.ticker) {
-    animation-delay: 1.15s;
   }
 
   /* Tablet: la misma foto vertical, algo más centrada, y velo uniforme con el texto al centro. */

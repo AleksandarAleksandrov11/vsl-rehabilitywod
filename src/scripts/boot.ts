@@ -1,6 +1,7 @@
 /**
  * Arranque común a todas las páginas: atribución, Pixel según consentimiento,
- * clics en CTA, estado del header, barra de progreso y animaciones de entrada.
+ * clics en CTA, estado del header, barra de progreso, animaciones de entrada y, cuando la
+ * página ya ha cargado, la analítica de Vercel.
  */
 import { captureAttribution } from './utm';
 import { getConsent, onConsentChange } from './consent';
@@ -8,6 +9,9 @@ import { loadPixel, revokePixel } from './pixel';
 import { trackEvent } from './tracking';
 import './cookie-banner';
 import './reveal';
+
+// Con JS activo: el FAQ pasa a acordeón (sin JS las respuestas se ven abiertas).
+document.documentElement.classList.add('js');
 
 captureAttribution();
 
@@ -46,3 +50,12 @@ if (scrollRegions.length) {
   sync();
   window.addEventListener('resize', sync, { passive: true });
 }
+
+// Analítica de Vercel (no crítica): tras el evento load y en un momento libre del navegador.
+function startInsights(): void {
+  const run = () => void import('./insights');
+  if ('requestIdleCallback' in window) window.requestIdleCallback(run, { timeout: 2000 });
+  else setTimeout(run, 200);
+}
+if (document.readyState === 'complete') startInsights();
+else window.addEventListener('load', startInsights, { once: true });

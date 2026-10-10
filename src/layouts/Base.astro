@@ -1,14 +1,10 @@
 ---
-import '@fontsource-variable/work-sans/wght.css';
 import '@fontsource/big-shoulders-display/latin-800';
 import '../styles/global.css';
-import workSansLatin from '@fontsource-variable/work-sans/files/work-sans-latin-wght-normal.woff2?url';
+import workSansLatin from '../assets/fonts/work-sans-latin-wght-400-800.woff2?url';
 import bigShouldersLatin from '@fontsource/big-shoulders-display/files/big-shoulders-display-latin-800-normal.woff2?url';
-import Analytics from '@vercel/analytics/astro';
-import SpeedInsights from '@vercel/speed-insights/astro';
 import CookieBanner from '../components/CookieBanner.astro';
 import { CONFIG, SEO } from '../config';
-import { INTRO_SCRIPT } from '../lib/intro';
 
 interface Props {
   title?: string;
@@ -18,8 +14,6 @@ interface Props {
   noindex?: boolean;
   /** JSON-LD opcional (solo en la home). */
   jsonLd?: Record<string, unknown>;
-  /** Solo la home: script en línea que decide si se muestra la animación inicial. */
-  intro?: boolean;
 }
 
 const {
@@ -28,7 +22,6 @@ const {
   path = Astro.url.pathname,
   noindex = false,
   jsonLd,
-  intro = false,
 } = Astro.props;
 
 const canonical =
@@ -44,7 +37,6 @@ const ogAlt =
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
-    {intro && <script is:inline set:html={INTRO_SCRIPT} />}
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {noindex ? (
@@ -93,8 +85,6 @@ const ogAlt =
   <body id="top">
     <slot />
     <CookieBanner />
-    <Analytics />
-    <SpeedInsights />
     <script>
       import '../scripts/boot';
     </script>

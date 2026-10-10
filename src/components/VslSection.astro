@@ -1,9 +1,8 @@
 ---
 /**
- * Sección 2: VSL con el reproductor de YouTube tal cual (modo de privacidad mejorada).
- * Para no cargar YouTube en la primera pintura, vsl.ts inserta el iframe cuando el vídeo se
- * acerca a la pantalla; hasta entonces se ve la portada del vídeo servida desde la web (un
- * clic en ella carga el reproductor y lo pone en marcha).
+ * Sección 2: VSL con el reproductor de YouTube (modo de privacidad mejorada) en facade.
+ * Se ve la portada del vídeo servida desde la web con el botón de play de YouTube; el iframe
+ * solo se carga al pulsar play (vsl.ts) y arranca solo.
  */
 import RotateCcw from '@lucide/astro/icons/rotate-ccw';
 import Crosshair from '@lucide/astro/icons/crosshair';
@@ -61,6 +60,20 @@ const keys = [
           class="vsl-poster"
         />
       </picture>
+      <svg
+        class="vsl-play"
+        viewBox="0 0 68 48"
+        width="68"
+        height="48"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path
+          class="vsl-play-bg"
+          d="M66.52 7.74a8.6 8.6 0 0 0-6.02-6.1C55.2.2 34 .2 34 .2s-21.2 0-26.5 1.44a8.6 8.6 0 0 0-6.02 6.1C.06 13.1.06 24 .06 24s0 10.9 1.42 16.26a8.6 8.6 0 0 0 6.02 6.1C12.8 47.8 34 47.8 34 47.8s21.2 0 26.5-1.44a8.6 8.6 0 0 0 6.02-6.1C67.94 34.9 67.94 24 67.94 24s0-10.9-1.42-16.26Z"
+        ></path>
+        <path d="M45 24 27 14v20" fill="#ffffff"></path>
+      </svg>
     </button>
     <noscript>
       <a class="vsl-noscript" href={`https://www.youtube.com/watch?v=${id}`}>
@@ -162,6 +175,31 @@ const keys = [
 
   .vsl-poster {
     object-fit: cover;
+  }
+
+  /* Botón de play con el aspecto del de YouTube (el mismo que se ve al cargar el reproductor). */
+  .vsl-play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 68px;
+    height: 48px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .vsl-play-bg {
+    fill: #212121;
+    fill-opacity: 0.8;
+    transition:
+      fill 0.1s cubic-bezier(0.4, 0, 1, 1),
+      fill-opacity 0.1s cubic-bezier(0.4, 0, 1, 1);
+  }
+
+  .vsl-facade:hover .vsl-play-bg,
+  .vsl-facade:focus-visible .vsl-play-bg {
+    fill: #ff0000;
+    fill-opacity: 1;
   }
 
   .vsl-frame :global(iframe) {

@@ -251,7 +251,11 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     if (completed.has(step)) return;
     completed.add(step);
     trackEvent('form_step', { step });
-    if (step === 1) pixelTrack('FormStart');
+    if (step === 1) {
+      // Señal intermedia para Meta al pulsar "Continuar" en el paso 1.
+      pixelTrack('ViewContent', { content_name: 'Formulario' });
+      pixelTrack('FormStart');
+    }
   }
 
   function next(): void {

@@ -101,17 +101,6 @@ async function newCtx(
   return ctx;
 }
 
-/** Marca la intro como ya vista en la sesión (capturas y flujos "sin intro"). */
-async function skipIntro(ctx: BrowserContext) {
-  await ctx.addInitScript(() => {
-    try {
-      window.sessionStorage.setItem('rw_intro', '1');
-    } catch {
-      /* ignore */
-    }
-  });
-}
-
 async function setConsent(ctx: BrowserContext, consent: object | null) {
   await ctx.addInitScript((value) => {
     try {
@@ -382,30 +371,22 @@ test.describe('Viewports', () => {
       // (b) Capturas (contexto aparte para poder ocultar overlays fijos en las de sección).
       // bypassCSP solo aquí: permite a Playwright inyectar el estilo que oculta los fijos en las
       // capturas de sección. Las comprobaciones de CSP se hacen en el contexto (a).
-      // Con intro: fotogramas de la animación inicial en la primera visita de la sesión.
-      const introCtx = await newCtx(browser, vp, { deviceScaleFactor: 1 });
-      await setConsent(introCtx, CONSENT_REJECTED);
-      const ip = await introCtx.newPage();
+      // Primer render: el hero (titular, subtítulo y CTA) ya está, sin animación de entrada.
+      const firstPaintCtx = await newCtx(browser, vp, { deviceScaleFactor: 1 });
+      await setConsent(firstPaintCtx, CONSENT_REJECTED);
+      const ip = await firstPaintCtx.newPage();
       await ip.goto('/', { waitUntil: 'commit' });
-      await ip.locator('.intro').waitFor({ state: 'attached' });
-      await ip.waitForTimeout(350);
-      await ip.screenshot({ path: `${dir}/intro-1-pulso.jpg` });
-      await ip.waitForTimeout(450);
-      await ip.screenshot({ path: `${dir}/intro-2-apertura.jpg` });
-      await ip.waitForTimeout(900);
-      await ip.screenshot({ path: `${dir}/intro-3-hero.jpg` });
-      await introCtx.close();
+      await ip.locator('[data-hero-cta]').waitFor();
+      await ip.screenshot({ path: `${dir}/hero-primer-render.jpg` });
+      await firstPaintCtx.close();
 
-      // Sin intro (ya vista en la sesión).
       const shotCtx = await newCtx(browser, vp, { deviceScaleFactor: 1, bypassCSP: true });
       await setConsent(shotCtx, CONSENT_REJECTED);
-      await skipIntro(shotCtx);
       const page = await shotCtx.newPage();
       await page.goto('/', { waitUntil: 'networkidle' });
       await scrollThrough(page);
       await page.screenshot({ path: `${dir}/home-fold.jpg` });
-      const hideFixed =
-        '.sticky-cta, .cookie-banner, .skip-link, .intro { display: none !important; }';
+      const hideFixed = '.sticky-cta, .cookie-banner, .skip-link { display: none !important; }';
       await page.screenshot({
         path: `${dir}/home-full.jpg`,
         fullPage: true,
@@ -477,7 +458,7 @@ test.describe('Viewports', () => {
       const firstCtx = await newCtx(browser, vp, { deviceScaleFactor: 1 });
       const fp = await firstCtx.newPage();
       await fp.goto('/', { waitUntil: 'networkidle' });
-      await fp.waitForTimeout(1300); // tras la intro
+      await fp.waitForTimeout(600); // tras la entrada del banner
       await fp.screenshot({ path: `${dir}/first-visit-banner.jpg` });
       // El banner no tapa el formulario: con el banner abierto, el botón del paso 1 se puede
       // llevar por encima del banner con scroll.
@@ -720,7 +701,7 @@ test.describe('Consentimiento y Pixel', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('VSL', () => {
-  test('reproductor de YouTube tal cual: nada de YouTube en la primera carga; se carga al acercarse', async ({
+  test('facade: nada de YouTube al cargar ni al hacer scroll; el iframe solo al pulsar play', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, VIEWPORTS[10]);
@@ -733,23 +714,24 @@ test.describe('VSL', () => {
       if (/youtube|ytimg|googlevideo|ggpht/.test(new URL(r.url()).hostname)) yt.push(r.url());
     });
     await page.goto('/', { waitUntil: 'networkidle' });
-    await page.waitForTimeout(500);
+    await page.locator('#video').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(1500);
     expect(yt).toEqual([]);
     expect(await page.locator('#video iframe').count()).toBe(0);
-    // Sin botón de play propio ni etiqueta de duración: la portada es la del vídeo.
-    await expect(
-      page.locator('#video .vsl-play, #video .vsl-pill, #video .vsl-duration'),
-    ).toHaveCount(0);
+    // Portada del vídeo con el botón de play de YouTube y sin etiqueta de duración.
+    await expect(page.locator('#video .vsl-poster')).toBeVisible();
+    await expect(page.locator('#video .vsl-play')).toBeVisible();
+    await expect(page.locator('#video .vsl-pill, #video .vsl-duration')).toHaveCount(0);
 
-    await page.locator('#video').scrollIntoViewIfNeeded();
+    await page.locator('[data-vsl-play]').click();
     const iframe = page.locator('#video iframe');
     await expect(iframe).toHaveCount(1);
     const src = (await iframe.getAttribute('src')) ?? '';
     expect(src).toContain('https://www.youtube-nocookie.com/embed/V3AgSalCNJs');
     expect(src).toContain('enablejsapi=1');
     expect(src).toContain('playsinline=1');
+    expect(src).toContain('autoplay=1');
     expect(src).toContain(`origin=${encodeURIComponent(new URL(page.url()).origin)}`);
-    expect(src).not.toContain('autoplay=1');
     await expect.poll(() => yt.some((u) => u.includes('youtube-nocookie.com'))).toBe(true);
     await page.waitForTimeout(3000); // reproductor cargado
     const csp = await page.evaluate(() => (window as unknown as { __csp: string[] }).__csp);
@@ -761,15 +743,12 @@ test.describe('VSL', () => {
     await ctx.close();
   });
 
-  test('clic en la portada antes de que cargue: autoplay, vsl_play y ViewContent', async ({
-    browser,
-  }) => {
+  test('al pulsar play: autoplay, vsl_play y ViewContent', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[10]);
     await setConsent(ctx, CONSENT_ACCEPTED);
     const page = await ctx.newPage();
     const fb = fbRequests(page);
     await page.goto('/', { waitUntil: 'networkidle' });
-    // Clic sin desplazar la página (el reproductor aún no se ha insertado).
     await page.locator('[data-vsl-play]').evaluate((el) => (el as HTMLButtonElement).click());
     const iframe = page.locator('#video iframe');
     await expect(iframe).toHaveCount(1);
@@ -823,6 +802,17 @@ test.describe('Formulario', () => {
     await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
     await expect(page.locator('#s2-title')).toBeFocused();
     await expect(page.locator('[data-live]')).toHaveText('Paso 2 de 4');
+    // Paso 1 completado: ViewContent (señal intermedia) y FormStart, sin datos de salud.
+    await expect
+      .poll(() => trEvents(fb, 'ViewContent').length, { timeout: 15_000 })
+      .toBeGreaterThan(0);
+    const vcForm = decodeURIComponent(
+      `${trEvents(fb, 'ViewContent')[0]!.url()} ${trEvents(fb, 'ViewContent')[0]!.postData() ?? ''}`,
+    );
+    expect(vcForm).toContain('Formulario');
+    expect(vcForm).not.toContain('Hombro');
+    await expect.poll(() => trEvents(fb, 'FormStart').length).toBeGreaterThan(0);
+    expect(trEvents(fb, 'Lead')).toHaveLength(0);
 
     await page.getByRole('button', { name: 'Saltar este paso' }).click();
     await expect(page.locator('#s3-title')).toBeFocused();
@@ -861,6 +851,31 @@ test.describe('Formulario', () => {
     const csp = await page.evaluate(() => (window as unknown as { __csp: string[] }).__csp);
     expect(csp).toEqual([]);
     expect(con.problems).toEqual([]);
+    await ctx.close();
+  });
+
+  test('si /api/lead falla no se envía Lead a Meta y se puede reintentar', async ({ browser }) => {
+    const ctx = await newCtx(browser, vp);
+    await setConsent(ctx, CONSENT_ACCEPTED);
+    const page = await ctx.newPage();
+    const fb = fbRequests(page);
+    await page.route('**/api/lead', (route) =>
+      route.fulfill({ status: 502, contentType: 'application/json', body: '{"ok":false}' }),
+    );
+    await openForm(page);
+    await chip(page, 'Rodilla').click();
+    await expect(page.locator('fieldset[data-step="2"]')).toBeVisible();
+    await page.getByRole('button', { name: 'Saltar este paso' }).click();
+    await page.locator('#nombre').fill('Prueba Fallo');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await page.locator('#telefono').fill('611111111');
+    await page.locator('#consentimiento_salud').check();
+    await page.waitForTimeout(3200);
+    await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
+    await expect(page.getByRole('button', { name: 'Reintentar el envío' })).toBeVisible();
+    await page.waitForTimeout(1500);
+    expect(page.url()).not.toContain('/gracias');
+    expect(trEvents(fb, 'Lead')).toHaveLength(0);
     await ctx.close();
   });
 
@@ -1232,7 +1247,6 @@ test.describe('Marquees (cinta de stats y testimonios)', () => {
     }) => {
       const ctx = await newCtx(browser, VIEWPORTS[10]);
       await setConsent(ctx, CONSENT_REJECTED);
-      await skipIntro(ctx);
       const page = await ctx.newPage();
       await page.goto('/', { waitUntil: 'networkidle' });
       const track = page.locator(`${m.root} .marquee-track`);
@@ -1303,7 +1317,6 @@ test.describe('Marquees (cinta de stats y testimonios)', () => {
   test('pausa con foco (cinta enfocable) y al mantener pulsado en táctil', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     await setConsent(ctx, CONSENT_REJECTED);
-    await skipIntro(ctx);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
     const state = (sel: string) =>
@@ -1355,7 +1368,6 @@ test.describe('Marquees (cinta de stats y testimonios)', () => {
   test('"Leer más" abre el testimonio completo en un <dialog> accesible', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     await setConsent(ctx, CONSENT_REJECTED);
-    await skipIntro(ctx);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
     const btn = page.locator('.marquee-list:not([data-copy]) [data-dialog-open="t-leo"]');
@@ -1373,72 +1385,57 @@ test.describe('Marquees (cinta de stats y testimonios)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Animación inicial, word-up, reveals y movimiento
+// Hero sin animación de entrada, reveals y movimiento
 // ---------------------------------------------------------------------------
 
-test.describe('Animación inicial y movimiento', () => {
-  test('intro: una vez por sesión, ≤ 1,1 s, sin bloquear y con word-up del H1 después', async ({
+test.describe('Hero inmediato y movimiento', () => {
+  test('hero: titular, subtítulo y CTA visibles en el primer render, sin intro ni retrasos', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     await setConsent(ctx, CONSENT_REJECTED);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('html')).toHaveAttribute('data-intro', 'play');
-    const timing = await page.evaluate(() => {
-      const intro = document.querySelector<HTMLElement>('.intro')!;
-      const all = [intro, ...intro.querySelectorAll('*')].flatMap((el) => el.getAnimations());
-      const end = Math.max(
-        ...all.map((a) => {
-          const t = a.effect!.getComputedTiming();
-          return Number(t.delay ?? 0) + Number(t.activeDuration ?? 0);
-        }),
-      );
-      const word = document.querySelector('.hero-title .w > span')!;
-      const wordDelay = Number(word.getAnimations()[0]!.effect!.getComputedTiming().delay);
+    const hero = await page.evaluate(() => {
+      const els = [
+        ...document.querySelectorAll<HTMLElement>(
+          '.hero-title, .hero-title .w > span, .hero-sub, .hero-ctas, [data-hero-cta], .hero .ticker',
+        ),
+      ];
       return {
-        end,
-        pointer: getComputedStyle(intro).pointerEvents,
-        wordDelay,
-        preloaded: [...document.querySelectorAll('link[rel="preload"][as="image"]')].length,
+        intro: document.querySelectorAll('.intro, [data-intro]').length,
+        inlineScripts: [...document.querySelectorAll('script:not([src])')].filter(
+          (s) => s.getAttribute('type') !== 'application/ld+json',
+        ).length,
+        hidden: els
+          .filter((el) => {
+            const cs = getComputedStyle(el);
+            return Number(cs.opacity) < 1 || cs.visibility !== 'visible' || cs.transform !== 'none';
+          })
+          .map((el) => el.className),
+        animations: els.flatMap((el) => el.getAnimations({ subtree: false })).length,
+        armed: document.querySelectorAll('#inicio .reveal-armed, #inicio [data-reveal]').length,
+        preloaded: document.querySelectorAll('link[rel="preload"][as="image"]').length,
       };
     });
-    expect(timing.end).toBeLessThanOrEqual(1100);
-    expect(timing.pointer).toBe('none');
-    // El H1 empieza su word-up cuando se abre el panel (0,65 s).
-    expect(timing.wordDelay).toBeGreaterThanOrEqual(650);
-    expect(timing.preloaded).toBe(2);
-    await page.waitForTimeout(1300);
-    const after = await page.evaluate(() => {
-      const intro = document.querySelector<HTMLElement>('.intro')!;
-      const cx = innerWidth / 2;
-      const cy = innerHeight / 2;
-      return {
-        visibility: getComputedStyle(intro).visibility,
-        topEl: document.elementFromPoint(cx, cy)?.closest('.intro') ? 'intro' : 'page',
-      };
+    expect(hero).toEqual({
+      intro: 0,
+      inlineScripts: 0,
+      hidden: [],
+      animations: 0,
+      armed: 0,
+      preloaded: 2,
     });
-    expect(after).toEqual({ visibility: 'hidden', topEl: 'page' });
-
-    // Segunda carga en la misma sesión: sin intro y word-up inmediato.
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    expect(await page.locator('html').getAttribute('data-intro')).toBeNull();
-    const delay = await page
-      .locator('.hero-title .w > span')
-      .first()
-      .evaluate((el) => Number(el.getAnimations()[0]!.effect!.getComputedTiming().delay));
-    expect(delay).toBeLessThan(300);
-    await expect(page.locator('.intro')).toBeHidden();
+    const cta = await page.locator('[data-hero-cta]').boundingBox();
+    expect(cta!.y + cta!.height).toBeLessThanOrEqual(VIEWPORTS[3].h);
     await ctx.close();
   });
 
-  test('reduced motion: sin intro, sin parallax y todo visible', async ({ browser }) => {
+  test('reduced motion: sin parallax y todo visible', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3], { reducedMotion: 'reduce' });
     await setConsent(ctx, CONSENT_REJECTED);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
-    expect(await page.locator('html').getAttribute('data-intro')).toBeNull();
-    await expect(page.locator('.intro')).toBeHidden();
     await page.locator('main .closing').scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
     const band = await page
@@ -1452,7 +1449,6 @@ test.describe('Animación inicial y movimiento', () => {
   test('reveals, parallax (≤ 40 px) y barra de progreso de scroll', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[10]);
     await setConsent(ctx, CONSENT_REJECTED);
-    await skipIntro(ctx);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
     expect(await page.locator('.reveal-armed').count()).toBeGreaterThan(10);
@@ -1494,7 +1490,6 @@ test('hover de tarjetas y botones (capturas)', async ({ browser }) => {
   mkdirSync(dir, { recursive: true });
   const ctx = await newCtx(browser, VIEWPORTS[10], { bypassCSP: true });
   await setConsent(ctx, CONSENT_REJECTED);
-  await skipIntro(ctx);
   const page = await ctx.newPage();
   await page.goto('/', { waitUntil: 'networkidle' });
   await scrollThrough(page);
@@ -1573,7 +1568,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     browser,
   }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
-    await skipIntro(ctx);
     const page = await ctx.newPage();
     await page.goto('/');
     const ids = await page.locator('main > section[id]').evaluateAll((els) => els.map((e) => e.id));
@@ -1639,7 +1633,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     for (const vp of VIEWPORTS) {
       const ctx = await newCtx(browser, vp);
       await setConsent(ctx, CONSENT_REJECTED);
-      await skipIntro(ctx);
       const page = await ctx.newPage();
       await page.goto('/', { waitUntil: 'networkidle' });
       const res = await page.evaluate(() =>
@@ -1662,7 +1655,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
 
   test('copy de la home y textos que no deben aparecer', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
-    await skipIntro(ctx);
     const page = await ctx.newPage();
     await page.goto('/');
     const norm = (t: string) => t.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ');
@@ -1804,7 +1796,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     browser,
   }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
-    await skipIntro(ctx);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
     const result = await page.evaluate(() => {
@@ -1816,7 +1807,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
         'footer',
         '#cookie-banner',
         '.marquee-list[data-copy]', // copia del loop (no es texto nuevo)
-        '.intro', // animación inicial (aria-hidden, dura 1 s)
         'script',
         'style',
         '.sr-only',
@@ -1842,7 +1832,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
   test('home: altura total en 390x844 ≤ 10 000 px', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     await setConsent(ctx, CONSENT_REJECTED);
-    await skipIntro(ctx);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
     await scrollThrough(page);
@@ -1929,24 +1918,20 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     expect(fails).toEqual([]);
   });
 
-  test('CSP: el hash del script en línea de la intro coincide con vercel.json', async ({
+  test('CSP: sin scripts en línea ni hashes; solo scripts propios y el de Meta', async ({
     page,
     request,
   }) => {
-    await page.goto('/');
-    const inline = await page.evaluate(() =>
-      [...document.querySelectorAll('script:not([src]):not([type])')].map(
-        (s) => s.textContent ?? '',
-      ),
-    );
-    expect(inline).toHaveLength(1);
-    const { createHash } = await import('node:crypto');
-    const hash = `'sha256-${createHash('sha256').update(inline[0]!).digest('base64')}'`;
+    for (const path of ['/', '/privacidad', '/gracias']) {
+      await page.goto(path);
+      expect(
+        await page.locator('script:not([src]):not([type="application/ld+json"])').count(),
+      ).toBe(0);
+    }
     const csp = (await request.get('/')).headers()['content-security-policy'] ?? '';
-    expect(csp).toContain(hash);
-    // Las páginas legales no llevan script en línea.
-    await page.goto('/privacidad');
-    expect(await page.locator('script:not([src]):not([type])').count()).toBe(0);
+    expect(csp).toContain("script-src 'self' https://connect.facebook.net;");
+    expect(csp).not.toContain('sha256-');
+    expect(csp).not.toContain("'unsafe-inline' https://connect");
   });
 });
 
@@ -1997,7 +1982,7 @@ test.describe('Páginas legales y rutas', () => {
     expect(h['x-frame-options']).toBe('SAMEORIGIN');
     expect(h['strict-transport-security']).toContain('max-age=63072000');
     expect(h['content-security-policy']).toMatch(
-      /script-src 'self' 'sha256-[A-Za-z0-9+/=]+' https:\/\/connect\.facebook\.net/,
+      /script-src 'self' https:\/\/connect\.facebook\.net;/,
     );
     expect(h['content-security-policy']).not.toMatch(/script-src[^;]*unsafe-inline/);
   });
