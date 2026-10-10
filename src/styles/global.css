@@ -384,7 +384,7 @@
   pointer-events: none;
 }
 
-/* Grano con feTurbulence (public/textures/grain.svg). */
+/* Grano con feTurbulence (src/assets/textures/grain.svg, con hash y caché inmutable). */
 .tex-grain {
   position: relative;
   isolation: isolate;
@@ -395,7 +395,7 @@
   position: absolute;
   z-index: 1;
   inset: 0;
-  background-image: url('/textures/grain.svg');
+  background-image: url('../assets/textures/grain.svg');
   background-size: 200px 200px;
   opacity: var(--grain, 0.05);
   pointer-events: none;

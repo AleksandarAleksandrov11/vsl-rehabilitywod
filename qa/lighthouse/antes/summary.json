@@ -2,71 +2,71 @@
   "mobile": {
     "median": {
       "scores": {
-        "performance": 98,
+        "performance": 99,
         "accessibility": 100,
         "best-practices": 100,
         "seo": 100,
         "agentic-browsing": 100
       },
       "metrics": {
-        "FCP": 1327.26075,
-        "LCP": 2178.4085999999998,
-        "TBT": 10,
+        "FCP": 1202.75725,
+        "LCP": 1877.2058,
+        "TBT": 0,
         "CLS": 0,
-        "SI": 2124.172930084059,
-        "bytes": 180804
+        "SI": 1202.75725,
+        "bytes": 163651
       }
     },
     "runs": [
       {
         "scores": {
-          "performance": 93,
+          "performance": 99,
           "accessibility": 100,
           "best-practices": 100,
           "seo": 100,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 1860.7578,
-          "LCP": 2266.5052,
+          "FCP": 1260.711375,
+          "LCP": 1889.1691,
           "TBT": 0,
           "CLS": 0,
-          "SI": 5316.206771865275,
-          "bytes": 180804
+          "SI": 1260.711375,
+          "bytes": 163651
         }
       },
       {
         "scores": {
-          "performance": 98,
+          "performance": 99,
           "accessibility": 100,
           "best-practices": 100,
           "seo": 100,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 1327.26075,
-          "LCP": 2178.4085999999998,
-          "TBT": 10,
+          "FCP": 1202.75725,
+          "LCP": 1877.2058,
+          "TBT": 0,
           "CLS": 0,
-          "SI": 2124.172930084059,
-          "bytes": 180804
+          "SI": 1202.75725,
+          "bytes": 163651
         }
       },
       {
         "scores": {
-          "performance": 98,
+          "performance": 99,
           "accessibility": 100,
           "best-practices": 100,
           "seo": 100,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 1342.5230000000001,
-          "LCP": 2178.6184000000003,
-          "TBT": 27,
+          "FCP": 1244.8493750000002,
+          "LCP": 1878.0794999999998,
+          "TBT": 0,
           "CLS": 0,
-          "SI": 2119.6142111127438,
-          "bytes": 180804
+          "SI": 1244.8493750000002,
+          "bytes": 163651
         }
       }
     ]
@@ -81,12 +81,12 @@
         "agentic-browsing": 100
       },
       "metrics": {
-        "FCP": 336.23749999999995,
-        "LCP": 582.59,
+        "FCP": 315.718625,
+        "LCP": 542.9748999999999,
         "TBT": 0,
         "CLS": 0,
-        "SI": 856.4353470650049,
-        "bytes": 291851
+        "SI": 315.718625,
+        "bytes": 274698
       }
     },
     "runs": [
@@ -99,12 +99,12 @@
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 332.33287500000006,
-          "LCP": 581.8663,
+          "FCP": 302.702875,
+          "LCP": 542.1623,
           "TBT": 0,
           "CLS": 0,
-          "SI": 807.771179907199,
-          "bytes": 291851
+          "SI": 304.1151223374916,
+          "bytes": 274698
         }
       },
       {
@@ -116,12 +116,12 @@
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 336.23749999999995,
-          "LCP": 582.59,
+          "FCP": 315.718625,
+          "LCP": 542.9748999999999,
           "TBT": 0,
           "CLS": 0,
-          "SI": 856.4353470650049,
-          "bytes": 291851
+          "SI": 315.718625,
+          "bytes": 274698
         }
       },
       {
@@ -133,12 +133,12 @@
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 336.4178750000001,
-          "LCP": 582.7343,
+          "FCP": 301.950375,
+          "LCP": 541.5603,
           "TBT": 0,
           "CLS": 0,
-          "SI": 799.3964332700867,
-          "bytes": 291851
+          "SI": 301.950375,
+          "bytes": 274698
         }
       }
     ]

@@ -44,6 +44,7 @@ npm run dev          # http://localhost:4321
 | `npm run qa:lighthouse`           | Lighthouse en móvil y escritorio                                                                         |
 | `npm run qa:sheets`               | Prueba del guardado en Google Sheets con una hoja simulada                                               |
 | `npm run qa:pixel`                | Prueba del Meta Pixel con la librería y la configuración reales de Meta                                  |
+| `npm run qa:browsers`             | Banner, Pixel y formulario en Safari de iOS y en el navegador de Instagram (iOS y Android)               |
 
 Copia `.env.example` a `.env` para probar variables en local.
 
@@ -112,15 +113,23 @@ Con la extensión **Meta Pixel Helper** o con **Events Manager → Probar evento
 
 1. Abre la web en una ventana de incógnito: no debe detectarse nada.
 2. Pulsa **Aceptar** en el banner de cookies → `PageView`, sin recargar.
-3. Dale al play del vídeo → `ViewContent` (`content_name: VSL`).
-4. Completa el paso 1 del formulario → `FormStart`.
-5. Envía el formulario → `Lead` con un `eventID`, el mismo que aparece en la última columna de la
-   hoja de leads.
+3. Dale al play del vídeo → `VideoPlay` (evento personalizado).
+4. Completa el paso 1 del formulario → `ViewContent` (`content_name: Formulario`) y `FormStart`.
+5. Pulsa un botón de WhatsApp → `Contact`.
+6. Envía el formulario → `Lead` con un `eventID`, el mismo que aparece en la última columna de la
+   hoja de leads. Si el servidor responde con error, no se envía `Lead`.
 
-Nunca se envían a Meta la zona, la descripción, el nombre ni el teléfono en claro. Los eventos
-automáticos están desactivados (`autoConfig: false`), porque enviarían el texto de los botones
-pulsados (por ejemplo, la zona del dolor). Si se configura `META_CAPI_TOKEN`, el `Lead` se envía
-también desde el servidor y Meta lo deduplica con ese mismo `eventID`.
+Si la visita llega de un anuncio con `fbclid`, al aceptar se guarda en la cookie `_fbc` (aunque ya no
+esté en la URL), para que el Pixel y la API de conversiones atribuyan mejor el lead.
+
+Nunca se envían a Meta la zona ni la descripción (datos de salud), ni el nombre o el teléfono en
+claro. Los eventos automáticos están desactivados (`autoConfig: false`), porque enviarían el texto
+de los botones pulsados (por ejemplo, la zona del dolor). Si se configura `META_CAPI_TOKEN` y la
+persona aceptó las cookies de marketing, el `Lead` se envía también desde el servidor con:
+`event_name`, `event_time`, `event_id` (el mismo que el del navegador, para deduplicar),
+`event_source_url` (sin parámetros), `action_source: website` y en `user_data` solo el teléfono
+(`ph`), el nombre (`fn`) y los apellidos si los hay (`ln`) en SHA-256, `fbp` y `fbc` si existen y
+el user agent del navegador (obligatorio en eventos web).
 
 Para retirar el consentimiento: **Configurar cookies** en el pie → desactivar Marketing → Guardar.
 Se borran `_fbp` y `_fbc` y dejan de enviarse eventos.
@@ -160,13 +169,13 @@ src/
   assets/photos/         Fotos de la web (créditos más abajo)
   assets/images/         Capturas de la app
   assets/fonts/          Work Sans variable recortada a los pesos 400 a 800
+  assets/textures/       grain.svg (grano de las secciones oscuras)
   og/                    Fuentes para generar la imagen de Open Graph
 apps-script/             Code.gs e instrucciones de instalación
 tests/qa.spec.ts         Suite de QA (Playwright + axe-core)
 scripts/                 qa.mjs, qa-server.mjs, preview.mjs, lighthouse.mjs, inp.mjs,
                          anim-size.mjs, sheets-e2e.mjs, pixel-check.mjs
 qa/                      screenshots/ y lighthouse/ (resultados de la última ejecución)
-public/textures/         grain.svg
 vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
 ```
 
@@ -199,10 +208,18 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
 - **Scripts no críticos**: todos los scripts son módulos (diferidos). La analítica de Vercel se
   carga tras el evento `load`, en un momento libre del navegador. El Pixel de Meta se carga en
   cuanto hay consentimiento de marketing (al instante en visitas que ya lo dieron).
-- **Eventos de Meta**: `PageView` al cargar el Pixel, `ViewContent` al pulsar play en el vídeo y al
-  completar el paso 1 del formulario (`content_name` VSL o Formulario), `FormStart` al completar el
-  paso 1 y `Lead` solo cuando `/api/lead` responde OK, con el mismo `event_id` que el evento de la
-  API de conversiones para deduplicar.
+- **Eventos de Meta**: `PageView` al cargar el Pixel (en el mismo momento de aceptar), un solo
+  `ViewContent` (paso 1 del formulario), `FormStart`, los personalizados `VideoPlay` (play del
+  vídeo) y `Contact` (botones de WhatsApp), y `Lead` solo cuando `/api/lead` responde OK, con el
+  mismo `event_id` que la API de conversiones.
+- **Banner de cookies**: barra compacta abajo (unos 93 px en móvil) con Aceptar y Rechazar del
+  mismo tamaño y estilo y el enlace Configurar. No es modal: no bloquea el scroll ni los clics y
+  deja a la vista los dos botones del hero.
+- **Caché**: los archivos con hash (`/_astro/*`) con `max-age` de un año e `immutable`; el HTML y el
+  resto con `max-age=0, must-revalidate`.
+- **Formulario**: `autocomplete` `given-name` en el nombre y `tel-country-code` + `tel-national` en
+  el teléfono (prefijo +34 por defecto), con `inputmode="tel"`. Si falla la red se muestra el error y
+  se conserva todo lo escrito para reintentar.
 - **Marquees** (cinta de datos y testimonios): la copia del bucle lleva `aria-hidden` e `inert`.
 - **WhatsApp**: burbuja fija en escritorio y botón junto al CTA en la barra fija de móvil, los dos
   con el mensaje ya escrito. El número y el texto están en `src/config.ts`.
@@ -254,11 +271,14 @@ presupuesto de JavaScript. Las capturas quedan en `qa/screenshots/`.
 
 `npm run qa:lighthouse` guarda los informes en `qa/lighthouse/` y `node scripts/inp.mjs` mide la
 latencia de interacción. `npm run qa:sheets` y `npm run qa:pixel` comprueban las dos integraciones
-externas (ver la tabla de comandos).
+externas (ver la tabla de comandos). `npm run qa:browsers` repite el embudo en Safari de iOS y en el
+navegador integrado de Instagram (necesita WebKit: `npx playwright install webkit` y
+`npx playwright install-deps webkit`; sin él solo prueba Instagram en Android).
 
 Última medición: Lighthouse 99 en móvil y 100 en escritorio (100 en accesibilidad, buenas prácticas
-y SEO), LCP 1,9 s en móvil con 4G lenta simulada, CLS 0 y TBT 0 ms. Los informes anteriores a quitar
-la animación inicial están en `qa/lighthouse/antes/`.
+y SEO), LCP 1,9 s en móvil con 4G lenta simulada, CLS 0 y TBT 0 ms. Los informes anteriores al banner
+compacto están en `qa/lighthouse/antes/` y las capturas del banner antes y después en
+`qa/screenshots/banner-antes-despues/`.
 
 ## Contacto del titular
 

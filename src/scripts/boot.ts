@@ -5,7 +5,7 @@
  */
 import { captureAttribution } from './utm';
 import { getConsent, onConsentChange } from './consent';
-import { loadPixel, revokePixel } from './pixel';
+import { loadPixel, revokePixel, track as pixelTrack } from './pixel';
 import { trackEvent } from './tracking';
 import './cookie-banner';
 import './reveal';
@@ -22,11 +22,12 @@ onConsentChange((consent) => {
   else revokePixel();
 });
 
-// cta_click {location}
+// cta_click {location}. Los enlaces a WhatsApp envían además Contact a Meta (con consentimiento).
 document.addEventListener('click', (event) => {
   const target = event.target instanceof Element ? event.target : null;
   const cta = target?.closest<HTMLElement>('[data-cta]');
   if (cta?.dataset.cta) trackEvent('cta_click', { location: cta.dataset.cta });
+  if (target?.closest('a[href^="https://wa.me/"]')) pixelTrack('Contact');
 });
 
 // Header: transparente sobre el hero, sólido al hacer scroll.

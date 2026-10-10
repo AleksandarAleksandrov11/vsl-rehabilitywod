@@ -22,6 +22,7 @@ const run = (cmd, args) => {
 
 mkdirSync('qa/.tmp/fb', { recursive: true });
 rmSync('qa/.tmp/leads.jsonl', { force: true });
+rmSync('qa/.tmp/capi.jsonl', { force: true });
 
 // Copia local del fbevents.js real de Meta (y su config) para que los tests del Pixel no
 // dependan de la red. Si no se puede descargar, los tests usan la red real.
