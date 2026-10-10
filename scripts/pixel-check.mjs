@@ -6,8 +6,8 @@
  * estadísticas del Pixel.
  *
  * Comprueba: nada de Meta sin consentimiento o al rechazar; al aceptar, carga del Pixel y
- * PageView; ViewContent al dar al play del vídeo (reproductor real de YouTube); FormStart al
- * pasar el paso 1; Lead con el mismo eventID que el lead que recibe el servidor (para
+ * PageView; ViewContent al dar al play del vídeo (facade: el iframe real de YouTube se carga al
+ * pulsar); ViewContent (Formulario) y FormStart al pasar el paso 1; Lead con el mismo eventID que el lead que recibe el servidor (para
  * deduplicar con la API de conversiones), y que al retirar el consentimiento no sale nada más.
  * Requiere red y un build previo: ASTRO_ADAPTER=node npx astro build
  */
@@ -53,7 +53,6 @@ async function newContext() {
     isMobile: true,
     hasTouch: true,
   });
-  await ctx.addInitScript(() => sessionStorage.setItem('rw_intro', '1'));
   const meta = { scripts: [], events: [] };
   ctx.on('request', (r) => {
     const u = new URL(r.url());
@@ -118,28 +117,28 @@ try {
   const fbp = (await ctx.cookies()).find((c) => c.name === '_fbp');
   check('Cookie _fbp creada tras aceptar', !!fbp, fbp?.value);
 
-  // Vídeo: reproductor real de YouTube.
+  // Vídeo: facade. Nada de YouTube hasta pulsar play; al pulsar, iframe real y ViewContent.
   await page.locator('#video').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(1000);
+  check(
+    'Sin iframe de YouTube hasta pulsar play',
+    (await page.locator('[data-vsl] iframe').count()) === 0,
+  );
+  await page.locator('[data-vsl-play]').click();
+  await waitFor(() => names(meta).includes('ViewContent'), 12000);
+  const vc = meta.events.find((e) => e.ev === 'ViewContent');
+  check(
+    'ViewContent al dar al play del vídeo',
+    vc?.['cd[content_name]'] === 'VSL',
+    vc ? `content_name=${vc['cd[content_name]']}` : 'no enviado',
+  );
   const ready = await page
     .waitForFunction(() => document.querySelector('[data-vsl] iframe.is-ready'), null, {
       timeout: 20000,
     })
     .then(() => true)
     .catch(() => false);
-  if (ready) {
-    await page.waitForTimeout(1500);
-    const box = await page.locator('[data-vsl] iframe').boundingBox();
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    await waitFor(() => names(meta).includes('ViewContent'), 12000);
-    const vc = meta.events.find((e) => e.ev === 'ViewContent');
-    check(
-      'ViewContent al dar al play del vídeo',
-      !!vc,
-      vc ? `content_name=${vc['cd[content_name]']}` : 'no enviado',
-    );
-  } else {
-    check('ViewContent al dar al play del vídeo', false, 'el reproductor de YouTube no cargó');
-  }
+  check('El reproductor real de YouTube carga tras pulsar play', ready);
 
   // Formulario.
   await page.locator('#valoracion').scrollIntoViewIfNeeded();
@@ -149,7 +148,12 @@ try {
     .click();
   await page.getByRole('button', { name: 'Continuar' }).click();
   await waitFor(() => names(meta).includes('FormStart'));
+  const vcForm = meta.events.find(
+    (e) => e.ev === 'ViewContent' && e['cd[content_name]'] === 'Formulario',
+  );
+  check('ViewContent (Formulario) al pulsar Continuar en el paso 1', !!vcForm);
   check('FormStart al completar el paso 1', names(meta).includes('FormStart'));
+  check('Sin Lead antes de enviar el formulario', !names(meta).includes('Lead'));
   await page.getByRole('button', { name: 'Saltar este paso' }).click();
   await page.locator('#nombre').fill('Prueba Pixel');
   await page.getByRole('button', { name: 'Continuar' }).click();

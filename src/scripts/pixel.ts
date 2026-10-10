@@ -92,7 +92,9 @@ export function revokePixel(): void {
 }
 
 type AllowedEvent = 'PageView' | 'ViewContent' | 'Lead' | 'FormStart';
-type SafeParams = { content_name?: 'VSL' };
+type ContentName = 'VSL' | 'Formulario';
+type SafeParams = { content_name?: ContentName };
+const CONTENT_NAMES: readonly ContentName[] = ['VSL', 'Formulario'];
 
 /**
  * Wrapper de eventos. No hace nada sin consentimiento.
@@ -104,7 +106,10 @@ export function track(
   opts: { eventID?: string } = {},
 ): void {
   if (revoked || !initialized || !hasMarketingConsent() || !window.fbq) return;
-  const safe: SafeParams = params.content_name === 'VSL' ? { content_name: 'VSL' } : {};
+  const safe: SafeParams =
+    params.content_name && CONTENT_NAMES.includes(params.content_name)
+      ? { content_name: params.content_name }
+      : {};
   const options = opts.eventID ? { eventID: opts.eventID } : undefined;
   if (event === 'FormStart') {
     window.fbq('trackCustom', 'FormStart', {}, options);
