@@ -257,7 +257,8 @@ latencia de interacción. `npm run qa:sheets` y `npm run qa:pixel` comprueban la
 externas (ver la tabla de comandos).
 
 Última medición: Lighthouse 99 en móvil y 100 en escritorio (100 en accesibilidad, buenas prácticas
-y SEO), LCP 2,1 s en móvil con 4G simulado, CLS 0 y peor interacción 104 ms.
+y SEO), LCP 1,9 s en móvil con 4G lenta simulada, CLS 0 y TBT 0 ms. Los informes anteriores a quitar
+la animación inicial están en `qa/lighthouse/antes/`.
 
 ## Contacto del titular
 

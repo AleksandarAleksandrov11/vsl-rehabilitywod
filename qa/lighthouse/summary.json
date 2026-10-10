@@ -2,71 +2,71 @@
   "mobile": {
     "median": {
       "scores": {
-        "performance": 98,
+        "performance": 99,
         "accessibility": 100,
         "best-practices": 100,
         "seo": 100,
         "agentic-browsing": 100
       },
       "metrics": {
-        "FCP": 1402.3865,
-        "LCP": 2180.9092,
-        "TBT": 8.5,
+        "FCP": 1202.75725,
+        "LCP": 1877.2058,
+        "TBT": 0,
         "CLS": 0,
-        "SI": 2162.674089075183,
-        "bytes": 180757
+        "SI": 1202.75725,
+        "bytes": 163651
       }
     },
     "runs": [
       {
         "scores": {
-          "performance": 98,
+          "performance": 99,
           "accessibility": 100,
           "best-practices": 100,
           "seo": 100,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 1439.6463749999998,
-          "LCP": 2130.9171000000006,
-          "TBT": 2.5,
-          "CLS": 0,
-          "SI": 2171.7442780000547,
-          "bytes": 180757
-        }
-      },
-      {
-        "scores": {
-          "performance": 98,
-          "accessibility": 100,
-          "best-practices": 100,
-          "seo": 100,
-          "agentic-browsing": 100
-        },
-        "metrics": {
-          "FCP": 1402.3865,
-          "LCP": 2180.9092,
-          "TBT": 8.5,
-          "CLS": 0,
-          "SI": 2162.674089075183,
-          "bytes": 180757
-        }
-      },
-      {
-        "scores": {
-          "performance": 98,
-          "accessibility": 100,
-          "best-practices": 100,
-          "seo": 100,
-          "agentic-browsing": 100
-        },
-        "metrics": {
-          "FCP": 1334.2986250000001,
-          "LCP": 2178.4389,
+          "FCP": 1260.711375,
+          "LCP": 1889.1691,
           "TBT": 0,
           "CLS": 0,
-          "SI": 2082.963922845936,
-          "bytes": 180757
+          "SI": 1260.711375,
+          "bytes": 163651
+        }
+      },
+      {
+        "scores": {
+          "performance": 99,
+          "accessibility": 100,
+          "best-practices": 100,
+          "seo": 100,
+          "agentic-browsing": 100
+        },
+        "metrics": {
+          "FCP": 1202.75725,
+          "LCP": 1877.2058,
+          "TBT": 0,
+          "CLS": 0,
+          "SI": 1202.75725,
+          "bytes": 163651
+        }
+      },
+      {
+        "scores": {
+          "performance": 99,
+          "accessibility": 100,
+          "best-practices": 100,
+          "seo": 100,
+          "agentic-browsing": 100
+        },
+        "metrics": {
+          "FCP": 1244.8493750000002,
+          "LCP": 1878.0794999999998,
+          "TBT": 0,
+          "CLS": 0,
+          "SI": 1244.8493750000002,
+          "bytes": 163651
         }
       }
     ]
@@ -81,12 +81,12 @@
         "agentic-browsing": 100
       },
       "metrics": {
-        "FCP": 337.47637499999996,
-        "LCP": 562.7810999999999,
+        "FCP": 315.718625,
+        "LCP": 542.9748999999999,
         "TBT": 0,
         "CLS": 0,
-        "SI": 860.9855821262735,
-        "bytes": 291804
+        "SI": 315.718625,
+        "bytes": 274698
       }
     },
     "runs": [
@@ -99,12 +99,12 @@
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 334.93337499999996,
-          "LCP": 560.7467,
+          "FCP": 302.702875,
+          "LCP": 542.1623,
           "TBT": 0,
           "CLS": 0,
-          "SI": 843.1990691368042,
-          "bytes": 291804
+          "SI": 304.1151223374916,
+          "bytes": 274698
         }
       },
       {
@@ -116,12 +116,12 @@
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 337.47637499999996,
-          "LCP": 562.7810999999999,
+          "FCP": 315.718625,
+          "LCP": 542.9748999999999,
           "TBT": 0,
           "CLS": 0,
-          "SI": 860.9855821262735,
-          "bytes": 291804
+          "SI": 315.718625,
+          "bytes": 274698
         }
       },
       {
@@ -133,12 +133,12 @@
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 339.7125,
-          "LCP": 583.77,
+          "FCP": 301.950375,
+          "LCP": 541.5603,
           "TBT": 0,
           "CLS": 0,
-          "SI": 848.4654087953994,
-          "bytes": 291804
+          "SI": 301.950375,
+          "bytes": 274698
         }
       }
     ]
