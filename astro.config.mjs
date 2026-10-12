@@ -29,8 +29,12 @@ export default defineConfig({
       ? (await import('@astrojs/node')).default({ mode: 'middleware' })
       : vercel(),
   integrations: [
+    // El sitemap solo lleva la home: /gracias y las legales son noindex.
     sitemap({
-      filter: (page) => !page.includes('/gracias'),
+      filter: (page) =>
+        !['/gracias', '/aviso-legal', '/cookies', '/privacidad'].some((p) =>
+          new URL(page).pathname.startsWith(p),
+        ),
     }),
   ],
   security: {

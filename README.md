@@ -155,7 +155,8 @@ src/
   config.ts              Contacto, WhatsApp, redes, vídeo y datos legales
   layouts/Base.astro     <head>, fuentes y precargas, SEO, analítica, banner de cookies
   layouts/Legal.astro    Plantilla de las páginas legales
-  pages/                 index, gracias (noindex), aviso-legal, privacidad, cookies, 404,
+  pages/                 index, gracias (noindex), aviso-legal, privacidad y cookies
+                         (noindex, follow; fuera del sitemap), 404,
                          og.jpg (imagen OG generada en el build), robots.txt, api/lead.ts
   components/            Header, Hero, StatsTicker, VslSection, WhySection, HowItWorks,
                          Testimonials, AboutGerard, ValoracionSection, LeadForm, ZoneIcon, Faq,
@@ -215,6 +216,8 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
 - **Banner de cookies**: barra compacta abajo (unos 93 px en móvil) con Aceptar y Rechazar del
   mismo tamaño y estilo y el enlace Configurar. No es modal: no bloquea el scroll ni los clics y
   deja a la vista los dos botones del hero.
+- **SEO**: el sitemap solo lleva la home (`/sitemap.xml` redirige con 301 a `/sitemap-index.xml`);
+  la canonical y `og:url` de la home llevan barra final (`https://vsl.rehabilitywod.com/`).
 - **Caché**: los archivos con hash (`/_astro/*`) con `max-age` de un año e `immutable`; el HTML y el
   resto con `max-age=0, must-revalidate`.
 - **Formulario**: `autocomplete` `given-name` en el nombre y `tel-country-code` + `tel-national` en

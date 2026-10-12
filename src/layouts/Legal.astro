@@ -12,9 +12,10 @@ interface Props {
 }
 
 const { title, description, path, heading } = Astro.props;
+// Páginas legales: fuera del índice de Google y del sitemap, pero se siguen sus enlaces.
 ---
 
-<Base title={title} description={description} path={path}>
+<Base title={title} description={description} path={path} robots="noindex, follow">
   <a href="#main" class="skip-link">
     Saltar al contenido
   </a>

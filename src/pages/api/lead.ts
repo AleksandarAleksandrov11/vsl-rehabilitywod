@@ -133,7 +133,7 @@ function buildCapiEvent(lead: Lead, request: Request) {
 
 async function sendCapi(lead: Lead, request: Request) {
   // Solo con consentimiento de marketing (el mismo que carga el Pixel en el navegador).
-  if (!lead.consentimiento_marketing) return;
+  if (lead.consentimiento_marketing !== true) return;
   const token = META_CAPI_TOKEN;
   const pixelId = CONFIG.pixelId;
   const body = { data: [buildCapiEvent(lead, request)] };
@@ -223,7 +223,8 @@ function buildLead(raw: Raw): { lead?: Lead; fields: string[] } {
       nombre,
       telefono,
       consentimiento_salud: true,
-      consentimiento_marketing: truthy(raw.consentimiento_marketing),
+      // Solo el booleano true que envía el formulario cuando hay consentimiento de marketing.
+      consentimiento_marketing: raw.consentimiento_marketing === true,
       ...tracking,
       landing_url: landing,
       referrer: cleanText(raw.referrer, 300),

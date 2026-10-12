@@ -12,6 +12,8 @@ interface Props {
   /** Ruta canónica, p. ej. "/" o "/privacidad". */
   path?: string;
   noindex?: boolean;
+  /** Meta robots explícito (p. ej. "noindex, follow" en las legales). Tiene prioridad sobre noindex. */
+  robots?: string;
   /** JSON-LD opcional (solo en la home). */
   jsonLd?: Record<string, unknown>;
 }
@@ -21,11 +23,15 @@ const {
   description = SEO.description,
   path = Astro.url.pathname,
   noindex = false,
+  robots,
   jsonLd,
 } = Astro.props;
 
+// La home con barra final (https://dominio/); el resto sin ella (trailingSlash: 'never').
 const canonical =
-  `${CONFIG.siteUrl}${path === '/' ? '' : path.replace(/\/+$/, '')}` || CONFIG.siteUrl;
+  path === '/' ? `${CONFIG.siteUrl}/` : `${CONFIG.siteUrl}${path.replace(/\/+$/, '')}`;
+const robotsContent =
+  robots ?? (noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large');
 const ogImage = `${CONFIG.siteUrl}/og.jpg`;
 const ogAlt =
   'RehabilityWOD. Recupérate sin dejar de entrenar. Fisioterapia online para atletas de CrossFit.';
@@ -39,11 +45,7 @@ const ogAlt =
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
-    {noindex ? (
-      <meta name="robots" content="noindex, nofollow" />
-    ) : (
-      <meta name="robots" content="index, follow, max-image-preview:large" />
-    )}
+    <meta name="robots" content={robotsContent} />
     <meta name="theme-color" content="#0A0A0A" />
     <meta name="format-detection" content="telephone=no" />
 
