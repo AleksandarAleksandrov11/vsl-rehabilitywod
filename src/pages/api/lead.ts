@@ -90,38 +90,62 @@ function tooFast(raw: Raw, isJson: boolean): boolean {
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
-async function sendCapi(lead: Lead, request: Request, clientAddress: string | undefined) {
-  const token = META_CAPI_TOKEN;
-  const pixelId = CONFIG.pixelId;
-  if (!token || !pixelId || !lead.consentimiento_marketing) return;
+/** Normalización de Meta para nombres: minúsculas, sin signos ni espacios. */
+const normName = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{M}]/gu, '');
 
+/**
+ * Evento Lead para la API de conversiones. Solo datos de contacto hasheados (SHA-256) y los
+ * identificadores de Meta: teléfono (ph), nombre (fn) y apellidos si los hay (ln), fbp y fbc.
+ * Nunca la zona de dolor ni el detalle (datos de salud), ni en user_data ni en custom_data.
+ * client_user_agent es obligatorio para eventos con action_source "website".
+ */
+function buildCapiEvent(lead: Lead, request: Request) {
   const cookies = request.headers.get('cookie');
   const fbp = readCookie(cookies, '_fbp');
   let fbc = readCookie(cookies, '_fbc');
   if (!fbc && lead.fbclid) fbc = `fb.1.${lead.started_at ?? Date.now()}.${lead.fbclid}`;
 
-  // Nunca la zona ni el detalle: solo lo necesario para atribuir el evento.
+  const [first = '', ...rest] = lead.nombre.trim().split(/\s+/);
+  const fn = normName(first);
+  const ln = normName(rest.join(''));
   const userData: Record<string, unknown> = {
     ph: [sha256(lead.telefono.replace(/\D/g, ''))],
     client_user_agent: request.headers.get('user-agent') ?? undefined,
-    client_ip_address:
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || clientAddress || undefined,
   };
+  if (fn) userData.fn = [sha256(fn)];
+  if (ln) userData.ln = [sha256(ln)];
   if (fbp) userData.fbp = fbp;
   if (fbc) userData.fbc = fbc;
 
-  const body = {
-    data: [
-      {
-        event_name: 'Lead',
-        event_time: Math.floor(Date.now() / 1000),
-        event_id: lead.event_id,
-        event_source_url: lead.landing_url || CONFIG.siteUrl,
-        action_source: 'website',
-        user_data: userData,
-      },
-    ],
+  return {
+    event_name: 'Lead',
+    event_time: Math.floor(Date.now() / 1000),
+    event_id: lead.event_id,
+    event_source_url: lead.landing_url || CONFIG.siteUrl,
+    action_source: 'website',
+    user_data: userData,
   };
+}
+
+async function sendCapi(lead: Lead, request: Request) {
+  // Solo con consentimiento de marketing (el mismo que carga el Pixel en el navegador).
+  if (!lead.consentimiento_marketing) return;
+  const token = META_CAPI_TOKEN;
+  const pixelId = CONFIG.pixelId;
+  const body = { data: [buildCapiEvent(lead, request)] };
+
+  // Solo para el QA local (sin token): guarda el evento que se enviaría.
+  const mockFile = process.env.CAPI_MOCK_FILE;
+  if (!token && mockFile) {
+    await mkdir(dirname(mockFile), { recursive: true });
+    await appendFile(mockFile, `${JSON.stringify(body)}\n`, 'utf8');
+    return;
+  }
+  if (!token || !pixelId) return;
 
   try {
     const res = await fetch(
@@ -255,7 +279,7 @@ async function mockSave(lead: Lead): Promise<void> {
   }
 }
 
-export const POST: APIRoute = async ({ request, clientAddress }) => {
+export const POST: APIRoute = async ({ request }) => {
   const contentType = request.headers.get('content-type') ?? '';
   const isJson = contentType.includes('application/json');
   const isForm = contentType.includes('application/x-www-form-urlencoded');
@@ -292,7 +316,7 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   // Guardar el lead y avisar a Meta a la vez: la respuesta tarda lo que tarde el más lento.
   const [saved] = await Promise.all([
     mock ? mockSave(lead).then(() => true) : sendToGoogle(lead),
-    sendCapi(lead, request, clientAddress).catch(() => undefined),
+    sendCapi(lead, request).catch(() => undefined),
   ]);
   if (!saved) return fail(502, 'upstream');
   return ok();

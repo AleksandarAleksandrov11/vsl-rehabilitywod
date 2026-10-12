@@ -2,8 +2,9 @@
  * VSL con el reproductor de YouTube (youtube-nocookie) en facade.
  * - Hasta pulsar play solo se ve la portada: no se descarga nada de YouTube.
  * - Al acercar el dedo o el ratón a la portada se abre la conexión con YouTube (preconnect).
- * - Al pulsar play se inserta el iframe con autoplay y se envía vsl_play (Vercel) y
- *   ViewContent (Meta, solo con consentimiento).
+ * - Al pulsar play se inserta el iframe con autoplay y se envía vsl_play (Vercel) y el evento
+ *   personalizado VideoPlay (Meta, solo con consentimiento). El único ViewContent es el del
+ *   paso 1 del formulario.
  */
 import { trackEvent } from './tracking';
 import { track as pixelTrack } from './pixel';
@@ -49,7 +50,7 @@ function load(): void {
   frame.append(iframe);
   iframe.focus();
   trackEvent('vsl_play');
-  pixelTrack('ViewContent', { content_name: 'VSL' });
+  pixelTrack('VideoPlay');
 }
 
 /** Abre la conexión con YouTube justo antes del clic (una sola vez). */

@@ -6,8 +6,9 @@
  * estadísticas del Pixel.
  *
  * Comprueba: nada de Meta sin consentimiento o al rechazar; al aceptar, carga del Pixel y
- * PageView; ViewContent al dar al play del vídeo (facade: el iframe real de YouTube se carga al
- * pulsar); ViewContent (Formulario) y FormStart al pasar el paso 1; Lead con el mismo eventID que el lead que recibe el servidor (para
+ * PageView en ese momento; _fbc con el fbclid del anuncio; VideoPlay al dar al play del vídeo
+ * (facade: el iframe real de YouTube se carga al pulsar); ViewContent (Formulario) y FormStart al
+ * pasar el paso 1; Contact al pulsar WhatsApp; Lead con el mismo eventID que el lead que recibe el servidor (para
  * deduplicar con la API de conversiones), y que al retirar el consentimiento no sale nada más.
  * Requiere red y un build previo: ASTRO_ADAPTER=node npx astro build
  */
@@ -19,6 +20,8 @@ const PORT = 4392;
 const SITE = `http://127.0.0.1:${PORT}`;
 const PIXEL_ID = process.env.PUBLIC_META_PIXEL_ID ?? '1433154668778788';
 const LEADS = 'qa/.tmp/pixel-check-leads.jsonl';
+const CAPI = 'qa/.tmp/pixel-check-capi.jsonl';
+const FBCLID = 'IwAR0PixelCheckFbclid789';
 // Un navegador normal (el Pixel ignora los navegadores automatizados).
 const UA =
   'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36';
@@ -31,8 +34,15 @@ const check = (name, ok, detail = '') => {
 };
 
 rmSync(LEADS, { force: true });
+rmSync(CAPI, { force: true });
 const site = spawn('node', ['scripts/qa-server.mjs'], {
-  env: { ...process.env, PORT: String(PORT), LEAD_MOCK: '1', LEAD_MOCK_FILE: LEADS },
+  env: {
+    ...process.env,
+    PORT: String(PORT),
+    LEAD_MOCK: '1',
+    LEAD_MOCK_FILE: LEADS,
+    CAPI_MOCK_FILE: CAPI,
+  },
   stdio: 'ignore',
 });
 for (let i = 0; i < 50; i++) {
@@ -98,10 +108,12 @@ try {
     await ctx.close();
   }
 
-  // 2) Aceptar y recorrer el embudo.
+  // 2) Llega desde un anuncio (fbclid), pasa a otra página y acepta allí.
   const { ctx, meta } = await newContext();
   const page = await ctx.newPage();
-  await page.goto(SITE, { waitUntil: 'networkidle' });
+  await page.goto(`${SITE}/?fbclid=${FBCLID}`, { waitUntil: 'networkidle' });
+  await page.goto(`${SITE}/#valoracion`, { waitUntil: 'networkidle' });
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.locator('[data-consent-action="accept"]').click();
   await waitFor(() => names(meta).includes('PageView'));
   check(
@@ -116,6 +128,12 @@ try {
   check('PageView con el ID del Pixel', pv?.id === PIXEL_ID, pv ? `id=${pv.id}` : 'no enviado');
   const fbp = (await ctx.cookies()).find((c) => c.name === '_fbp');
   check('Cookie _fbp creada tras aceptar', !!fbp, fbp?.value);
+  const fbc = (await ctx.cookies()).find((c) => c.name === '_fbc');
+  check(
+    'Cookie _fbc con el fbclid del anuncio (aunque ya no esté en la URL)',
+    !!fbc?.value.endsWith(`.${FBCLID}`),
+    fbc?.value,
+  );
 
   // Vídeo: facade. Nada de YouTube hasta pulsar play; al pulsar, iframe real y ViewContent.
   await page.locator('#video').scrollIntoViewIfNeeded();
@@ -125,13 +143,9 @@ try {
     (await page.locator('[data-vsl] iframe').count()) === 0,
   );
   await page.locator('[data-vsl-play]').click();
-  await waitFor(() => names(meta).includes('ViewContent'), 12000);
-  const vc = meta.events.find((e) => e.ev === 'ViewContent');
-  check(
-    'ViewContent al dar al play del vídeo',
-    vc?.['cd[content_name]'] === 'VSL',
-    vc ? `content_name=${vc['cd[content_name]']}` : 'no enviado',
-  );
+  await waitFor(() => names(meta).includes('VideoPlay'), 12000);
+  check('VideoPlay (personalizado) al dar al play del vídeo', names(meta).includes('VideoPlay'));
+  check('El play del vídeo no envía ViewContent', !names(meta).includes('ViewContent'));
   const ready = await page
     .waitForFunction(() => document.querySelector('[data-vsl] iframe.is-ready'), null, {
       timeout: 20000,
@@ -139,6 +153,23 @@ try {
     .then(() => true)
     .catch(() => false);
   check('El reproductor real de YouTube carga tras pulsar play', ready);
+
+  // WhatsApp (botón de la barra fija en móvil): Contact. La navegación a wa.me se cancela.
+  await page.evaluate(() =>
+    document.addEventListener(
+      'click',
+      (e) => {
+        if (e.target instanceof Element && e.target.closest('a[href^="https://wa.me/"]'))
+          e.preventDefault();
+      },
+      true,
+    ),
+  );
+  await page.locator('#por-que').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(600);
+  await page.locator('[data-sticky-cta] a[href^="https://wa.me/"]').click();
+  await waitFor(() => names(meta).includes('Contact'));
+  check('Contact al pulsar WhatsApp', names(meta).includes('Contact'));
 
   // Formulario.
   await page.locator('#valoracion').scrollIntoViewIfNeeded();
@@ -177,6 +208,24 @@ try {
   check(
     'El servidor recibe el consentimiento de marketing',
     saved?.consentimiento_marketing === true,
+  );
+  const capi = readFileSync(CAPI, 'utf8')
+    .trim()
+    .split('\n')
+    .map((l) => JSON.parse(l))
+    .find((b) => b.data[0].event_id === saved?.event_id)?.data[0];
+  check('API de conversiones: Lead con el mismo event_id', capi?.event_name === 'Lead');
+  check(
+    'API de conversiones: solo ph, fn, ln, fbp, fbc y user agent',
+    !!capi &&
+      Object.keys(capi.user_data).sort().join(',') === 'client_user_agent,fbc,fbp,fn,ln,ph' &&
+      capi.user_data.fbc.endsWith(`.${FBCLID}`),
+    capi ? Object.keys(capi.user_data).join(',') : 'no enviado',
+  );
+  const capiBlob = JSON.stringify(capi ?? {});
+  check(
+    'API de conversiones: sin zona, detalle, nombre ni teléfono en claro',
+    !/Codo|zona|detalle|Prueba|600000000/i.test(capiBlob),
   );
 
   // Retirar el consentimiento desde el footer.

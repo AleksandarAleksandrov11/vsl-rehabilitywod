@@ -37,13 +37,14 @@ const SECTIONS = [
 ] as const;
 
 const LEADS_FILE = 'qa/.tmp/leads.jsonl';
+const CAPI_FILE = 'qa/.tmp/capi.jsonl';
 const SHOTS = 'qa/screenshots';
 const CONSENT_REJECTED = { v: 1, marketing: false, ts: Date.now() };
 const CONSENT_ACCEPTED = { v: 1, marketing: true, ts: Date.now() };
 
-type Vp = (typeof VIEWPORTS)[number];
+type Vp = { readonly w: number; readonly h: number; readonly landscape?: boolean };
 const vpName = (vp: Vp) => `${vp.w}x${vp.h}`;
-const isMobile = (vp: Vp) => vp.w < 768 || ('landscape' in vp && vp.landscape);
+const isMobile = (vp: Vp) => vp.w < 768 || vp.landscape === true;
 
 // User agent de Chrome normal: fbevents.js descarta los eventos de "HeadlessChrome".
 const UA_MOBILE =
@@ -178,6 +179,15 @@ const trEvents = (reqs: Request[], ev: string) =>
     const body = r.postData() ?? '';
     return u.searchParams.get('ev') === ev || new URLSearchParams(body).get('ev') === ev;
   });
+
+/** Eventos que /api/lead habría enviado a la API de conversiones (modo QA, sin token). */
+const readCapi = (): Array<{ data: Array<Record<string, unknown>> }> =>
+  existsSync(CAPI_FILE)
+    ? readFileSync(CAPI_FILE, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((l) => JSON.parse(l))
+    : [];
 
 const readLeads = (): Array<Record<string, unknown>> =>
   existsSync(LEADS_FILE)
@@ -525,6 +535,105 @@ test.describe('Viewports', () => {
 // 15.3 Flujos: consentimiento y Pixel
 // ---------------------------------------------------------------------------
 
+test.describe('Banner de cookies compacto', () => {
+  for (const vp of [
+    { w: 360, h: 640 },
+    { w: 375, h: 667 },
+    { w: 390, h: 844 },
+    { w: 414, h: 896 },
+  ]) {
+    test(`${vp.w}x${vp.h}: los dos CTA del hero se ven enteros y se pueden pulsar con el banner abierto`, async ({
+      browser,
+    }) => {
+      const ctx = await newCtx(browser, vp);
+      const page = await ctx.newPage();
+      await page.goto('/', { waitUntil: 'networkidle' });
+      await expect(page.locator('#cookie-banner')).toBeVisible();
+      await page.waitForTimeout(400);
+      const m = await page.evaluate(() => {
+        const banner = document.getElementById('cookie-banner')!.getBoundingClientRect();
+        const check = (sel: string) => {
+          const el = document.querySelector<HTMLElement>(sel)!;
+          const r = el.getBoundingClientRect();
+          // Puntos dentro del botón (es una píldora: las esquinas del rectángulo quedan fuera).
+          const cx = r.left + r.width / 2;
+          const cy = r.top + r.height / 2;
+          const corners = [
+            [cx, cy],
+            [r.left + r.height / 2, cy],
+            [r.right - r.height / 2, cy],
+            [cx, r.top + 2],
+            [cx, r.bottom - 2],
+          ];
+          return {
+            bottom: r.bottom,
+            free: corners.every(([x, y]) => el.contains(document.elementFromPoint(x!, y!))),
+          };
+        };
+        const btn = (a: string) => {
+          const el = document.querySelector<HTMLElement>(`[data-consent-action="${a}"]`)!;
+          const r = el.getBoundingClientRect();
+          const cs = getComputedStyle(el);
+          return [
+            Math.round(r.width),
+            Math.round(r.height),
+            cs.backgroundColor,
+            cs.color,
+            cs.fontSize,
+            cs.fontWeight,
+            cs.borderTopColor,
+          ].join('|');
+        };
+        return {
+          top: banner.top,
+          height: banner.height,
+          cta: check('[data-cta="hero"]'),
+          video: check('[data-cta="hero_video"]'),
+          accept: btn('accept'),
+          reject: btn('reject'),
+          scrollLock:
+            getComputedStyle(document.documentElement).overflow +
+            getComputedStyle(document.body).overflow,
+        };
+      });
+      expect(m.height).toBeLessThanOrEqual(100);
+      expect(m.cta.free).toBe(true);
+      expect(m.video.free).toBe(true);
+      expect(m.cta.bottom).toBeLessThanOrEqual(m.top);
+      // Aceptar y Rechazar: mismo tamaño y mismo estilo (AEPD).
+      expect(m.accept).toBe(m.reject);
+      expect(m.scrollLock).not.toContain('hidden');
+      await page.screenshot({ path: `qa/screenshots/${vp.w}x${vp.h}-banner-hero.jpg` });
+      // No bloquea: con el banner abierto se puede hacer scroll y pulsar el CTA del hero.
+      await page.mouse.wheel(0, 600);
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.locator('[data-cta="hero"]').click();
+      await expect(page).toHaveURL(/#valoracion$/);
+      await expect(page.locator('#cookie-banner')).toBeVisible();
+      await ctx.close();
+    });
+  }
+
+  test('al aceptar se carga el Pixel y sale PageView en ese momento, sin recargar', async ({
+    browser,
+  }) => {
+    const ctx = await newCtx(browser, { w: 390, h: 844 });
+    const page = await ctx.newPage();
+    const fb = fbRequests(page);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1000);
+    expect(fb).toHaveLength(0);
+    const nav = await page.evaluate(() => performance.getEntriesByType('navigation').length);
+    await page.locator('[data-consent-action="accept"]').click();
+    await expect
+      .poll(() => trEvents(fb, 'PageView').length, { timeout: 10_000 })
+      .toBeGreaterThan(0);
+    expect(await page.evaluate(() => performance.getEntriesByType('navigation').length)).toBe(nav);
+    await ctx.close();
+  });
+});
+
 test.describe('Consentimiento y Pixel', () => {
   const vp = VIEWPORTS[3]; // 390x844
 
@@ -753,7 +862,7 @@ test.describe('VSL', () => {
     await ctx.close();
   });
 
-  test('al pulsar play: autoplay, vsl_play y ViewContent', async ({ browser }) => {
+  test('al pulsar play: autoplay, vsl_play y VideoPlay (no ViewContent)', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[10]);
     await setConsent(ctx, CONSENT_ACCEPTED);
     const page = await ctx.newPage();
@@ -764,13 +873,129 @@ test.describe('VSL', () => {
     await expect(iframe).toHaveCount(1);
     expect((await iframe.getAttribute('src')) ?? '').toContain('autoplay=1');
     await expect
-      .poll(() => trEvents(fb, 'ViewContent').length, { timeout: 15_000 })
+      .poll(() => trEvents(fb, 'VideoPlay').length, { timeout: 15_000 })
       .toBeGreaterThan(0);
-    const vc = trEvents(fb, 'ViewContent')[0]!;
-    expect(decodeURIComponent(`${vc.url()} ${vc.postData() ?? ''}`)).toContain('VSL');
+    // El único ViewContent es el del paso 1 del formulario.
+    expect(trEvents(fb, 'ViewContent')).toHaveLength(0);
     const vaq = await page.evaluate(() => JSON.stringify(window.vaq ?? []));
     expect(vaq).toContain('vsl_play');
     await ctx.close();
+  });
+});
+
+test.describe('Contact, fbc y API de conversiones', () => {
+  test('WhatsApp flotante: Contact solo con consentimiento', async ({ browser }) => {
+    for (const consent of [CONSENT_REJECTED, CONSENT_ACCEPTED]) {
+      const ctx = await newCtx(browser, VIEWPORTS[10]);
+      await setConsent(ctx, consent);
+      const page = await ctx.newPage();
+      const fb = fbRequests(page);
+      ctx.on('page', (p) => void p.close());
+      await page.route('https://wa.me/**', (route) => route.abort());
+      await page.goto('/', { waitUntil: 'networkidle' });
+      await page.locator('#por-que').scrollIntoViewIfNeeded();
+      const wa = page.locator('[data-whatsapp="float"]');
+      await expect(wa).toHaveClass(/is-visible/);
+      await wa.click();
+      if (consent.marketing) {
+        await expect
+          .poll(() => trEvents(fb, 'Contact').length, { timeout: 10_000 })
+          .toBeGreaterThan(0);
+      } else {
+        await page.waitForTimeout(1500);
+        expect(fb).toHaveLength(0);
+      }
+      await ctx.close();
+    }
+  });
+
+  test('fbclid del anuncio: _fbc al aceptar, aunque ya no esté en la URL', async ({ browser }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3]);
+    const page = await ctx.newPage();
+    const fbclid = 'IwAR0QaPruebaFbclid123';
+    await page.goto(`/?fbclid=${fbclid}`, { waitUntil: 'networkidle' });
+    // Sin consentimiento: ninguna cookie de Meta.
+    expect((await ctx.cookies()).find((c) => c.name === '_fbc')).toBeUndefined();
+    await page.goto('/cookies', { waitUntil: 'networkidle' });
+    await page.locator('[data-consent-action="accept"]').click();
+    await expect
+      .poll(async () => (await ctx.cookies()).find((c) => c.name === '_fbc')?.value ?? '')
+      .toMatch(new RegExp(`^fb\\.1\\.\\d{13}\\.${fbclid}$`));
+    await ctx.close();
+  });
+
+  test('API de conversiones: solo con consentimiento y sin datos de salud', async ({ request }) => {
+    const base = {
+      zona: 'Rodilla',
+      detalle: 'Dolor rotuliano al bajar escaleras',
+      nombre: 'Laura Prueba Gómez',
+      telefono: '611223344',
+      consentimiento_salud: true,
+      fbclid: 'IwAR0QaCapiPrueba456',
+      started_at: Date.now() - 60_000,
+    };
+    const headers = {
+      cookie: '_fbp=fb.1.1700000000000.1234567890',
+      'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Instagram 350.0',
+    };
+    const without = crypto.randomUUID();
+    const before = readCapi().length;
+    expect(
+      await (
+        await request.post('/api/lead', {
+          data: { ...base, event_id: without, consentimiento_marketing: false },
+          headers,
+        })
+      ).json(),
+    ).toEqual({ ok: true });
+    expect(readCapi().length).toBe(before);
+
+    const withId = crypto.randomUUID();
+    expect(
+      await (
+        await request.post('/api/lead', {
+          data: { ...base, event_id: withId, consentimiento_marketing: true },
+          headers,
+        })
+      ).json(),
+    ).toEqual({ ok: true });
+    const sent = readCapi().find((b) => b.data[0]?.event_id === withId)!;
+    expect(sent).toBeTruthy();
+    const ev = sent.data[0]!;
+    const { createHash } = await import('node:crypto');
+    const h = (v: string) => createHash('sha256').update(v).digest('hex');
+    expect(Object.keys(ev).sort()).toEqual(
+      [
+        'action_source',
+        'event_id',
+        'event_name',
+        'event_source_url',
+        'event_time',
+        'user_data',
+      ].sort(),
+    );
+    expect(ev.event_name).toBe('Lead');
+    expect(ev.user_data).toEqual({
+      ph: [h('34611223344')],
+      fn: [h('laura')],
+      ln: [h('pruebagómez')],
+      fbp: 'fb.1.1700000000000.1234567890',
+      fbc: expect.stringMatching(/^fb\.1\.\d+\.IwAR0QaCapiPrueba456$/),
+      client_user_agent: headers['user-agent'],
+    });
+    const blob = JSON.stringify(sent);
+    expect(blob).not.toMatch(/Rodilla|rotuliano|Laura|Gómez|611223344|zona|detalle/i);
+  });
+
+  test('caché: /_astro inmutable y el HTML con revalidación', async ({ request, page }) => {
+    const html = await request.get('/');
+    expect(html.headers()['cache-control']).toBe('public, max-age=0, must-revalidate');
+    await page.goto('/');
+    const css = await page.evaluate(
+      () => document.querySelector<HTMLLinkElement>('link[rel="stylesheet"]')!.href,
+    );
+    const asset = await request.get(css);
+    expect(asset.headers()['cache-control']).toBe('public, max-age=31536000, immutable');
   });
 });
 
@@ -886,6 +1111,50 @@ test.describe('Formulario', () => {
     await page.waitForTimeout(1500);
     expect(page.url()).not.toContain('/gracias');
     expect(trEvents(fb, 'Lead')).toHaveLength(0);
+    await ctx.close();
+  });
+
+  test('sin red: mensaje de error, se conserva lo escrito y se puede reenviar', async ({
+    browser,
+  }) => {
+    const ctx = await newCtx(browser, vp);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    let offline = true;
+    await page.route('**/api/lead', (route) =>
+      offline ? route.abort('internetdisconnected') : route.continue(),
+    );
+    await openForm(page);
+    // Autocompletado del móvil: nombre de pila y número nacional con el prefijo aparte (+34).
+    await expect(page.locator('#nombre')).toHaveAttribute('autocomplete', 'given-name');
+    await expect(page.locator('#telefono')).toHaveAttribute('autocomplete', 'tel-national');
+    await expect(page.locator('#telefono')).toHaveAttribute('inputmode', 'tel');
+    await expect(page.locator('#prefijo')).toHaveAttribute('autocomplete', 'tel-country-code');
+    await expect(page.locator('#prefijo')).toHaveValue('+34');
+    await chip(page, 'Tobillo / pie').click();
+    await expect(page.locator('fieldset[data-step="2"]')).toBeVisible();
+    await page.locator('#detalle').fill('Esguince que no termina de curar');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await page.locator('#nombre').fill('Prueba Red');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await page.locator('#telefono').fill('622334455');
+    await page.locator('#consentimiento_salud').check();
+    await page.waitForTimeout(3200);
+    await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
+    await expect(page.locator('[data-form-error]')).toBeVisible();
+    await expect(page.locator('[data-form-error]')).toContainText('No se ha podido enviar');
+    expect(page.url()).not.toContain('/gracias');
+    await expect(page.locator('#telefono')).toHaveValue('622334455');
+    await expect(page.locator('#consentimiento_salud')).toBeChecked();
+    await expect(page.locator('#nombre')).toHaveValue('Prueba Red');
+    await expect(page.locator('#detalle')).toHaveValue('Esguince que no termina de curar');
+    await expect(page.locator('input[name="zona"][value="Tobillo / pie"]')).toBeChecked();
+    offline = false;
+    await page.getByRole('button', { name: 'Reintentar el envío' }).click();
+    await page.waitForURL('**/gracias');
+    expect(readLeads().some((l) => l.nombre === 'Prueba Red' && l.zona === 'Tobillo / pie')).toBe(
+      true,
+    );
     await ctx.close();
   });
 

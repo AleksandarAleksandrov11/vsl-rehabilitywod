@@ -1,8 +1,10 @@
 ---
 /**
- * Banner de cookies (criterios AEPD): Aceptar, Rechazar y Configurar al mismo nivel.
- * No es modal: no bloquea la página ni oscurece el fondo. Sin JS no se muestra
- * (y sin JS tampoco se carga el Pixel).
+ * Banner de cookies (criterios AEPD): barra compacta abajo con Aceptar y Rechazar del mismo
+ * tamaño y el mismo peso visual, y "Configurar" para elegir por finalidad.
+ * No es modal: no bloquea el scroll ni los clics, ni oscurece el fondo. En móvil ocupa menos de
+ * 100 px, así que el CTA del hero se ve entero con el banner abierto.
+ * Sin JS no se muestra (y sin JS tampoco se carga el Pixel).
  */
 ---
 
@@ -22,9 +24,8 @@
   </p>
   <div class="cb-main">
     <p id="cookie-desc" class="cb-text">
-      Usamos cookies propias para que la web funcione y, si nos dejas, de Meta para medir nuestros
-      anuncios.{' '}
-      <a class="link" href="/cookies">
+      Usamos cookies propias y, si aceptas, de Meta para medir nuestros anuncios.{' '}
+      <a class="cb-link" href="/cookies">
         Política de cookies
       </a>
     </p>
@@ -37,7 +38,7 @@
       </button>
       <button
         type="button"
-        class="cb-btn cb-btn-config"
+        class="cb-config"
         data-consent-action="configure"
         aria-expanded="false"
         aria-controls="cookie-prefs"
@@ -87,41 +88,41 @@
 </div>
 
 <style>
+  /* Móvil: barra a todo el ancho pegada abajo. */
   .cookie-banner {
     position: fixed;
     z-index: 70;
-    left: max(12px, env(safe-area-inset-left));
-    right: max(12px, env(safe-area-inset-right));
-    bottom: calc(12px + env(safe-area-inset-bottom));
-    margin-inline: auto;
-    max-width: 760px;
-    max-height: calc(100svh - 24px - env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: calc(100svh - 16px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 16px;
-    border: 1px solid var(--hair-on-dark);
-    border-radius: 16px;
+    padding: 6px max(12px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+    border-top: 1px solid var(--hair-on-dark);
+    border-radius: 14px 14px 0 0;
     background: var(--surface);
     color: var(--ink-on-dark);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
-    font-size: 0.9375rem;
-    line-height: 1.5;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.4);
+    font-size: 0.8125rem;
+    line-height: 1.25;
   }
 
   /* El foco inicial va al propio banner: anillo presente pero discreto sobre su borde. */
   .cookie-banner:focus-visible {
     outline: 2px solid rgba(52, 211, 153, 0.55);
-    outline-offset: -1px;
+    outline-offset: -2px;
   }
 
   .cookie-banner.is-entering {
-    animation: cb-in 0.45s var(--ease-out) both;
+    animation: cb-in 0.25s var(--ease-out) both;
   }
 
   @keyframes cb-in {
     from {
       opacity: 0;
-      transform: translate3d(0, 12px, 0);
+      transform: translate3d(0, 8px, 0);
     }
     to {
       opacity: 1;
@@ -131,22 +132,45 @@
 
   .cb-main {
     display: grid;
-    gap: 14px;
+    gap: 3px;
   }
 
   .cb-text {
     margin: 0;
+    color: var(--ink-on-dark);
+  }
+
+  /* Enlaces y "Configurar": texto subrayado con área táctil de 44 px (sin cambiar la altura). */
+  .cb-link,
+  .cb-config {
+    color: var(--ink-on-dark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: rgba(255, 255, 255, 0.55);
+  }
+
+  .cb-link {
+    display: inline-block;
+    padding-block: 14px;
+    margin-block: -14px;
+    font-weight: 600;
+  }
+
+  .cb-link:hover,
+  .cb-config:hover {
+    text-decoration-color: currentColor;
   }
 
   .cb-actions {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr auto;
+    align-items: center;
     gap: 8px;
   }
 
   .cb-btn {
     min-height: 44px;
-    padding: 0.5rem 1rem;
+    padding: 0.375rem 0.75rem;
     border-radius: 999px;
     font: inherit;
     font-weight: 600;
@@ -168,20 +192,32 @@
     background: #ffffff;
   }
 
-  .cb-btn-config {
-    grid-column: 1 / -1;
+  .cb-config {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
     background: transparent;
-    color: var(--ink-on-dark);
-    border: 1px solid rgba(255, 255, 255, 0.28);
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
   }
 
-  .cb-btn-config:hover {
-    border-color: rgba(255, 255, 255, 0.6);
-  }
-
+  /* Escritorio y tablet: barra flotante de una sola fila. */
   @media (width >= 768px) {
     .cookie-banner {
-      padding: 16px 16px 16px 20px;
+      left: max(12px, env(safe-area-inset-left));
+      right: max(12px, env(safe-area-inset-right));
+      bottom: calc(12px + env(safe-area-inset-bottom));
+      margin-inline: auto;
+      max-width: 880px;
+      max-height: calc(100svh - 24px - env(safe-area-inset-bottom));
+      padding: 10px 12px 10px 20px;
+      border: 1px solid var(--hair-on-dark);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      font-size: 0.875rem;
     }
 
     .cb-main {
@@ -193,21 +229,13 @@
     .cb-actions {
       grid-template-columns: 7.5rem 7.5rem auto;
     }
-
-    .cb-btn-config {
-      grid-column: auto;
-    }
-
-    .cb-btn {
-      padding-inline: 1.25rem;
-    }
   }
 
   .cb-prefs {
     display: grid;
     gap: 4px;
-    margin-top: 14px;
-    padding-top: 14px;
+    margin-top: 10px;
+    padding-top: 10px;
     border-top: 1px solid var(--hair-on-dark);
   }
 

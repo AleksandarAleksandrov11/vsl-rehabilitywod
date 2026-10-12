@@ -33,6 +33,7 @@ export default defineConfig({
       PORT: String(PORT),
       LEAD_MOCK: '1',
       LEAD_MOCK_FILE: 'qa/.tmp/leads.jsonl',
+      CAPI_MOCK_FILE: 'qa/.tmp/capi.jsonl',
     },
   },
 });
