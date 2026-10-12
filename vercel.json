@@ -5,7 +5,8 @@
   "redirects": [
     { "source": "/vsl", "destination": "/#video", "statusCode": 301 },
     { "source": "/vsl/index.html", "destination": "/#video", "statusCode": 301 },
-    { "source": "/aviso-legal.html", "destination": "/aviso-legal", "statusCode": 301 }
+    { "source": "/aviso-legal.html", "destination": "/aviso-legal", "statusCode": 301 },
+    { "source": "/sitemap.xml", "destination": "/sitemap-index.xml", "statusCode": 301 }
   ],
   "headers": [
     {

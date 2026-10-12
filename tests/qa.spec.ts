@@ -949,6 +949,18 @@ test.describe('Contact, fbc y API de conversiones', () => {
       ).json(),
     ).toEqual({ ok: true });
     expect(readCapi().length).toBe(before);
+    // Solo el booleano true cuenta como consentimiento (ni "true", ni "1", ni "on").
+    for (const value of ['true', '1', 'on', 1]) {
+      expect(
+        await (
+          await request.post('/api/lead', {
+            data: { ...base, event_id: crypto.randomUUID(), consentimiento_marketing: value },
+            headers,
+          })
+        ).json(),
+      ).toEqual({ ok: true });
+    }
+    expect(readCapi().length).toBe(before);
 
     const withId = crypto.randomUUID();
     expect(
@@ -2256,7 +2268,35 @@ test.describe('Páginas legales y rutas', () => {
     );
     const sm = await (await request.get('/sitemap-0.xml')).text();
     expect(sm).not.toContain('/gracias');
-    expect(sm).toContain('/privacidad');
+  });
+
+  test('sitemap solo con la home; legales noindex, follow; og:url = canonical', async ({
+    page,
+    request,
+  }) => {
+    const sm = await (await request.get('/sitemap-0.xml')).text();
+    expect([...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]!).pathname)).toEqual([
+      '/',
+    ]);
+    const redirect = await request.get('/sitemap.xml', { maxRedirects: 0 });
+    expect(redirect.status()).toBe(301);
+    expect(redirect.headers()['location']).toMatch(/\/sitemap-index\.xml$/);
+
+    await page.goto('/');
+    const canonical = await page.locator('link[rel="canonical"]').getAttribute('href');
+    expect(canonical).toMatch(/\/$/);
+    await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', canonical!);
+    for (const path of ['/aviso-legal', '/cookies', '/privacidad']) {
+      await page.goto(path);
+      await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+        'content',
+        'noindex, follow',
+      );
+      await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+        'content',
+        (await page.locator('link[rel="canonical"]').getAttribute('href'))!,
+      );
+    }
   });
 
   test('cabeceras de seguridad', async ({ request }) => {
