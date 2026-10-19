@@ -20,7 +20,8 @@
     "qa:server": "node scripts/qa-server.mjs",
     "qa:sheets": "node scripts/sheets-e2e.mjs",
     "qa:pixel": "node scripts/pixel-check.mjs",
-    "qa:browsers": "node scripts/mobile-browsers.mjs"
+    "qa:browsers": "node scripts/mobile-browsers.mjs",
+    "qa:nav": "node scripts/nav-audit.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.4",

@@ -45,6 +45,7 @@ npm run dev          # http://localhost:4321
 | `npm run qa:sheets`               | Prueba del guardado en Google Sheets con una hoja simulada                                               |
 | `npm run qa:pixel`                | Prueba del Meta Pixel con la librería y la configuración reales de Meta                                  |
 | `npm run qa:browsers`             | Banner, Pixel y formulario en Safari de iOS y en el navegador de Instagram (iOS y Android)               |
+| `npm run qa:nav`                  | Todos los botones y enlaces: a dónde llevan, dónde queda la pantalla y que ninguno tape a otro           |
 
 Copia `.env.example` a `.env` para probar variables en local.
 
@@ -244,7 +245,9 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
 - **Formulario**: `autocomplete` `given-name` en el nombre y `tel-country-code` + `tel-national` en
   el teléfono (prefijo +34 por defecto), con `inputmode="tel"`. Si falla la red se muestra el error y
   se conserva todo lo escrito para reintentar.
-- **Marquees** (cinta de datos y testimonios): la copia del bucle lleva `aria-hidden` e `inert`.
+- **Marquees** (cinta de datos y testimonios): la copia del bucle lleva `aria-hidden`; la de la
+  cinta además `inert`. La de testimonios no lleva `inert` (en Safari de iPhone su «Leer más» no
+  respondería) y sus botones van con `tabindex="-1"`.
 - **WhatsApp**: burbuja fija en escritorio y botón junto al CTA en la barra fija de móvil, los dos
   con el mensaje ya escrito. El número y el texto están en `src/config.ts`.
 - **Barra de Vercel en previews**: si se usan despliegues _Preview_ con la barra de comentarios de

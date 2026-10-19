@@ -1,4 +1,4 @@
-/** Diálogos "Leer más" de los testimonios (también desde la copia inert del marquee). */
+/** Diálogos "Leer más" de los testimonios (también desde la copia del loop del marquee). */
 function openDialog(id: string, opener?: HTMLElement | null) {
   const dialog = document.getElementById(id);
   if (!(dialog instanceof HTMLDialogElement) || dialog.open) return;
@@ -9,7 +9,10 @@ function openDialog(id: string, opener?: HTMLElement | null) {
       const fallback = document.querySelector<HTMLElement>(
         `.marquee-list:not([data-copy]) [data-dialog-open="${id}"]`,
       );
-      (opener && !opener.closest('[inert]') ? opener : fallback)?.focus({ preventScroll: true });
+      // Al cerrar, el foco vuelve al botón original (el de la copia está fuera del tabulador).
+      (opener && !opener.closest('[data-copy]') ? opener : fallback)?.focus({
+        preventScroll: true,
+      });
     },
     { once: true },
   );
@@ -36,21 +39,6 @@ document.addEventListener('click', (event) => {
     const { clientX: x, clientY: y } = event as MouseEvent;
     if (x < r.left || x > r.right || y < r.top || y > r.bottom) target.close();
     return;
-  }
-
-  // El duplicado del loop es inert (no recibe clics): si el clic cae sobre su "Leer más",
-  // abrimos el mismo testimonio para que funcione igual en cualquier vuelta del carrusel.
-  const marquee = target.closest<HTMLElement>('[data-marquee]');
-  if (marquee) {
-    const { clientX: x, clientY: y } = event as MouseEvent;
-    const copies = marquee.querySelectorAll<HTMLElement>('[data-copy] [data-dialog-open]');
-    for (const btn of copies) {
-      const r = btn.getBoundingClientRect();
-      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom && btn.dataset.dialogOpen) {
-        openDialog(btn.dataset.dialogOpen, null);
-        break;
-      }
-    }
   }
 });
 

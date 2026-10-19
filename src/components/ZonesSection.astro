@@ -55,14 +55,16 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     </ul>
 
     <p class="zonas-alt reveal" data-reveal>
-      ¿No lo tienes claro?{' '}
-      <a class="zonas-link" href="#valoracion">
-        Cuéntamelo en el formulario
-      </a>{' '}
-      o{' '}
-      <a class="zonas-link" href={whatsappLink(WHATSAPP_TEXT)} target="_blank" rel="noopener">
-        escríbeme por WhatsApp
-      </a>
+      <span>¿No lo tienes claro?</span>
+      <span class="zonas-alt-links">
+        <a class="zonas-link" href="#valoracion">
+          Cuéntamelo en el formulario
+        </a>
+        <span>o</span>
+        <a class="zonas-link" href={whatsappLink(WHATSAPP_TEXT)} target="_blank" rel="noopener">
+          escríbeme por WhatsApp
+        </a>
+      </span>
     </p>
   </div>
 </section>
@@ -117,6 +119,8 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     text-align: left;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    /* Un toque = una pulsación (sin esperar al doble toque para hacer zoom). */
+    touch-action: manipulation;
     transition:
       border-color 0.18s var(--ease),
       background-color 0.18s var(--ease),
@@ -177,21 +181,18 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
       transform 0.18s var(--ease);
   }
 
-  /* Borde verde al pasar el ratón, al enfocar y al pulsar. */
-  .zcard:hover,
+  /* Borde verde al enfocar y al pulsar. */
   .zcard:focus-visible,
   .zcard:active {
     border-color: var(--brand-bright);
     background: #0f1d18;
   }
 
-  .zcard:hover :global(.zone-icon),
   .zcard:focus-visible :global(.zone-icon),
   .zcard:active :global(.zone-icon) {
     color: #d4d4d0;
   }
 
-  .zcard:hover .zcard-arrow,
   .zcard:focus-visible .zcard-arrow {
     color: var(--brand-bright);
     transform: translateX(3px);
@@ -199,6 +200,24 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
 
   .zcard:active {
     transform: scale(0.98);
+  }
+
+  /* Al pasar el ratón: solo con ratón. En móvil un estado :hover hace que el primer toque solo
+     "pase por encima" de la tarjeta (iPhone) y haga falta un segundo toque para pulsarla. */
+  @media (hover: hover) and (pointer: fine) {
+    .zcard:hover {
+      border-color: var(--brand-bright);
+      background: #0f1d18;
+    }
+
+    .zcard:hover :global(.zone-icon) {
+      color: #d4d4d0;
+    }
+
+    .zcard:hover .zcard-arrow {
+      color: var(--brand-bright);
+      transform: translateX(3px);
+    }
   }
 
   /* Zona sugerida por el anuncio (form.ts añade .is-suggested): borde verde y "Tu zona". */
@@ -226,19 +245,33 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     display: block;
   }
 
+  /* Texto y enlaces en una fila que se parte por elementos enteros: cada enlace ocupa sus 44 px de
+     alto sin montarse sobre el de al lado (con dos líneas, un enlace no tapa al otro). */
   .zonas-alt {
-    margin-top: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    column-gap: 0.35em;
+    margin-top: 24px;
     text-align: center;
     font-size: 0.9375rem;
-    line-height: 1.5;
+    line-height: 1.4;
     color: var(--muted-on-dark);
   }
 
-  /* Enlaces dentro del texto con área táctil de 44 px (sin cambiar la altura de la línea). */
+  .zonas-alt-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    column-gap: 0.35em;
+  }
+
   .zonas-link {
-    display: inline-block;
-    padding-block: 12px;
-    margin-block: -12px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     font-weight: 600;
     color: var(--ink-on-dark);
     text-decoration: underline;
@@ -246,8 +279,10 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     text-underline-offset: 3px;
   }
 
-  .zonas-link:hover {
-    color: var(--brand-bright);
+  @media (hover: hover) and (pointer: fine) {
+    .zonas-link:hover {
+      color: var(--brand-bright);
+    }
   }
 
   /* Escritorio y tablet: 4 columnas × 2 filas, figura arriba y nombre debajo. */
@@ -296,7 +331,7 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     }
 
     .zonas-alt {
-      margin-top: 40px;
+      margin-top: 36px;
       font-size: 1rem;
     }
   }

@@ -192,10 +192,11 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     }, LEAVE_MS + 40);
   }
 
-  function showStep(step: number, { focus = true, announce = true } = {}): void {
+  function showStep(step: number, { focus = true, announce = true, transition = true } = {}): void {
     const previous = steps[current - 1];
     const dir = step >= current ? 1 : -1;
-    const animate = announce && !reduceMotion() && previous !== undefined && step !== current;
+    const animate =
+      transition && announce && !reduceMotion() && previous !== undefined && step !== current;
     // Posición del paso que sale, antes de mostrar el nuevo (al ir hacia atrás lo desplazaría).
     const previousTop = previous?.offsetTop ?? 0;
     // Alto de la tarjeta antes del cambio: cada paso mide lo suyo y el cambio se anima.
@@ -380,7 +381,13 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     if (!advance) return;
     window.clearTimeout(advanceTimer);
     completeStep(1);
-    showStep(2);
+    // El formulario está lejos: cambia de paso sin la animación de altura (que en Safari puede
+    // cortar el scroll suave) y baja hasta él en el mismo toque, con el título del paso a la vista.
+    showStep(2, { focus: false, transition: false });
+    const headerH = document.querySelector<HTMLElement>('[data-header]')?.offsetHeight ?? 0;
+    const top = root.getBoundingClientRect().top + window.scrollY - headerH - 12;
+    window.scrollTo({ top: Math.max(0, top), behavior: reduceMotion() ? 'auto' : 'smooth' });
+    steps[1]?.querySelector<HTMLElement>('.step-title')?.focus({ preventScroll: true });
   }
 
   // Sección "¿Qué te duele?": baja al formulario con la zona marcada y ya en el paso 2.

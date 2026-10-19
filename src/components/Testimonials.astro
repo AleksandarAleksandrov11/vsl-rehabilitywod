@@ -1,8 +1,10 @@
 ---
 /**
  * Sección 5: opiniones (5A, marquee hacia la izquierda) y quién está detrás (5B).
- * Misma lógica que la cinta de stats: copia con aria-hidden e inert, pausa con hover, foco y
- * pulsación larga, máscara lateral y scroll manual con reduced-motion.
+ * Misma lógica que la cinta de stats: copia del loop oculta a lectores de pantalla (aria-hidden) y
+ * fuera del tabulador (tabindex -1 en sus botones), pausa con hover, foco y pulsación larga,
+ * máscara lateral y scroll manual con reduced-motion. La copia no lleva inert: en Safari (iPhone)
+ * un toque sobre un elemento inert no llega a ningún sitio y su "Leer más" no abriría nada.
  */
 import X from '@lucide/astro/icons/x';
 import AboutGerard from './AboutGerard.astro';
@@ -34,7 +36,6 @@ const copies = [false, true] as const; // la segunda copia es el duplicado del l
             class="marquee-list reviews-list"
             role="list"
             aria-hidden={isCopy ? 'true' : undefined}
-            inert={isCopy ? true : undefined}
             data-copy={isCopy ? 'true' : undefined}
           >
             {TESTIMONIALS.map((t) => (
