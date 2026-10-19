@@ -10,6 +10,7 @@ import ArrowLeft from '@lucide/astro/icons/arrow-left';
 import ArrowRight from '@lucide/astro/icons/arrow-right';
 import ZoneIcon from './ZoneIcon.astro';
 import { ZONAS, LIMITS } from '../lib/lead';
+import { whatsappLink } from '../config';
 
 // Orden visual de arriba abajo del cuerpo (los valores no cambian). Todas las opciones miden
 // lo mismo: 2 columnas x 4 filas en móvil y 4 x 2 desde 768 px.
@@ -226,7 +227,19 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
         <span></span>
       </p>
 
-      <p class="form-error" data-form-error role="alert" hidden></p>
+      <div class="form-error" data-form-error role="alert" hidden>
+        <p data-form-error-text></p>
+        <a
+          class="form-error-wa"
+          href={whatsappLink(
+            'Hola Gerard, quiero valorar mi caso. El formulario de la web no se ha enviado.',
+          )}
+          target="_blank"
+          rel="noopener"
+        >
+          Escríbeme por WhatsApp
+        </a>
+      </div>
     </fieldset>
 
     <!-- Navegación común: anclada abajo de la tarjeta en modo un paso por pantalla. -->
@@ -737,6 +750,17 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     font-size: 0.9375rem;
     line-height: 1.45;
     color: #ffffff;
+  }
+
+  .form-error-wa {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-top: 6px;
+    font-weight: 600;
+    color: var(--brand-bright);
+    text-decoration: underline;
+    text-underline-offset: 3px;
   }
 
   .form-nav {

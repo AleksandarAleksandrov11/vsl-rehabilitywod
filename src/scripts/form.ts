@@ -15,6 +15,7 @@ import { getAttribution } from './utm';
 import { hasMarketingConsent } from './consent';
 import { isPixelActive, track as pixelTrack } from './pixel';
 import { trackEvent } from './tracking';
+import { adVariantByKey } from '../data/ad-variants';
 
 const NAME_KEY = 'rw_nombre';
 const AUTO_ADVANCE_MS = 250;
@@ -315,6 +316,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     if (submitLabel) submitLabel.textContent = 'Enviar y valorar mi caso';
     if (formError) formError.hidden = true;
     syncOtro();
+    preselect();
     showStep(1, { focus: false, announce: false });
   });
 
@@ -364,6 +366,36 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     }, AUTO_ADVANCE_MS);
   });
   chips?.addEventListener('change', syncOtro);
+
+  /** Marca una zona del paso 1 desde fuera del formulario; con `advance`, pasa al paso 2. */
+  function selectZona(value: string, advance: boolean): void {
+    const input = [...form.querySelectorAll<HTMLInputElement>('input[name="zona"]')].find(
+      (el) => el.value === value,
+    );
+    if (!input) return;
+    input.checked = true;
+    setError('zona', null);
+    notice?.setAttribute('hidden', '');
+    syncOtro();
+    if (!advance) return;
+    window.clearTimeout(advanceTimer);
+    completeStep(1);
+    showStep(2);
+  }
+
+  // "¿Qué te duele?" del hero: baja al formulario con la zona marcada y ya en el paso 2.
+  document.querySelector('[data-hero-zones]')?.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const zona = target?.closest<HTMLElement>('[data-zona]')?.dataset.zona;
+    if (zona) selectZona(zona, true);
+  });
+
+  // Visitas del anuncio del test de hombro: "Hombro" ya marcado en el paso 1 (sin avanzar).
+  function preselect(): void {
+    const zona = adVariantByKey(document.documentElement.dataset.ad)?.zona;
+    if (zona && !zonaValue()) selectZona(zona, false);
+  }
+  preselect();
 
   // Enter avanza (Shift+Enter hace salto de línea en el textarea).
   form.addEventListener('keydown', (event) => {
@@ -480,7 +512,8 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
       setSubmitting(false);
       if (submitLabel) submitLabel.textContent = 'Reintentar el envío';
       if (formError) {
-        formError.textContent = MESSAGES.envio;
+        const text = formError.querySelector<HTMLElement>('[data-form-error-text]');
+        if (text) text.textContent = MESSAGES.envio;
         formError.hidden = false;
       }
       const reason =

@@ -4,7 +4,9 @@
  */
 import { test, expect, type Page, type BrowserContext, type Request } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { mkdirSync, readFileSync, existsSync } from 'node:fs';
+import { mkdirSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { AD_VARIANTS } from '../src/data/ad-variants';
 
 const VIEWPORTS = [
   { w: 320, h: 568 },
@@ -1023,6 +1025,224 @@ async function openForm(page: Page) {
   await page.locator('[data-form-root].is-enhanced').waitFor();
 }
 
+test.describe('Mensaje según el anuncio (utm_content)', () => {
+  const vp = VIEWPORTS[3];
+  const heroState = (page: Page) =>
+    page.evaluate(() => {
+      const shown = (sel: string) =>
+        [...document.querySelectorAll<HTMLElement>(sel)]
+          .filter((el) => el.offsetParent !== null)
+          .map((el) => el.textContent?.trim().replace(/\s+/g, ' ') ?? '');
+      return {
+        ad: document.documentElement.dataset.ad ?? null,
+        eyebrow: shown('.hero-eyebrow'),
+        sub: shown('.hero-sub'),
+        h1: document.getElementById('hero-title')!.textContent!.replace(/\s+/g, ' ').trim(),
+        ctas: shown('.hero-ctas a'),
+      };
+    });
+
+  test('sin utm_content el hero queda como siempre', async ({ browser }) => {
+    const ctx = await newCtx(browser, vp);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    await page.goto('/?utm_source=ig&utm_medium=social', { waitUntil: 'domcontentloaded' });
+    const st = await heroState(page);
+    expect(st.ad).toBeNull();
+    expect(st.eyebrow).toEqual([]);
+    expect(st.sub).toEqual([
+      'Plan a medida, seguimiento diario y ajustes cada semana. Estés donde estés.',
+    ]);
+    await ctx.close();
+  });
+
+  for (const v of AD_VARIANTS) {
+    test(`${v.utm}: antetítulo y subtítulo propios desde la primera pintura; H1 y botones iguales`, async ({
+      browser,
+    }) => {
+      const ctx = await newCtx(browser, vp);
+      await setConsent(ctx, CONSENT_REJECTED);
+      const page = await ctx.newPage();
+      // Sin parpadeo: <html data-ad> ya está puesto cuando se analiza el hero.
+      await ctx.addInitScript(() => {
+        new MutationObserver((_, obs) => {
+          if (!document.getElementById('hero-title')) return;
+          (window as unknown as { __adAtHero: string | null }).__adAtHero =
+            document.documentElement.dataset.ad ?? null;
+          obs.disconnect();
+        }).observe(document, { childList: true, subtree: true });
+      });
+      await page.goto(
+        `/?utm_source=meta&utm_medium=paid&utm_campaign=cerrar&utm_content=${encodeURIComponent(v.utm)}`,
+        { waitUntil: 'domcontentloaded' },
+      );
+      expect(
+        await page.evaluate(() => (window as unknown as { __adAtHero: string }).__adAtHero),
+      ).toBe(v.key);
+      const st = await heroState(page);
+      expect(st.eyebrow).toEqual([v.eyebrow]);
+      expect(st.sub).toEqual([v.sub]);
+      expect(st.h1).toBe('Recupérate sin dejar de entrenar.');
+      expect(st.ctas).toEqual(['Quiero valorar mi caso', 'Ver el vídeo']);
+      const cta = await page.locator('[data-hero-cta]').boundingBox();
+      expect(cta!.y + cta!.height).toBeLessThanOrEqual(vp.h);
+      await ctx.close();
+    });
+  }
+
+  test('se mantiene en la misma sesión y un valor desconocido vuelve al hero de siempre', async ({
+    browser,
+  }) => {
+    const ctx = await newCtx(browser, vp);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    await page.goto('/?utm_content=mofu1.0', { waitUntil: 'domcontentloaded' });
+    await page.goto('/cookies', { waitUntil: 'domcontentloaded' });
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    expect((await heroState(page)).ad).toBe('mofu1');
+    await page.goto('/?utm_content=otra_cosa', { waitUntil: 'domcontentloaded' });
+    expect((await heroState(page)).ad).toBeNull();
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    expect((await heroState(page)).ad).toBeNull();
+    await ctx.close();
+  });
+
+  test('mofu3.0: "Hombro" marcado en el paso 1, sin avanzar ni enviar', async ({ browser }) => {
+    const ctx = await newCtx(browser, vp);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    await page.goto('/?utm_content=mofu3.0', { waitUntil: 'networkidle' });
+    await expect(page.locator('input[name="zona"][value="Hombro"]')).toBeChecked();
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 1 de 4');
+    expect(readLeads().some((l) => l.utm_content === 'mofu3.0')).toBe(false);
+    await ctx.close();
+  });
+});
+
+test.describe('¿Qué te duele? en el hero', () => {
+  test('390x844: cabe en la primera pantalla sin empujar los botones; +120 a la vista', async ({
+    browser,
+  }) => {
+    for (const ad of ['', 'mofu3.0']) {
+      const ctx = await newCtx(browser, VIEWPORTS[3]);
+      await setConsent(ctx, CONSENT_REJECTED);
+      const page = await ctx.newPage();
+      await page.goto(ad ? `/?utm_content=${ad}` : '/', { waitUntil: 'networkidle' });
+      const m = await page.evaluate(() => {
+        const r = (s: string) => document.querySelector(s)!.getBoundingClientRect();
+        const tiles = [...document.querySelectorAll<HTMLElement>('.hero-zone')].filter(
+          (el) => el.offsetParent !== null,
+        );
+        return {
+          zonesBottom: r('.hero-zones').bottom,
+          videoBottom: r('[data-cta="hero_video"]').bottom,
+          proof: document.querySelector('.hero-proof')!.textContent!.replace(/\s+/g, ' ').trim(),
+          proofBottom: r('.hero-proof').bottom,
+          tiles: tiles.map((el) => el.textContent!.trim()),
+          small: tiles.filter((el) => el.offsetHeight < 44 || el.offsetWidth < 44).length,
+        };
+      });
+      expect(m.zonesBottom).toBeLessThanOrEqual(844);
+      expect(m.videoBottom).toBeLessThanOrEqual(844);
+      expect(m.proof).toBe('+120 atletas recuperados');
+      expect(m.proofBottom).toBeLessThanOrEqual(844);
+      expect(m.tiles).toEqual(['Hombro', 'Rodilla', 'Espalda', 'Codo', 'Otra']);
+      expect(m.small).toBe(0);
+      await ctx.close();
+    }
+  });
+
+  test('al pulsar una zona baja al formulario con ella marcada y ya en el paso 2', async ({
+    browser,
+  }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3]);
+    await setConsent(ctx, CONSENT_ACCEPTED);
+    const page = await ctx.newPage();
+    const fb = fbRequests(page);
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const btn = page.getByRole('button', { name: 'Espalda / lumbar: empezar la valoración' });
+    await btn.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('input[name="zona"][value="Espalda / lumbar"]')).toBeChecked();
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
+    await expect(page.locator('#s2-title')).toBeFocused();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const t = document.getElementById('s2-title')!.getBoundingClientRect();
+          return t.top >= 68 && t.bottom <= window.innerHeight;
+        }),
+      )
+      .toBe(true);
+    // Es el paso 1 completado: FormStart con consentimiento.
+    await expect
+      .poll(() => trEvents(fb, 'FormStart').length, { timeout: 15_000 })
+      .toBeGreaterThan(0);
+    await ctx.close();
+  });
+
+  test('escritorio: las 8 zonas', async ({ browser }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[10]);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await expect(page.locator('.hero-zone:visible')).toHaveCount(8);
+    await ctx.close();
+  });
+});
+
+test.describe('API de conversiones: código de "Probar eventos"', () => {
+  async function postLead(port: number, env: Record<string, string>) {
+    const capi = `qa/.tmp/capi-test-code-${port}.jsonl`;
+    rmSync(capi, { force: true });
+    const server = spawn('node', ['scripts/qa-server.mjs'], {
+      env: { ...process.env, PORT: String(port), LEAD_MOCK: '1', CAPI_MOCK_FILE: capi, ...env },
+      stdio: 'ignore',
+    });
+    try {
+      const url = `http://127.0.0.1:${port}`;
+      for (let i = 0; i < 50; i++) {
+        try {
+          if ((await fetch(url)).ok) break;
+        } catch {
+          await new Promise((r) => setTimeout(r, 200));
+        }
+      }
+      const res = await fetch(`${url}/api/lead`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          zona: 'Hombro',
+          nombre: 'Prueba Codigo',
+          telefono: '611000999',
+          consentimiento_salud: true,
+          consentimiento_marketing: true,
+          event_id: crypto.randomUUID(),
+          started_at: Date.now() - 60_000,
+        }),
+      });
+      expect(await res.json()).toEqual({ ok: true });
+      return JSON.parse(readFileSync(capi, 'utf8').trim().split('\n').at(-1)!);
+    } finally {
+      server.kill();
+    }
+  }
+
+  test('se añade en Preview y nunca en producción', async () => {
+    const preview = await postLead(4471, {
+      META_TEST_EVENT_CODE: 'TEST12345',
+      VERCEL_ENV: 'preview',
+    });
+    expect(preview.test_event_code).toBe('TEST12345');
+    const production = await postLead(4472, {
+      META_TEST_EVENT_CODE: 'TEST12345',
+      VERCEL_ENV: 'production',
+    });
+    expect(production.test_event_code).toBeUndefined();
+    expect(production.data[0].event_name).toBe('Lead');
+  });
+});
+
 test.describe('Formulario', () => {
   const vp = VIEWPORTS[3];
 
@@ -1155,6 +1375,9 @@ test.describe('Formulario', () => {
     await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
     await expect(page.locator('[data-form-error]')).toBeVisible();
     await expect(page.locator('[data-form-error]')).toContainText('No se ha podido enviar');
+    const wa = page.locator('[data-form-error] a', { hasText: 'Escríbeme por WhatsApp' });
+    await expect(wa).toBeVisible();
+    expect(await wa.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/34640995494\?text=/);
     expect(page.url()).not.toContain('/gracias');
     await expect(page.locator('#telefono')).toHaveValue('622334455');
     await expect(page.locator('#consentimiento_salud')).toBeChecked();
@@ -1469,18 +1692,50 @@ test.describe('Barra CTA fija', () => {
     await ctx.close();
   });
 
-  test('nunca coincide con el banner de cookies', async ({ browser }) => {
+  test('con el banner abierto se coloca encima sin taparlo; con el panel Configurar se oculta', async ({
+    browser,
+  }) => {
     const ctx = await newCtx(browser, vp);
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
     await expect(page.locator('#cookie-banner')).toBeVisible();
     await page.locator('#video').scrollIntoViewIfNeeded();
-    await page.waitForTimeout(600);
-    expect(await visible(page)).toBe(false);
-    await page.locator('[data-consent-action="reject"]').click();
     await expect.poll(() => visible(page)).toBe(true);
-    await page.locator('footer [data-open-cookie-settings]').click();
+    await page.waitForTimeout(600);
+    const pos = await page.evaluate(() => ({
+      bar: document.querySelector('[data-sticky-cta]')!.getBoundingClientRect().bottom,
+      banner: document.getElementById('cookie-banner')!.getBoundingClientRect().top,
+    }));
+    expect(pos.bar).toBeLessThanOrEqual(pos.banner + 0.5);
+    await page.locator('[data-consent-action="configure"]').click();
     await expect.poll(() => visible(page)).toBe(false);
+    await page.locator('[data-consent-action="save"]').click();
+    await expect.poll(() => visible(page)).toBe(true);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.querySelector('[data-sticky-cta]')!.getBoundingClientRect().bottom,
+        ),
+      )
+      .toBe(vp.h);
+    await ctx.close();
+  });
+
+  test('aparece en cuanto el CTA del hero queda detrás de la cabecera', async ({ browser }) => {
+    const ctx = await newCtx(browser, vp);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const ctaTop = await page
+      .locator('[data-hero-cta]')
+      .evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+    // CTA todavía visible bajo la cabecera: sin barra.
+    await page.evaluate((y) => window.scrollTo(0, y - 200), ctaTop);
+    await page.waitForTimeout(400);
+    expect(await visible(page)).toBe(false);
+    // CTA detrás de la cabecera (aún dentro de la ventana): barra visible.
+    await page.evaluate((y) => window.scrollTo(0, y + 10), ctaTop);
+    await expect.poll(() => visible(page)).toBe(true);
     await ctx.close();
   });
 
@@ -1717,7 +1972,7 @@ test.describe('Hero inmediato y movimiento', () => {
     });
     expect(hero).toEqual({
       intro: 0,
-      inlineScripts: 0,
+      inlineScripts: 1,
       hidden: [],
       animations: 0,
       armed: 0,
@@ -2146,6 +2401,9 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       ['.hero-title', 3],
       ['.hero-title .accent', 3],
       ['.hero-sub', 4.5],
+      ['.hero-proof', 4.5],
+      ['.hero-zones-title', 4.5],
+      ['.hero-zone-label', 4.5],
       ['.closing-phrase', 3],
       ['.closing-phrase .accent', 3],
       ['.valoracion-head h2', 3],
@@ -2215,20 +2473,30 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     expect(fails).toEqual([]);
   });
 
-  test('CSP: sin scripts en línea ni hashes; solo scripts propios y el de Meta', async ({
+  test('CSP: solo el script del anuncio en línea (con su hash); ni unsafe-inline ni más scripts', async ({
     page,
     request,
   }) => {
-    for (const path of ['/', '/privacidad', '/gracias']) {
+    for (const path of ['/privacidad', '/gracias']) {
       await page.goto(path);
       expect(
         await page.locator('script:not([src]):not([type="application/ld+json"])').count(),
       ).toBe(0);
     }
+    await page.goto('/');
+    const inline = await page.evaluate(() =>
+      [...document.querySelectorAll('script:not([src]):not([type])')].map((s) => ({
+        text: s.textContent ?? '',
+        inHead: s.parentElement === document.head,
+      })),
+    );
+    expect(inline).toHaveLength(1);
+    expect(inline[0]!.inHead).toBe(true);
+    const { createHash } = await import('node:crypto');
+    const hash = `'sha256-${createHash('sha256').update(inline[0]!.text).digest('base64')}'`;
     const csp = (await request.get('/')).headers()['content-security-policy'] ?? '';
-    expect(csp).toContain("script-src 'self' https://connect.facebook.net;");
-    expect(csp).not.toContain('sha256-');
-    expect(csp).not.toContain("'unsafe-inline' https://connect");
+    expect(csp).toContain(`script-src 'self' ${hash} https://connect.facebook.net;`);
+    expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
   });
 });
 
@@ -2307,7 +2575,7 @@ test.describe('Páginas legales y rutas', () => {
     expect(h['x-frame-options']).toBe('SAMEORIGIN');
     expect(h['strict-transport-security']).toContain('max-age=63072000');
     expect(h['content-security-policy']).toMatch(
-      /script-src 'self' https:\/\/connect\.facebook\.net;/,
+      /script-src 'self' 'sha256-[A-Za-z0-9+/=]+' https:\/\/connect\.facebook\.net;/,
     );
     expect(h['content-security-policy']).not.toMatch(/script-src[^;]*unsafe-inline/);
   });

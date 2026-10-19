@@ -1,6 +1,7 @@
 /**
  * Banner de cookies: primera visita, Aceptar / Rechazar / Configurar, Esc y reapertura desde
- * "Configurar cookies". Avisa a la barra CTA fija (evento rw:banner) para que nunca coincidan.
+ * "Configurar cookies". Avisa a la barra CTA fija (evento rw:banner y variable --cb-h) para que se
+ * coloque encima del banner y nunca lo tape.
  */
 import { getConsent, saveConsent } from './consent';
 
@@ -11,10 +12,18 @@ const configureBtn = banner?.querySelector<HTMLButtonElement>('[data-consent-act
 let returnFocus: HTMLElement | null = null;
 
 function announce(open: boolean) {
-  document.documentElement.dataset.cookieBanner = open ? 'open' : 'closed';
-  const h = open && banner ? banner.getBoundingClientRect().height + 12 : 0;
-  document.documentElement.style.scrollPaddingBottom = h ? `${Math.ceil(h)}px` : '';
-  document.dispatchEvent(new CustomEvent('rw:banner', { detail: { open } }));
+  const root = document.documentElement;
+  root.dataset.cookieBanner = open ? 'open' : 'closed';
+  // Medidas sin transform (durante la animación de entrada el banner está desplazado 8 px).
+  const covered =
+    open && banner
+      ? Math.ceil(banner.offsetHeight + parseFloat(getComputedStyle(banner).bottom))
+      : 0;
+  root.style.scrollPaddingBottom = covered ? `${covered + 12}px` : '';
+  // Espacio que ocupa el banner desde el borde inferior: la barra CTA fija se coloca encima.
+  if (covered) root.style.setProperty('--cb-h', `${covered}px`);
+  else root.style.removeProperty('--cb-h');
+  document.dispatchEvent(new CustomEvent('rw:banner', { detail: { open, height: covered } }));
 }
 
 function setPrefs(open: boolean) {

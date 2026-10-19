@@ -66,7 +66,7 @@ const label = `Escribir por WhatsApp al ${CONFIG.telefono}`;
     position: fixed;
     z-index: 45;
     right: max(20px, env(safe-area-inset-right));
-    bottom: calc(20px + env(safe-area-inset-bottom));
+    bottom: calc(20px + max(env(safe-area-inset-bottom), var(--cb-h, 0px)));
     width: 58px;
     height: 58px;
     border-radius: 50%;

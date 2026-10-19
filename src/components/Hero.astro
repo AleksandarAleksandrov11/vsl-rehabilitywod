@@ -1,15 +1,36 @@
 ---
 /**
  * Sección 1: hero a pantalla completa con foto de box (vertical en móvil y tablet, horizontal
- * desde 1024 px), velo, grano y la cinta de stats pegada abajo. Sin eyebrow.
+ * desde 1024 px), velo, grano y la cinta de stats pegada abajo.
  * Sin animaciones de entrada: titular, subtítulo y botones se ven en la primera pintura.
+ *
+ * Mensaje según el anuncio: el script en línea del <head> (src/lib/ad-script.ts) marca
+ * <html data-ad="..."> y aquí el CSS muestra el antetítulo y el subtítulo de ese anuncio
+ * (src/data/ad-variants.ts). Sin anuncio conocido se ve el subtítulo de siempre y sin antetítulo.
+ *
+ * Bajo los botones: "+120 atletas recuperados" (también en la cinta) y "¿Qué te duele?", que
+ * empieza el formulario con esa zona marcada (form.ts, evento rw:zona).
  */
 import CtaButton from './CtaButton.astro';
 import SplitWords from './SplitWords.astro';
 import StatsTicker from './StatsTicker.astro';
+import ZoneIcon from './ZoneIcon.astro';
 import { heroSources, HERO_MEDIA } from '../lib/hero';
+import { AD_VARIANTS } from '../data/ad-variants';
 
 const { mobile, desktop } = await heroSources();
+
+// En móvil caben 5: las 4 zonas más comunes y "Otra". Desde 768 px se ven todas.
+const zones = [
+  { zona: 'Hombro', label: 'Hombro' },
+  { zona: 'Rodilla', label: 'Rodilla' },
+  { zona: 'Espalda / lumbar', label: 'Espalda' },
+  { zona: 'Codo', label: 'Codo' },
+  { zona: 'Muñeca', label: 'Muñeca', extra: true },
+  { zona: 'Cadera', label: 'Cadera', extra: true },
+  { zona: 'Tobillo / pie', label: 'Tobillo', extra: true },
+  { zona: 'Otro', label: 'Otra' },
+];
 ---
 
 <section id="inicio" class="hero" data-theme="dark" aria-labelledby="hero-title">
@@ -34,6 +55,11 @@ const { mobile, desktop } = await heroSources();
   </div>
 
   <div class="container-x hero-content">
+    {AD_VARIANTS.map((v) => (
+      <p class="eyebrow hero-eyebrow" data-ad-variant={v.key}>
+        {v.eyebrow}
+      </p>
+    ))}
     <SplitWords
       as="h1"
       id="hero-title"
@@ -47,11 +73,16 @@ const { mobile, desktop } = await heroSources();
         { text: 'de entrenar.', accent: true },
       ]}
     />
-    <p class="hero-sub">
+    <p class="hero-sub hero-sub-default">
       Plan a medida, seguimiento diario y ajustes cada semana.
       <br />
       Estés donde estés.
     </p>
+    {AD_VARIANTS.map((v) => (
+      <p class="hero-sub" data-ad-variant={v.key}>
+        {v.sub}
+      </p>
+    ))}
     <div class="hero-ctas">
       <CtaButton location="hero" class="hero-cta" data-hero-cta="">
         Quiero valorar mi caso
@@ -59,6 +90,27 @@ const { mobile, desktop } = await heroSources();
       <CtaButton href="#video" location="hero_video" variant="ghost" icon="play" class="hero-cta">
         Ver el vídeo
       </CtaButton>
+    </div>
+    <p class="hero-proof">
+      <span class="hero-proof-strong">+120</span> atletas recuperados
+    </p>
+    <div class="hero-zones" role="group" aria-labelledby="hero-zones-title" data-hero-zones>
+      <p class="hero-zones-title" id="hero-zones-title">
+        ¿Qué te duele?
+      </p>
+      <div class="hero-zones-list">
+        {zones.map(({ zona, label, extra }) => (
+          <button
+            type="button"
+            class:list={['hero-zone', { 'hero-zone-extra': extra }]}
+            data-zona={zona}
+            aria-label={`${zona === 'Otro' ? 'Otra zona' : zona}: empezar la valoración`}
+          >
+            <ZoneIcon zona={zona} />
+            <span class="hero-zone-label">{label}</span>
+          </button>
+        ))}
+      </div>
     </div>
   </div>
 
@@ -110,9 +162,9 @@ const { mobile, desktop } = await heroSources();
     );
   }
 
-  /* Pantallas bajas: el texto sube hacia la zona clara de la foto (ventanas). Velo más denso
-     para mantener el contraste AA en el peor punto. */
-  @media (width < 768px) and (height < 800px) {
+  /* Móvil: con el antetítulo, "+120" y "¿Qué te duele?" el texto llega a la zona clara de la foto
+     (ventanas). Velo más denso para mantener el contraste AA en el peor punto. */
+  @media (width < 768px) {
     .hero-veil {
       background: linear-gradient(
         180deg,
@@ -166,6 +218,132 @@ const { mobile, desktop } = await heroSources();
     width: 100%;
   }
 
+  /* Variantes por anuncio: ocultas salvo la de <html data-ad>. */
+  [data-ad-variant] {
+    display: none;
+  }
+
+  .hero-eyebrow {
+    max-width: 22rem;
+    margin-bottom: 10px;
+    color: var(--brand-bright);
+  }
+
+  /* Con antetítulo, algo menos de aire arriba para que los botones sigan en la primera pantalla. */
+  @media (width < 768px) and (orientation: portrait) {
+    :global(html[data-ad]) .hero-content {
+      padding-top: calc(var(--header-h) + env(safe-area-inset-top) + 18px);
+    }
+  }
+
+  :global(html[data-ad='mofu1']) [data-ad-variant='mofu1'],
+  :global(html[data-ad='mofu2']) [data-ad-variant='mofu2'],
+  :global(html[data-ad='mofu3']) [data-ad-variant='mofu3'],
+  :global(html[data-ad='bofu1']) [data-ad-variant='bofu1'],
+  :global(html[data-ad='bofu2']) [data-ad-variant='bofu2'] {
+    display: block;
+  }
+
+  :global(html[data-ad]) .hero-sub-default {
+    display: none;
+  }
+
+  .hero-proof {
+    margin-top: 12px;
+    font-size: 0.875rem;
+    line-height: 1.3;
+    color: #e2e2de;
+  }
+
+  .hero-proof-strong {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: var(--brand-bright);
+  }
+
+  /* "¿Qué te duele?": fila compacta con las figuras del formulario. */
+  .hero-zones {
+    width: 100%;
+    max-width: 360px;
+    margin-top: 12px;
+  }
+
+  .hero-zones-title {
+    margin-bottom: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+  }
+
+  .hero-zones-list {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .hero-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 52px;
+    padding: 5px 2px 4px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 12px;
+    background: rgba(10, 10, 10, 0.45);
+    color: #ffffff;
+    font: inherit;
+    cursor: pointer;
+    transition:
+      border-color 0.2s var(--ease),
+      background-color 0.2s var(--ease);
+  }
+
+  .hero-zone:hover {
+    border-color: var(--brand-bright);
+    background: rgba(5, 148, 103, 0.18);
+  }
+
+  .hero-zone:active {
+    transform: scale(0.97);
+  }
+
+  .hero-zone :global(.zone-icon) {
+    width: 17px;
+    height: 27px;
+    color: rgba(255, 255, 255, 0.72);
+  }
+
+  .hero-zone :global(.zone-dot) {
+    fill: var(--brand-bright);
+  }
+
+  .hero-zone :global(.zone-halo) {
+    fill: var(--brand-bright);
+    opacity: 0.3;
+  }
+
+  .hero-zone :global(.zone-spine) {
+    stroke: #121212;
+  }
+
+  .hero-zone :global(.zone-q) {
+    stroke: var(--void);
+  }
+
+  .hero-zone-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
+  /* En móvil solo las 4 zonas más comunes y "Otra". */
+  .hero-zone.hero-zone-extra {
+    display: none;
+  }
+
   /* Tablet: la misma foto vertical, algo más centrada, y velo uniforme con el texto al centro. */
   @media (width >= 768px) {
     .hero-img {
@@ -210,6 +388,27 @@ const { mobile, desktop } = await heroSources();
 
     .hero-ctas :global(.hero-cta) {
       width: auto;
+    }
+
+    .hero-eyebrow {
+      max-width: none;
+    }
+
+    .hero-proof {
+      margin-top: 18px;
+    }
+
+    .hero-zones {
+      max-width: 640px;
+      margin-top: 18px;
+    }
+
+    .hero-zones-list {
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+    }
+
+    .hero-zone.hero-zone-extra {
+      display: flex;
     }
   }
 

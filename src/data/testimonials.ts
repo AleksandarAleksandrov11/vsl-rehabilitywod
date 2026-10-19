@@ -1,6 +1,10 @@
 /**
  * Testimonios reales de https://rehabilitywod.com/#testimonials.
  * `cita`: recorte aprobado (sin cambiar palabras). `completo`: texto íntegro con las tildes corregidas.
+ *
+ * Para añadir un caso nuevo basta con otra entrada en TESTIMONIALS, con el mismo formato: el
+ * carrusel, la tarjeta y la ventana con el texto completo se generan solos. Solo casos reales y
+ * con permiso para publicarlos. `id`: único, en minúsculas y sin espacios (p. ej. 'laura').
  */
 export type Testimonial = {
   id: string;

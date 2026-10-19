@@ -1,8 +1,10 @@
 /**
- * Barra CTA fija (móvil < 768 px) y burbuja de WhatsApp (escritorio): aparecen cuando el CTA del
- * hero sale de pantalla. La barra se oculta con #valoracion en pantalla y ninguna de las dos
- * coincide con el banner de cookies.
+ * Barra CTA fija (móvil < 768 px) y burbuja de WhatsApp (escritorio): aparecen en cuanto el CTA del
+ * hero sale de pantalla. La barra se oculta con #valoracion en pantalla. Con el banner de cookies
+ * abierto se colocan encima de él (variable --cb-h) en vez de esperar a que la persona decida;
+ * solo se ocultan si el banner ocupa mucho (panel Configurar abierto).
  */
+const MAX_BANNER_H = 160;
 const bar = document.querySelector<HTMLElement>('[data-sticky-cta]');
 const links = [...(bar?.querySelectorAll<HTMLAnchorElement>('a') ?? [])];
 const floatWa = document.querySelector<HTMLAnchorElement>('[data-whatsapp="float"]');
@@ -13,11 +15,12 @@ const mobile = window.matchMedia('(max-width: 767.98px)');
 const state = {
   heroVisible: true,
   valoracionVisible: false,
-  bannerOpen: document.documentElement.dataset.cookieBanner === 'open',
+  // El banner puede haberse abierto antes de que cargue este script.
+  bannerH: parseFloat(document.documentElement.style.getPropertyValue('--cb-h')) || 0,
 };
 
 function update() {
-  const passedHero = !state.heroVisible && !state.bannerOpen;
+  const passedHero = !state.heroVisible && state.bannerH <= MAX_BANNER_H;
   const show = mobile.matches && passedHero && !state.valoracionVisible;
   if (bar) {
     bar.classList.toggle('is-visible', show);
@@ -35,11 +38,18 @@ function update() {
 
 if ((bar || floatWa) && 'IntersectionObserver' in window) {
   if (heroCta) {
-    new IntersectionObserver(([entry]) => {
-      // Visible mientras el CTA del hero está en pantalla o aún no se ha pasado.
-      state.heroVisible = !!entry && (entry.isIntersecting || entry.boundingClientRect.top > 0);
-      update();
-    }).observe(heroCta);
+    // La cabecera fija tapa la parte de arriba: el CTA cuenta como fuera de pantalla en cuanto
+    // queda detrás de ella.
+    const headerH = document.querySelector<HTMLElement>('[data-header]')?.offsetHeight ?? 0;
+    new IntersectionObserver(
+      ([entry]) => {
+        // Visible mientras el CTA del hero está en pantalla o aún no se ha pasado.
+        state.heroVisible =
+          !!entry && (entry.isIntersecting || entry.boundingClientRect.top > headerH);
+        update();
+      },
+      { rootMargin: `-${headerH}px 0px 0px 0px` },
+    ).observe(heroCta);
   }
   if (valoracion) {
     new IntersectionObserver(([entry]) => {
@@ -48,7 +58,8 @@ if ((bar || floatWa) && 'IntersectionObserver' in window) {
     }).observe(valoracion);
   }
   document.addEventListener('rw:banner', (event) => {
-    state.bannerOpen = !!(event as CustomEvent<{ open: boolean }>).detail?.open;
+    const detail = (event as CustomEvent<{ open: boolean; height: number }>).detail;
+    state.bannerH = detail?.open ? detail.height : 0;
     update();
   });
   mobile.addEventListener('change', update);
