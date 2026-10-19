@@ -12,7 +12,13 @@ import type { APIRoute } from 'astro';
 import { createHash } from 'node:crypto';
 import { appendFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { GOOGLE_SCRIPT_URL, LEAD_MOCK, LEAD_SECRET, META_CAPI_TOKEN } from 'astro:env/server';
+import {
+  GOOGLE_SCRIPT_URL,
+  LEAD_MOCK,
+  LEAD_SECRET,
+  META_CAPI_TOKEN,
+  META_TEST_EVENT_CODE,
+} from 'astro:env/server';
 import {
   LIMITS,
   MESSAGES,
@@ -136,7 +142,13 @@ async function sendCapi(lead: Lead, request: Request) {
   if (lead.consentimiento_marketing !== true) return;
   const token = META_CAPI_TOKEN;
   const pixelId = CONFIG.pixelId;
-  const body = { data: [buildCapiEvent(lead, request)] };
+  const body: { data: unknown[]; test_event_code?: string } = {
+    data: [buildCapiEvent(lead, request)],
+  };
+  // Código de "Probar eventos": solo fuera de producción. Si llegara a producción, los Lead irían a
+  // la pantalla de pruebas y Meta no los usaría para optimizar la campaña.
+  const testCode = META_TEST_EVENT_CODE?.trim();
+  if (testCode && process.env.VERCEL_ENV !== 'production') body.test_event_code = testCode;
 
   // Solo para el QA local (sin token): guarda el evento que se enviaría.
   const mockFile = process.env.CAPI_MOCK_FILE;

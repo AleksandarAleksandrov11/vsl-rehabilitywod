@@ -4,21 +4,28 @@
  *   - Safari de iOS (motor WebKit, iPhone 15)
  *   - navegador integrado de Instagram en iOS (WebKit con el user agent de Instagram)
  *   - navegador integrado de Instagram en Android (Chromium WebView con el user agent de Instagram)
- * En cada uno: banner compacto sin tapar el CTA del hero, nada de Meta antes de aceptar, PageView
- * al aceptar, formulario completo con error de red (sin perder lo escrito), reenvío, Lead con el
- * mismo event_id que el servidor y la página de gracias.
+ * En cada uno: hero adaptado al anuncio (utm_content mofu3.0 y mofu1.0, con capturas en
+ * qa/screenshots/anuncios/), banner compacto sin tapar el CTA del hero, nada de Meta antes de
+ * aceptar, PageView al aceptar, formulario completo con error de red (sin perder lo escrito),
+ * reenvío, Lead con el mismo event_id que el servidor y la página de gracias.
  *
  * Usa el fbevents.js real de Meta guardado por `npm run qa` en qa/.tmp/fb (si no está, la red) y
  * responde en local las llamadas a facebook.com/tr. Requiere un build con ASTRO_ADAPTER=node.
  * WebKit es opcional: npx playwright install webkit && npx playwright install-deps webkit.
  */
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { chromium, devices, webkit } from '@playwright/test';
 
 const PORT = 4393;
 const SITE = `http://127.0.0.1:${PORT}`;
 const LEADS = 'qa/.tmp/browsers-leads.jsonl';
+const SHOTS = 'qa/screenshots/anuncios';
+const ADS = [
+  ['', 'Plan a medida, seguimiento diario y ajustes cada semana.'],
+  ['mofu3.0', 'Vienes del test de hombro'],
+  ['mofu1.0', 'Vienes del vídeo del sistema'],
+];
 const GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==', 'base64');
 const FB_CACHE = { 'fbevents.js': 'qa/.tmp/fb/fbevents.js', config: 'qa/.tmp/fb/config.js' };
 
@@ -44,6 +51,7 @@ const check = (name, ok, detail = '') => {
 };
 
 rmSync(LEADS, { force: true });
+mkdirSync(SHOTS, { recursive: true });
 const site = spawn('node', ['scripts/qa-server.mjs'], {
   env: { ...process.env, PORT: String(PORT), LEAD_MOCK: '1', LEAD_MOCK_FILE: LEADS },
   stdio: 'ignore',
@@ -114,8 +122,34 @@ try {
       return false;
     };
 
+    // Hero según el anuncio (cada uno en una pestaña nueva de la misma sesión).
+    const slug = target.name.toLowerCase().replace(/\s+/g, '-');
+    for (const [ad, expected] of ADS) {
+      const tab = await ctx.newPage();
+      const qs = ad ? `?utm_source=meta&utm_medium=paid&utm_campaign=cerrar&utm_content=${ad}` : '';
+      await tab.goto(`${SITE}/${qs}`, { waitUntil: 'load' });
+      await tab.waitForTimeout(600);
+      const shown = await tab.evaluate(() =>
+        [...document.querySelectorAll('.hero-eyebrow, .hero-sub')]
+          .filter((el) => el.offsetParent !== null)
+          .map((el) => el.textContent.trim()),
+      );
+      const zona = await tab.evaluate(
+        () => document.querySelector('input[name="zona"]:checked')?.value ?? '',
+      );
+      check(
+        `${target.name}: hero ${ad || 'sin utm_content'}`,
+        shown.some((t) => t.startsWith(expected)) && (ad === 'mofu3.0' ? zona === 'Hombro' : !zona),
+        shown[0]?.slice(0, 40),
+      );
+      await tab.screenshot({ path: `${SHOTS}/${slug}-${ad || 'sin-utm'}.png` });
+      await tab.close();
+    }
+    await ctx.clearCookies();
+
     const page = await ctx.newPage();
-    await page.goto(SITE, { waitUntil: 'load' });
+    // Sin utm_content: se borra lo que haya guardado la prueba anterior en esta sesión.
+    await page.goto(`${SITE}/?utm_content=`, { waitUntil: 'load' });
     await page.locator('#cookie-banner').waitFor();
     await page.waitForTimeout(500);
     const hero = await page.evaluate(() => {

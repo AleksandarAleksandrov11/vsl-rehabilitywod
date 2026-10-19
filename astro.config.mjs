@@ -49,6 +49,12 @@ export default defineConfig({
       LEAD_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
       LEAD_MOCK: envField.string({ context: 'server', access: 'secret', optional: true }),
       META_CAPI_TOKEN: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // Solo en Preview: manda los eventos de la CAPI a "Probar eventos" (nunca en producción).
+      META_TEST_EVENT_CODE: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
     },
   },
   vite: {

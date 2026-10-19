@@ -5,6 +5,7 @@ import workSansLatin from '../assets/fonts/work-sans-latin-wght-400-800.woff2?ur
 import bigShouldersLatin from '@fontsource/big-shoulders-display/files/big-shoulders-display-latin-800-normal.woff2?url';
 import CookieBanner from '../components/CookieBanner.astro';
 import { CONFIG, SEO } from '../config';
+import { buildAdScript } from '../lib/ad-script';
 
 interface Props {
   title?: string;
@@ -14,6 +15,8 @@ interface Props {
   noindex?: boolean;
   /** Meta robots explícito (p. ej. "noindex, follow" en las legales). Tiene prioridad sobre noindex. */
   robots?: string;
+  /** Solo la home: script en línea que adapta el hero al anuncio (utm_content) sin parpadeo. */
+  adScript?: boolean;
   /** JSON-LD opcional (solo en la home). */
   jsonLd?: Record<string, unknown>;
 }
@@ -24,6 +27,7 @@ const {
   path = Astro.url.pathname,
   noindex = false,
   robots,
+  adScript = false,
   jsonLd,
 } = Astro.props;
 
@@ -43,6 +47,7 @@ const ogAlt =
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
+    {adScript && <script is:inline set:html={buildAdScript()} />}
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <meta name="robots" content={robotsContent} />

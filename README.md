@@ -79,6 +79,7 @@ En **Settings → Environment Variables** (Production y, si se usa, Preview):
 | `META_CAPI_TOKEN`      | Opcional. Activa la API de conversiones de Meta (solo con consentimiento) |
 | `PUBLIC_META_PIXEL_ID` | Opcional. Por defecto `1433154668778788`                                  |
 | `LEAD_MOCK`            | No crearla (o `0`). Con `1` la API responde «ok» pero no guarda nada      |
+| `META_TEST_EVENT_CODE` | Solo en Preview. Código de «Probar eventos»; en producción se ignora      |
 
 Sin `GOOGLE_SCRIPT_URL` y `LEAD_SECRET` el formulario responde correctamente pero **el lead no se
 guarda**: queda solo en los logs de Vercel con un aviso. Cada cambio de variables necesita
@@ -164,8 +165,10 @@ src/
                          CtaButton, SectionCta, SplitWords, Wordmark, TitularData
   scripts/               boot, reveal, motion, marquee, dialogs, faq, consent, cookie-banner,
                          pixel, tracking, insights, utm, form, vsl, sticky, home
-  lib/                   lead.ts (validación compartida), images.ts (AVIF/WebP), hero.ts
-  data/testimonials.ts   Testimonios (recorte y texto completo)
+  lib/                   lead.ts (validación compartida), images.ts (AVIF/WebP), hero.ts,
+                         ad-script.ts (script en línea del hero según el anuncio)
+  data/testimonials.ts   Testimonios (recorte y texto completo); para añadir uno, otra entrada
+  data/ad-variants.ts    Antetítulo y subtítulo del hero según el anuncio (utm_content)
   styles/global.css      Tokens, tipografía, botones, texturas, reveals y marquees
   assets/photos/         Fotos de la web (créditos más abajo)
   assets/images/         Capturas de la app
@@ -175,16 +178,29 @@ src/
 apps-script/             Code.gs e instrucciones de instalación
 tests/qa.spec.ts         Suite de QA (Playwright + axe-core)
 scripts/                 qa.mjs, qa-server.mjs, preview.mjs, lighthouse.mjs, inp.mjs,
-                         anim-size.mjs, sheets-e2e.mjs, pixel-check.mjs
+                         anim-size.mjs, sheets-e2e.mjs, pixel-check.mjs, mobile-browsers.mjs,
+                         csp-hash.mjs
 qa/                      screenshots/ y lighthouse/ (resultados de la última ejecución)
 vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
 ```
 
 ## Decisiones técnicas
 
-- **CSP sin `'unsafe-inline'` ni hashes en `script-src`.** Astro está configurado para no incrustar
-  scripts: todos son archivos propios o el de Meta. `style-src-attr 'unsafe-inline'` se mantiene
-  para los atributos `style` que escalonan las animaciones.
+- **CSP sin `'unsafe-inline'` en `script-src`.** Astro está configurado para no incrustar scripts:
+  todos son archivos propios o el de Meta, salvo el script mínimo del hero según el anuncio (en el
+  `<head>` de la home), permitido por su **hash sha256** en `vercel.json`. Si se cambia
+  `src/lib/ad-script.ts` o `src/data/ad-variants.ts`, hay que actualizar el hash con
+  `npm run build && node scripts/csp-hash.mjs --write`; un test lo comprueba.
+  `style-src-attr 'unsafe-inline'` se mantiene para los atributos `style` que escalonan las
+  animaciones.
+- **Hero según el anuncio**: el script del `<head>` lee `utm_content` (o lo guardado en
+  `sessionStorage` en la misma visita) y marca `<html data-ad>` antes de pintar el hero; el CSS
+  muestra el antetítulo y el subtítulo de ese anuncio (`src/data/ad-variants.ts`). Sin parpadeo
+  y sin renderizado en servidor. Con un valor desconocido o sin parámetro, el hero de siempre. Con
+  `mofu3.0` además queda marcado «Hombro» en el paso 1.
+- **«¿Qué te duele?» en el hero**: 5 zonas en móvil (8 desde 768 px) con las figuras del
+  formulario. Al pulsar una, el formulario la marca y pasa al paso 2. Junto a los botones, «+120
+  atletas recuperados» (también en la cinta de datos).
 - **`security.checkOrigin: false` en Astro.** El `checkOrigin` de Astro 5 reconstruye la URL como
   `localhost` en Vercel y rechazaría el formulario sin JavaScript. `/api/lead` hace su propia
   comprobación de origen.
@@ -213,6 +229,9 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
   `ViewContent` (paso 1 del formulario), `FormStart`, los personalizados `VideoPlay` (play del
   vídeo) y `Contact` (botones de WhatsApp), y `Lead` solo cuando `/api/lead` responde OK, con el
   mismo `event_id` que la API de conversiones.
+- **Barra CTA fija (móvil)**: aparece en cuanto el CTA del hero queda fuera de pantalla (o detrás
+  de la cabecera) y se oculta con el formulario en pantalla. Con el banner de cookies abierto se
+  coloca justo encima de él, sin taparlo.
 - **Banner de cookies**: barra compacta abajo (unos 93 px en móvil) con Aceptar y Rechazar del
   mismo tamaño y estilo y el enlace Configurar. No es modal: no bloquea el scroll ni los clics y
   deja a la vista los dos botones del hero.
@@ -274,7 +293,8 @@ presupuesto de JavaScript. Las capturas quedan en `qa/screenshots/`.
 
 `npm run qa:lighthouse` guarda los informes en `qa/lighthouse/` y `node scripts/inp.mjs` mide la
 latencia de interacción. `npm run qa:sheets` y `npm run qa:pixel` comprueban las dos integraciones
-externas (ver la tabla de comandos). `npm run qa:browsers` repite el embudo en Safari de iOS y en el
+externas (ver la tabla de comandos). `npm run qa:browsers` repite el embudo (con y sin
+`utm_content`, capturas en `qa/screenshots/anuncios/`) en Safari de iOS y en el
 navegador integrado de Instagram (necesita WebKit: `npx playwright install webkit` y
 `npx playwright install-deps webkit`; sin él solo prueba Instagram en Android).
 
