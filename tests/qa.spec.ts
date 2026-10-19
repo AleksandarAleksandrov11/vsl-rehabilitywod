@@ -1194,7 +1194,7 @@ test.describe('Sección "¿Qué te duele?"', () => {
     });
   }
 
-  test('al pulsar una tarjeta: zona marcada, paso 2 y FormStart con consentimiento', async ({
+  test('un solo toque en una tarjeta: zona marcada, paso 2 a la vista y FormStart con consentimiento', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
@@ -1218,7 +1218,15 @@ test.describe('Sección "¿Qué te duele?"', () => {
         .map((c) => c.dataset.zona),
     );
     expect(covered).toEqual([]);
-    await page.getByRole('button', { name: 'Rodilla: empezar la valoración' }).click();
+    // En móvil no hay estado "al pasar el ratón": si lo hubiera, en iPhone el primer toque solo
+    // activaría ese estado y haría falta un segundo toque.
+    const card = page.getByRole('button', { name: 'Rodilla: empezar la valoración' });
+    const border = await card.evaluate((el) => getComputedStyle(el).borderColor);
+    await card.hover();
+    await page.waitForTimeout(300);
+    expect(await card.evaluate((el) => getComputedStyle(el).borderColor)).toBe(border);
+    // Un solo toque: zona marcada, paso 2 y el formulario a la vista.
+    await card.tap();
     await expect(page.locator('input[name="zona"][value="Rodilla"]')).toBeChecked();
     await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
     await expect(page.locator('#s2-title')).toBeFocused();

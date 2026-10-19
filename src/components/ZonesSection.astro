@@ -117,6 +117,8 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     text-align: left;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    /* Un toque = una pulsación (sin esperar al doble toque para hacer zoom). */
+    touch-action: manipulation;
     transition:
       border-color 0.18s var(--ease),
       background-color 0.18s var(--ease),
@@ -177,21 +179,18 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
       transform 0.18s var(--ease);
   }
 
-  /* Borde verde al pasar el ratón, al enfocar y al pulsar. */
-  .zcard:hover,
+  /* Borde verde al enfocar y al pulsar. */
   .zcard:focus-visible,
   .zcard:active {
     border-color: var(--brand-bright);
     background: #0f1d18;
   }
 
-  .zcard:hover :global(.zone-icon),
   .zcard:focus-visible :global(.zone-icon),
   .zcard:active :global(.zone-icon) {
     color: #d4d4d0;
   }
 
-  .zcard:hover .zcard-arrow,
   .zcard:focus-visible .zcard-arrow {
     color: var(--brand-bright);
     transform: translateX(3px);
@@ -199,6 +198,24 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
 
   .zcard:active {
     transform: scale(0.98);
+  }
+
+  /* Al pasar el ratón: solo con ratón. En móvil un estado :hover hace que el primer toque solo
+     "pase por encima" de la tarjeta (iPhone) y haga falta un segundo toque para pulsarla. */
+  @media (hover: hover) and (pointer: fine) {
+    .zcard:hover {
+      border-color: var(--brand-bright);
+      background: #0f1d18;
+    }
+
+    .zcard:hover :global(.zone-icon) {
+      color: #d4d4d0;
+    }
+
+    .zcard:hover .zcard-arrow {
+      color: var(--brand-bright);
+      transform: translateX(3px);
+    }
   }
 
   /* Zona sugerida por el anuncio (form.ts añade .is-suggested): borde verde y "Tu zona". */
@@ -246,8 +263,10 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     text-underline-offset: 3px;
   }
 
-  .zonas-link:hover {
-    color: var(--brand-bright);
+  @media (hover: hover) and (pointer: fine) {
+    .zonas-link:hover {
+      color: var(--brand-bright);
+    }
   }
 
   /* Escritorio y tablet: 4 columnas × 2 filas, figura arriba y nombre debajo. */
