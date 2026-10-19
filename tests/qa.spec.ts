@@ -302,7 +302,8 @@ async function pageChecks(page: Page, vp: Vp, path: string) {
   // Viudas de una palabra en H1 y H2
   const widows = await page.evaluate(() => {
     const out: string[] = [];
-    for (const el of document.querySelectorAll('h1, h2')) {
+    // "¿Qué te / duele?": salto de línea pedido expresamente, no cuenta como viuda.
+    for (const el of document.querySelectorAll('h1, h2:not(#zonas-title)')) {
       const r0 = el.getBoundingClientRect();
       if (!r0.width || el.closest('[hidden],dialog:not([open])')) continue;
       const range = document.createRange();
@@ -1119,40 +1120,81 @@ test.describe('Mensaje según el anuncio (utm_content)', () => {
   });
 });
 
-test.describe('¿Qué te duele? en el hero', () => {
-  test('390x844: cabe en la primera pantalla sin empujar los botones; +120 a la vista', async ({
-    browser,
+test.describe('Sección "¿Qué te duele?"', () => {
+  test('va justo después del hero y antes del vídeo; el hero ya no lleva la fila de zonas', async ({
+    page,
   }) => {
-    for (const ad of ['', 'mofu3.0']) {
-      const ctx = await newCtx(browser, VIEWPORTS[3]);
-      await setConsent(ctx, CONSENT_REJECTED);
-      const page = await ctx.newPage();
-      await page.goto(ad ? `/?utm_content=${ad}` : '/', { waitUntil: 'networkidle' });
-      const m = await page.evaluate(() => {
-        const r = (s: string) => document.querySelector(s)!.getBoundingClientRect();
-        const tiles = [...document.querySelectorAll<HTMLElement>('.hero-zone')].filter(
-          (el) => el.offsetParent !== null,
-        );
-        return {
-          zonesBottom: r('.hero-zones').bottom,
-          videoBottom: r('[data-cta="hero_video"]').bottom,
-          proof: document.querySelector('.hero-proof')!.textContent!.replace(/\s+/g, ' ').trim(),
-          proofBottom: r('.hero-proof').bottom,
-          tiles: tiles.map((el) => el.textContent!.trim()),
-          small: tiles.filter((el) => el.offsetHeight < 44 || el.offsetWidth < 44).length,
-        };
-      });
-      expect(m.zonesBottom).toBeLessThanOrEqual(844);
-      expect(m.videoBottom).toBeLessThanOrEqual(844);
-      expect(m.proof).toBe('+120 atletas recuperados');
-      expect(m.proofBottom).toBeLessThanOrEqual(844);
-      expect(m.tiles).toEqual(['Hombro', 'Rodilla', 'Espalda', 'Codo', 'Otra']);
-      expect(m.small).toBe(0);
-      await ctx.close();
-    }
+    await page.goto('/');
+    const order = await page.evaluate(() =>
+      [...document.querySelectorAll('main > section')].slice(0, 3).map((s) => s.id),
+    );
+    expect(order).toEqual(['inicio', 'zonas', 'video']);
+    await expect(page.locator('#inicio [data-zona]')).toHaveCount(0);
+    await expect(page.locator('#inicio .hero-proof')).toHaveText(/\+120\s+atletas recuperados/);
+    await expect(page.locator('#zonas-title')).toHaveText(/¿Qué te\s*duele\?/);
+    await expect(page.locator('#zonas .zonas-lead')).toHaveText(
+      'Elige la zona y empieza tu valoración. 30 segundos.',
+    );
   });
 
-  test('al pulsar una zona baja al formulario con ella marcada y ya en el paso 2', async ({
+  for (const [vp, cols, minH, iconMin, iconMax] of [
+    [VIEWPORTS[3], 2, 72, 56, 64],
+    [VIEWPORTS[1], 2, 72, 56, 64],
+    [VIEWPORTS[10], 4, 150, 80, 96],
+  ] as const) {
+    test(`${vpName(vp)}: 8 tarjetas grandes en ${cols} columnas, figura de tamaño fijo`, async ({
+      browser,
+    }) => {
+      const ctx = await newCtx(browser, vp);
+      await setConsent(ctx, CONSENT_REJECTED);
+      const page = await ctx.newPage();
+      await page.goto('/', { waitUntil: 'networkidle' });
+      const m = await page.evaluate(() => {
+        const cards = [...document.querySelectorAll<HTMLElement>('#zonas .zcard')];
+        const r = (el: Element) => el.getBoundingClientRect();
+        return {
+          names: cards.map((c) => c.querySelector('.zcard-name')!.textContent!.trim()),
+          labels: cards.map((c) => c.getAttribute('aria-label')),
+          cols: new Set(cards.map((c) => Math.round(r(c).left))).size,
+          minH: Math.min(...cards.map((c) => r(c).height)),
+          icons: cards.map((c) => {
+            const svg = c.querySelector('svg.zone-icon')!;
+            return [r(svg).height, getComputedStyle(svg).height];
+          }),
+          font: getComputedStyle(cards[0]!.querySelector('.zcard-name')!).fontFamily,
+          upper: getComputedStyle(cards[0]!.querySelector('.zcard-name')!).textTransform,
+          arrows: cards.filter((c) => c.querySelector('.zcard-arrow svg')).length,
+          buttons: cards.filter((c) => c instanceof HTMLButtonElement && c.type === 'button')
+            .length,
+        };
+      });
+      expect(m.names.map((n) => n.replace(/\u00a0/g, ' '))).toEqual([
+        'Hombro',
+        'Codo',
+        'Muñeca',
+        'Espalda / lumbar',
+        'Cadera',
+        'Rodilla',
+        'Tobillo / pie',
+        'Otra',
+      ]);
+      expect(m.labels[0]).toBe('Hombro: empezar la valoración');
+      expect(m.cols).toBe(cols);
+      expect(m.minH).toBeGreaterThanOrEqual(minH);
+      for (const [h, css] of m.icons) {
+        expect(h).toBeGreaterThanOrEqual(iconMin);
+        expect(h).toBeLessThanOrEqual(iconMax);
+        expect(css).toMatch(/px$/);
+      }
+      expect(m.font).toContain('Big Shoulders');
+      expect(m.upper).toBe('uppercase');
+      expect(m.arrows).toBe(8);
+      expect(m.buttons).toBe(8);
+      await ctx.close();
+    });
+  }
+
+  test('al pulsar una tarjeta: zona marcada, paso 2 y FormStart con consentimiento', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
@@ -1160,10 +1202,24 @@ test.describe('¿Qué te duele? en el hero', () => {
     const page = await ctx.newPage();
     const fb = fbRequests(page);
     await page.goto('/', { waitUntil: 'networkidle' });
-    const btn = page.getByRole('button', { name: 'Espalda / lumbar: empezar la valoración' });
-    await btn.focus();
-    await page.keyboard.press('Enter');
-    await expect(page.locator('input[name="zona"][value="Espalda / lumbar"]')).toBeChecked();
+    await page.locator('#zonas').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(600);
+    // La barra fija no tapa las tarjetas: el centro de cada tarjeta visible es la tarjeta.
+    const covered = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('#zonas .zcard')]
+        .filter((c) => {
+          const r = c.getBoundingClientRect();
+          return r.top >= 0 && r.bottom <= window.innerHeight;
+        })
+        .filter((c) => {
+          const r = c.getBoundingClientRect();
+          return !c.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+        })
+        .map((c) => c.dataset.zona),
+    );
+    expect(covered).toEqual([]);
+    await page.getByRole('button', { name: 'Rodilla: empezar la valoración' }).click();
+    await expect(page.locator('input[name="zona"][value="Rodilla"]')).toBeChecked();
     await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
     await expect(page.locator('#s2-title')).toBeFocused();
     await expect
@@ -1174,19 +1230,49 @@ test.describe('¿Qué te duele? en el hero', () => {
         }),
       )
       .toBe(true);
-    // Es el paso 1 completado: FormStart con consentimiento.
     await expect
       .poll(() => trEvents(fb, 'FormStart').length, { timeout: 15_000 })
       .toBeGreaterThan(0);
+    expect(trEvents(fb, 'ViewContent').length).toBeGreaterThan(0);
     await ctx.close();
   });
 
-  test('escritorio: las 8 zonas', async ({ browser }) => {
+  test('teclado: Enter en una tarjeta enfocada; sin consentimiento no sale nada a Meta', async ({
+    browser,
+  }) => {
     const ctx = await newCtx(browser, VIEWPORTS[10]);
     await setConsent(ctx, CONSENT_REJECTED);
     const page = await ctx.newPage();
+    const fb = fbRequests(page);
     await page.goto('/', { waitUntil: 'networkidle' });
-    await expect(page.locator('.hero-zone:visible')).toHaveCount(8);
+    const card = page.getByRole('button', { name: 'Otra: empezar la valoración' });
+    await card.focus();
+    await expect
+      .poll(() => card.evaluate((el) => getComputedStyle(el).borderColor))
+      .toBe('rgb(52, 211, 153)');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('input[name="zona"][value="Otro"]')).toBeChecked();
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
+    await page.waitForTimeout(1000);
+    expect(fb).toHaveLength(0);
+    await ctx.close();
+  });
+
+  test('mofu3.0: "Hombro" destacado con "Tu zona", sin pulsarse', async ({ browser }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3]);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    await page.goto('/?utm_content=mofu3.0', { waitUntil: 'networkidle' });
+    const hombro = page.locator('#zonas .zcard[data-zona="Hombro"]');
+    await expect(hombro).toHaveClass(/is-suggested/);
+    await expect(hombro.locator('.zcard-tag')).toBeVisible();
+    await expect(hombro.locator('.zcard-tag')).toHaveText('Tu zona');
+    await expect(page.locator('#zonas .zcard.is-suggested')).toHaveCount(1);
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 1 de 4');
+    // Sin anuncio: ninguna destacada.
+    await page.goto('/?utm_content=', { waitUntil: 'networkidle' });
+    await expect(page.locator('#zonas .zcard.is-suggested')).toHaveCount(0);
+    await expect(page.locator('#zonas .zcard-tag:visible')).toHaveCount(0);
     await ctx.close();
   });
 });
@@ -2125,6 +2211,7 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     const ids = await page.locator('main > section[id]').evaluateAll((els) => els.map((e) => e.id));
     expect(ids).toEqual([
       'inicio',
+      'zonas',
       'video',
       'por-que',
       'como-funciona',
@@ -2141,6 +2228,8 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       );
     expect(ctas).toEqual([
       ['hero', 'hero_video'],
+      // "¿Qué te duele?": las tarjetas son botones y su cierre enlaza al formulario y a WhatsApp.
+      [],
       ['vsl'],
       ['compare'],
       ['how'],
@@ -2402,8 +2491,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       ['.hero-title .accent', 3],
       ['.hero-sub', 4.5],
       ['.hero-proof', 4.5],
-      ['.hero-zones-title', 4.5],
-      ['.hero-zone-label', 4.5],
       ['.closing-phrase', 3],
       ['.closing-phrase .accent', 3],
       ['.valoracion-head h2', 3],
@@ -2421,19 +2508,34 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
     };
     const sharp = (await import('sharp')).default;
-    for (const vp of VIEWPORTS) {
+    // Además del hero de siempre, el del anuncio con más texto (mofu3.0) en móvil vertical: el
+    // antetítulo y el subtítulo largo suben el titular hacia la zona clara de la foto.
+    const heroTargets: Array<[string, number]> = [
+      ...targets.filter(([sel]) => sel.startsWith('.hero')),
+      ['.hero-eyebrow', 4.5],
+    ];
+    const runs = [
+      ...VIEWPORTS.map((vp) => ({ vp, query: '', list: targets })),
+      ...VIEWPORTS.filter((vp) => vp.w < 768 && !('landscape' in vp)).map((vp) => ({
+        vp,
+        query: '?utm_content=mofu3.0',
+        list: heroTargets,
+      })),
+    ];
+    for (const { vp, query, list } of runs) {
       const ctx = await newCtx(browser, vp, { deviceScaleFactor: 1, reducedMotion: 'reduce' });
       await setConsent(ctx, CONSENT_REJECTED);
       const page = await ctx.newPage();
-      await page.goto('/', { waitUntil: 'networkidle' });
-      for (const [sel, min] of targets) {
+      await page.goto(`/${query}`, { waitUntil: 'networkidle' });
+      for (const [rawSel, min] of list) {
+        const sel = `${rawSel}:visible`;
         const el = page.locator(sel).first();
         await el.scrollIntoViewIfNeeded();
         await page.waitForTimeout(250);
         const color = await el.evaluate((e) => getComputedStyle(e).color);
         const box = (await el.boundingBox())!;
         // Oculta el texto (estilo en línea: permitido por la CSP) y mide el fondo real.
-        const hide = sel.includes('.accent') ? sel.split(' ')[0]! : sel;
+        const hide = rawSel.includes('.accent') ? `${rawSel.split(' ')[0]!}:visible` : sel;
         await page
           .locator(hide)
           .first()
@@ -2464,8 +2566,9 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
           .map(Number) as [number, number, number];
         const fg = lum(...rgb);
         const ratio = (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
-        report.push(`${vpName(vp)} ${sel} ${ratio.toFixed(2)}`);
-        if (ratio < min) fails.push(`${vpName(vp)} ${sel}: ${ratio.toFixed(2)} < ${min}`);
+        const where = `${vpName(vp)}${query ? ` ${query}` : ''} ${rawSel}`;
+        report.push(`${where} ${ratio.toFixed(2)}`);
+        if (ratio < min) fails.push(`${where}: ${ratio.toFixed(2)} < ${min}`);
       }
       await ctx.close();
     }
