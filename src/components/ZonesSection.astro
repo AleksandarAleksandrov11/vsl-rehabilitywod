@@ -1,0 +1,311 @@
+---
+/**
+ * Sección "¿Qué te duele?" (justo después del hero y la cinta de cifras).
+ * 8 tarjetas grandes, una por zona del formulario, con la figura de ZoneIcon. Al pulsar una,
+ * form.ts baja a #valoracion, deja esa zona marcada y abre el paso 2 (cuenta como paso 1
+ * completado). Con el anuncio del test de hombro (utm_content=mofu3.0), form.ts destaca
+ * "Hombro" con la etiqueta "Tu zona" sin pulsarla.
+ * Sin JS las tarjetas no hacen nada, pero el enlace "Cuéntamelo en el formulario" sí.
+ */
+import ArrowRight from '@lucide/astro/icons/arrow-right';
+import SplitWords from './SplitWords.astro';
+import ZoneIcon from './ZoneIcon.astro';
+import { ZONAS } from '../lib/lead';
+import { WHATSAPP_TEXT, whatsappLink } from '../config';
+
+const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
+---
+
+<section id="zonas" class="zonas section-y" data-theme="dark" aria-labelledby="zonas-title">
+  <div class="container-x">
+    <div class="zonas-head">
+      <SplitWords
+        id="zonas-title"
+        class="h2-display zonas-title"
+        parts={['¿Qué te', { br: 'always' }, { text: 'duele?', accent: true }]}
+      />
+      <p class="lead zonas-lead reveal" data-reveal style="--i:2">
+        Elige la zona y empieza tu valoración. 30 segundos.
+      </p>
+    </div>
+
+    <ul class="zonas-grid" role="list" data-zonas>
+      {ZONAS.map((zona, i) => (
+        <li class="reveal" data-reveal style={`--i:${i % 4}`}>
+          <button
+            type="button"
+            class="zcard"
+            data-zona={zona}
+            aria-label={`${label(zona)}: empezar la valoración`}
+          >
+            <span class="zcard-figure" aria-hidden="true">
+              <ZoneIcon zona={zona} />
+            </span>
+            {/* "Espalda /" y "Tobillo /" en la primera línea cuando el nombre se parte. */}
+            <span class="zcard-name">{label(zona).replace(' / ', ' / ')}</span>
+            <span class="zcard-arrow" aria-hidden="true">
+              <ArrowRight size={18} stroke-width={2} />
+            </span>
+            <span class="zcard-tag" aria-hidden="true">
+              Tu zona
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+
+    <p class="zonas-alt reveal" data-reveal>
+      ¿No lo tienes claro?{' '}
+      <a class="zonas-link" href="#valoracion">
+        Cuéntamelo en el formulario
+      </a>{' '}
+      o{' '}
+      <a class="zonas-link" href={whatsappLink(WHATSAPP_TEXT)} target="_blank" rel="noopener">
+        escríbeme por WhatsApp
+      </a>
+    </p>
+  </div>
+</section>
+
+<style>
+  .zonas {
+    position: relative;
+    background: var(--void);
+    color: var(--ink-on-dark);
+    border-top: 1px solid var(--hair-on-dark);
+  }
+
+  .zonas-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .zonas-lead {
+    margin-top: 16px;
+  }
+
+  /* Móvil: 2 columnas, figura a la izquierda y nombre a la derecha. */
+  .zonas-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 32px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .zonas-grid > li {
+    display: flex;
+  }
+
+  .zcard {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 88px;
+    padding: 12px 12px 12px 12px;
+    border: 1px solid var(--hair-strong-on-dark);
+    border-radius: 16px;
+    background: var(--ink);
+    color: var(--ink-on-dark);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      border-color 0.18s var(--ease),
+      background-color 0.18s var(--ease),
+      transform 0.18s var(--ease);
+  }
+
+  .zcard-figure {
+    display: grid;
+    place-items: center;
+    flex: none;
+  }
+
+  /* Tamaño fijo (sin saltos de diseño). */
+  .zcard :global(.zone-icon) {
+    display: block;
+    width: 38px;
+    height: 60px;
+    color: #8a8a8a;
+    transition: color 0.18s var(--ease);
+  }
+
+  .zcard :global(.zone-dot) {
+    fill: var(--brand-bright);
+  }
+
+  .zcard :global(.zone-halo) {
+    fill: var(--brand-bright);
+    opacity: 0.28;
+  }
+
+  .zcard :global(.zone-spine) {
+    stroke: #121212;
+  }
+
+  .zcard :global(.zone-q) {
+    stroke: var(--void);
+  }
+
+  .zcard-name {
+    font-family: var(--font-display);
+    font-size: 1.375rem;
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+  }
+
+  /* Flecha discreta en la esquina: deja todo el ancho al nombre. */
+  .zcard-arrow {
+    position: absolute;
+    right: 9px;
+    bottom: 8px;
+    display: grid;
+    place-items: center;
+    color: var(--muted-on-dark);
+    transition:
+      color 0.18s var(--ease),
+      transform 0.18s var(--ease);
+  }
+
+  /* Borde verde al pasar el ratón, al enfocar y al pulsar. */
+  .zcard:hover,
+  .zcard:focus-visible,
+  .zcard:active {
+    border-color: var(--brand-bright);
+    background: #0f1d18;
+  }
+
+  .zcard:hover :global(.zone-icon),
+  .zcard:focus-visible :global(.zone-icon),
+  .zcard:active :global(.zone-icon) {
+    color: #d4d4d0;
+  }
+
+  .zcard:hover .zcard-arrow,
+  .zcard:focus-visible .zcard-arrow {
+    color: var(--brand-bright);
+    transform: translateX(3px);
+  }
+
+  .zcard:active {
+    transform: scale(0.98);
+  }
+
+  /* Zona sugerida por el anuncio (form.ts añade .is-suggested): borde verde y "Tu zona". */
+  .zcard-tag {
+    position: absolute;
+    top: -9px;
+    right: 10px;
+    display: none;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--brand-strong);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+  }
+
+  .zcard:global(.is-suggested) {
+    border-color: var(--brand-bright);
+    box-shadow: 0 0 0 1px var(--brand-bright);
+  }
+
+  .zcard:global(.is-suggested) .zcard-tag {
+    display: block;
+  }
+
+  .zonas-alt {
+    margin-top: 28px;
+    text-align: center;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--muted-on-dark);
+  }
+
+  /* Enlaces dentro del texto con área táctil de 44 px (sin cambiar la altura de la línea). */
+  .zonas-link {
+    display: inline-block;
+    padding-block: 12px;
+    margin-block: -12px;
+    font-weight: 600;
+    color: var(--ink-on-dark);
+    text-decoration: underline;
+    text-decoration-color: var(--brand-bright);
+    text-underline-offset: 3px;
+  }
+
+  .zonas-link:hover {
+    color: var(--brand-bright);
+  }
+
+  /* Escritorio y tablet: 4 columnas × 2 filas, figura arriba y nombre debajo. */
+  @media (width >= 768px) {
+    .zonas-lead {
+      margin-top: 20px;
+    }
+
+    .zonas-grid {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      max-width: 1040px;
+      margin: var(--title-gap) auto 0;
+    }
+
+    .zcard {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      align-content: center;
+      gap: 14px;
+      min-height: 200px;
+      padding: 24px 16px 22px;
+      border-radius: var(--radius);
+      text-align: center;
+    }
+
+    .zcard :global(.zone-icon) {
+      width: 56px;
+      height: 90px;
+    }
+
+    .zcard-name {
+      font-size: 1.75rem;
+    }
+
+    .zcard-arrow {
+      top: 16px;
+      right: 16px;
+      bottom: auto;
+    }
+
+    .zcard-tag {
+      top: 14px;
+      right: auto;
+      left: 14px;
+    }
+
+    .zonas-alt {
+      margin-top: 40px;
+      font-size: 1rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .zcard:active,
+    .zcard:hover .zcard-arrow,
+    .zcard:focus-visible .zcard-arrow {
+      transform: none;
+    }
+  }
+</style>

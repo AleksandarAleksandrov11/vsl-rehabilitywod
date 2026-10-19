@@ -159,7 +159,7 @@ src/
   pages/                 index, gracias (noindex), aviso-legal, privacidad y cookies
                          (noindex, follow; fuera del sitemap), 404,
                          og.jpg (imagen OG generada en el build), robots.txt, api/lead.ts
-  components/            Header, Hero, StatsTicker, VslSection, WhySection, HowItWorks,
+  components/            Header, Hero, ZonesSection, StatsTicker, VslSection, WhySection, HowItWorks,
                          Testimonials, AboutGerard, ValoracionSection, LeadForm, ZoneIcon, Faq,
                          ClosingBand, Footer, StickyCta, WhatsappButton, CookieBanner,
                          CtaButton, SectionCta, SplitWords, Wordmark, TitularData
@@ -198,9 +198,11 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
   muestra el antetítulo y el subtítulo de ese anuncio (`src/data/ad-variants.ts`). Sin parpadeo
   y sin renderizado en servidor. Con un valor desconocido o sin parámetro, el hero de siempre. Con
   `mofu3.0` además queda marcado «Hombro» en el paso 1.
-- **«¿Qué te duele?» en el hero**: 5 zonas en móvil (8 desde 768 px) con las figuras del
-  formulario. Al pulsar una, el formulario la marca y pasa al paso 2. Junto a los botones, «+120
-  atletas recuperados» (también en la cinta de datos).
+- **Sección «¿Qué te duele?»** (`ZonesSection.astro`, justo después del hero): 8 tarjetas grandes,
+  una por zona del formulario (2 columnas en móvil, 4 × 2 en escritorio) con la figura de
+  `ZoneIcon`. Al pulsar una, el formulario la marca y abre el paso 2 (cuenta como paso 1
+  completado). Con `mofu3.0`, «Hombro» aparece destacado con «Tu zona». En el hero, junto a los
+  botones, «+120 atletas recuperados» (también en la cinta de datos).
 - **`security.checkOrigin: false` en Astro.** El `checkOrigin` de Astro 5 reconstruye la URL como
   `localhost` en Vercel y rechazaría el formulario sin JavaScript. `/api/lead` hace su propia
   comprobación de origen.

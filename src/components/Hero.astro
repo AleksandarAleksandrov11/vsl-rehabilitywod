@@ -8,29 +8,15 @@
  * <html data-ad="..."> y aquí el CSS muestra el antetítulo y el subtítulo de ese anuncio
  * (src/data/ad-variants.ts). Sin anuncio conocido se ve el subtítulo de siempre y sin antetítulo.
  *
- * Bajo los botones: "+120 atletas recuperados" (también en la cinta) y "¿Qué te duele?", que
- * empieza el formulario con esa zona marcada (form.ts, evento rw:zona).
+ * Bajo los botones: "+120 atletas recuperados" (también en la cinta de cifras).
  */
 import CtaButton from './CtaButton.astro';
 import SplitWords from './SplitWords.astro';
 import StatsTicker from './StatsTicker.astro';
-import ZoneIcon from './ZoneIcon.astro';
 import { heroSources, HERO_MEDIA } from '../lib/hero';
 import { AD_VARIANTS } from '../data/ad-variants';
 
 const { mobile, desktop } = await heroSources();
-
-// En móvil caben 5: las 4 zonas más comunes y "Otra". Desde 768 px se ven todas.
-const zones = [
-  { zona: 'Hombro', label: 'Hombro' },
-  { zona: 'Rodilla', label: 'Rodilla' },
-  { zona: 'Espalda / lumbar', label: 'Espalda' },
-  { zona: 'Codo', label: 'Codo' },
-  { zona: 'Muñeca', label: 'Muñeca', extra: true },
-  { zona: 'Cadera', label: 'Cadera', extra: true },
-  { zona: 'Tobillo / pie', label: 'Tobillo', extra: true },
-  { zona: 'Otro', label: 'Otra' },
-];
 ---
 
 <section id="inicio" class="hero" data-theme="dark" aria-labelledby="hero-title">
@@ -94,24 +80,6 @@ const zones = [
     <p class="hero-proof">
       <span class="hero-proof-strong">+120</span> atletas recuperados
     </p>
-    <div class="hero-zones" role="group" aria-labelledby="hero-zones-title" data-hero-zones>
-      <p class="hero-zones-title" id="hero-zones-title">
-        ¿Qué te duele?
-      </p>
-      <div class="hero-zones-list">
-        {zones.map(({ zona, label, extra }) => (
-          <button
-            type="button"
-            class:list={['hero-zone', { 'hero-zone-extra': extra }]}
-            data-zona={zona}
-            aria-label={`${zona === 'Otro' ? 'Otra zona' : zona}: empezar la valoración`}
-          >
-            <ZoneIcon zona={zona} />
-            <span class="hero-zone-label">{label}</span>
-          </button>
-        ))}
-      </div>
-    </div>
   </div>
 
   <StatsTicker />
@@ -162,7 +130,7 @@ const zones = [
     );
   }
 
-  /* Móvil: con el antetítulo, "+120" y "¿Qué te duele?" el texto llega a la zona clara de la foto
+  /* Móvil: con "+120" (y el antetítulo del anuncio) el texto llega a la zona clara de la foto
      (ventanas). Velo más denso para mantener el contraste AA en el peor punto. */
   @media (width < 768px) {
     .hero-veil {
@@ -223,10 +191,11 @@ const zones = [
     display: none;
   }
 
+  /* Verde claro de la marca: el verde intenso no llega a 4,5:1 en texto pequeño sobre la foto. */
   .hero-eyebrow {
     max-width: 22rem;
     margin-bottom: 10px;
-    color: var(--brand-bright);
+    color: var(--brand-soft);
   }
 
   /* Con antetítulo, algo menos de aire arriba para que los botones sigan en la primera pantalla. */
@@ -260,88 +229,6 @@ const zones = [
     font-size: 1.125rem;
     font-weight: 800;
     color: var(--brand-bright);
-  }
-
-  /* "¿Qué te duele?": fila compacta con las figuras del formulario. */
-  .hero-zones {
-    width: 100%;
-    max-width: 360px;
-    margin-top: 12px;
-  }
-
-  .hero-zones-title {
-    margin-bottom: 6px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #ffffff;
-  }
-
-  .hero-zones-list {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .hero-zone {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    min-height: 52px;
-    padding: 5px 2px 4px;
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-radius: 12px;
-    background: rgba(10, 10, 10, 0.45);
-    color: #ffffff;
-    font: inherit;
-    cursor: pointer;
-    transition:
-      border-color 0.2s var(--ease),
-      background-color 0.2s var(--ease);
-  }
-
-  .hero-zone:hover {
-    border-color: var(--brand-bright);
-    background: rgba(5, 148, 103, 0.18);
-  }
-
-  .hero-zone:active {
-    transform: scale(0.97);
-  }
-
-  .hero-zone :global(.zone-icon) {
-    width: 17px;
-    height: 27px;
-    color: rgba(255, 255, 255, 0.72);
-  }
-
-  .hero-zone :global(.zone-dot) {
-    fill: var(--brand-bright);
-  }
-
-  .hero-zone :global(.zone-halo) {
-    fill: var(--brand-bright);
-    opacity: 0.3;
-  }
-
-  .hero-zone :global(.zone-spine) {
-    stroke: #121212;
-  }
-
-  .hero-zone :global(.zone-q) {
-    stroke: var(--void);
-  }
-
-  .hero-zone-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    line-height: 1.1;
-  }
-
-  /* En móvil solo las 4 zonas más comunes y "Otra". */
-  .hero-zone.hero-zone-extra {
-    display: none;
   }
 
   /* Tablet: la misma foto vertical, algo más centrada, y velo uniforme con el texto al centro. */
@@ -396,19 +283,6 @@ const zones = [
 
     .hero-proof {
       margin-top: 18px;
-    }
-
-    .hero-zones {
-      max-width: 640px;
-      margin-top: 18px;
-    }
-
-    .hero-zones-list {
-      grid-template-columns: repeat(8, minmax(0, 1fr));
-    }
-
-    .hero-zone.hero-zone-extra {
-      display: flex;
     }
   }
 

@@ -383,8 +383,9 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     showStep(2);
   }
 
-  // "¿Qué te duele?" del hero: baja al formulario con la zona marcada y ya en el paso 2.
-  document.querySelector('[data-hero-zones]')?.addEventListener('click', (event) => {
+  // Sección "¿Qué te duele?": baja al formulario con la zona marcada y ya en el paso 2.
+  const zoneCards = document.querySelector<HTMLElement>('[data-zonas]');
+  zoneCards?.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : null;
     const zona = target?.closest<HTMLElement>('[data-zona]')?.dataset.zona;
     if (zona) selectZona(zona, true);
@@ -393,7 +394,19 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   // Visitas del anuncio del test de hombro: "Hombro" ya marcado en el paso 1 (sin avanzar).
   function preselect(): void {
     const zona = adVariantByKey(document.documentElement.dataset.ad)?.zona;
-    if (zona && !zonaValue()) selectZona(zona, false);
+    if (!zona) return;
+    if (!zonaValue()) selectZona(zona, false);
+    // Y su tarjeta destacada con "Tu zona" (sin pulsarla).
+    const card = [...(zoneCards?.querySelectorAll<HTMLElement>('[data-zona]') ?? [])].find(
+      (el) => el.dataset.zona === zona,
+    );
+    if (card && !card.classList.contains('is-suggested')) {
+      card.classList.add('is-suggested');
+      card.setAttribute(
+        'aria-label',
+        `${card.getAttribute('aria-label')?.replace(':', ' (tu zona):') ?? zona}`,
+      );
+    }
   }
   preselect();
 
