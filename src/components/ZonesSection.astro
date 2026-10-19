@@ -55,14 +55,16 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     </ul>
 
     <p class="zonas-alt reveal" data-reveal>
-      ¿No lo tienes claro?{' '}
-      <a class="zonas-link" href="#valoracion">
-        Cuéntamelo en el formulario
-      </a>{' '}
-      o{' '}
-      <a class="zonas-link" href={whatsappLink(WHATSAPP_TEXT)} target="_blank" rel="noopener">
-        escríbeme por WhatsApp
-      </a>
+      <span>¿No lo tienes claro?</span>
+      <span class="zonas-alt-links">
+        <a class="zonas-link" href="#valoracion">
+          Cuéntamelo en el formulario
+        </a>
+        <span>o</span>
+        <a class="zonas-link" href={whatsappLink(WHATSAPP_TEXT)} target="_blank" rel="noopener">
+          escríbeme por WhatsApp
+        </a>
+      </span>
     </p>
   </div>
 </section>
@@ -243,19 +245,33 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     display: block;
   }
 
+  /* Texto y enlaces en una fila que se parte por elementos enteros: cada enlace ocupa sus 44 px de
+     alto sin montarse sobre el de al lado (con dos líneas, un enlace no tapa al otro). */
   .zonas-alt {
-    margin-top: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    column-gap: 0.35em;
+    margin-top: 24px;
     text-align: center;
     font-size: 0.9375rem;
-    line-height: 1.5;
+    line-height: 1.4;
     color: var(--muted-on-dark);
   }
 
-  /* Enlaces dentro del texto con área táctil de 44 px (sin cambiar la altura de la línea). */
+  .zonas-alt-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    column-gap: 0.35em;
+  }
+
   .zonas-link {
-    display: inline-block;
-    padding-block: 12px;
-    margin-block: -12px;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
     font-weight: 600;
     color: var(--ink-on-dark);
     text-decoration: underline;
@@ -315,7 +331,7 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     }
 
     .zonas-alt {
-      margin-top: 40px;
+      margin-top: 36px;
       font-size: 1rem;
     }
   }

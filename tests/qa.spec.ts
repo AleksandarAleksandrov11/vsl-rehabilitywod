@@ -1937,7 +1937,16 @@ test.describe('Marquees (cinta de stats y testimonios)', () => {
       expect(Number(geo.duration)).toBeLessThanOrEqual(m.max);
       expect(geo.iterations).toBe(Infinity);
       expect(geo.copyHidden).toBe('true');
-      expect(geo.copyInert).toBe(true);
+      // La cinta (sin botones) va con inert; la de testimonios no, para que su "Leer más" funcione
+      // también en Safari de iPhone (sus botones van con tabindex -1, fuera del tabulador).
+      expect(geo.copyInert).toBe(m.root === '.ticker');
+      if (m.root !== '.ticker') {
+        const copyButtons = await page
+          .locator(`${m.root} [data-copy] button`)
+          .evaluateAll((els) => els.map((b) => b.getAttribute('tabindex')));
+        expect(copyButtons.length).toBeGreaterThan(0);
+        expect(copyButtons.every((t) => t === '-1')).toBe(true);
+      }
 
       // La primera tarjeta de la copia al final del ciclo está donde la original al inicio.
       const seam = await track.evaluate((trackEl, item) => {
@@ -2026,6 +2035,45 @@ test.describe('Marquees (cinta de stats y testimonios)', () => {
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     await expect(btn).toBeFocused();
+    await ctx.close();
+  });
+
+  test('"Leer más" también funciona al tocar una tarjeta de la copia del carrusel', async ({
+    browser,
+  }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3]);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await page
+      .locator('#opiniones [data-dialog-open]')
+      .first()
+      .evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    // Para el carrusel en el punto en que la primera tarjeta de la copia está a la vista.
+    const pos = await page.evaluate(() => {
+      const track = document.querySelector('#opiniones .marquee-track')!;
+      const anim = track.getAnimations()[0]!;
+      const copy = document.querySelector<HTMLElement>(
+        '#opiniones [data-copy] [data-dialog-open]',
+      )!;
+      anim.pause();
+      const dur = Number(anim.effect!.getComputedTiming().duration);
+      let r = copy.getBoundingClientRect();
+      for (let p = 0; p < 1; p += 0.01) {
+        anim.currentTime = dur * p;
+        r = copy.getBoundingClientRect();
+        if (r.left >= 10 && r.right <= window.innerWidth - 10) break;
+      }
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, id: copy.dataset.dialogOpen };
+    });
+    await page.touchscreen.tap(pos.x, pos.y);
+    await expect(page.locator(`#${pos.id}`)).toBeVisible();
+    await page.locator(`#${pos.id} [data-dialog-close]`).tap();
+    await expect(page.locator(`#${pos.id}`)).toBeHidden();
+    // El foco vuelve al "Leer más" original (el de la copia está fuera del tabulador).
+    await expect(
+      page.locator(`.marquee-list:not([data-copy]) [data-dialog-open="${pos.id}"]`),
+    ).toBeFocused();
     await ctx.close();
   });
 });
