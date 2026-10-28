@@ -7,14 +7,19 @@
  *
  * Comprueba: nada de Meta sin consentimiento o al rechazar; al aceptar, carga del Pixel y
  * PageView en ese momento; _fbc con el fbclid del anuncio; VideoPlay al dar al play del vídeo
- * (facade: el iframe real de YouTube se carga al pulsar); ViewContent (Formulario) y FormStart al
- * pasar el paso 1; Contact al pulsar WhatsApp; Lead con el mismo eventID que el lead que recibe el servidor (para
- * deduplicar con la API de conversiones), y que al retirar el consentimiento no sale nada más.
+ * (facade: el iframe real de YouTube se carga al pulsar); FormStart, ViewContent (Formulario) y
+ * FormStep al pasar el paso 1; Lead con advanced matching (teléfono, nombre y país cifrados) y el
+ * mismo eventID que el lead que recibe el servidor y que el Lead de la API de conversiones
+ * (/api/lead-capi); Contact (gracias-auto) al abrirse WhatsApp tras enviar, y que al retirar el
+ * consentimiento no sale nada más.
  * Requiere red y un build previo: ASTRO_ADAPTER=node npx astro build
  */
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFileSync, rmSync } from 'node:fs';
 import { chromium } from '@playwright/test';
+
+const sha = (v) => createHash('sha256').update(v).digest('hex');
 
 const PORT = 4392;
 const SITE = `http://127.0.0.1:${PORT}`;
@@ -42,6 +47,7 @@ const site = spawn('node', ['scripts/qa-server.mjs'], {
     LEAD_MOCK: '1',
     LEAD_MOCK_FILE: LEADS,
     CAPI_MOCK_FILE: CAPI,
+    CAPI_SIGNING_SECRET: 'pixel-check-firma',
   },
   stdio: 'ignore',
 });
@@ -63,6 +69,8 @@ async function newContext() {
     isMobile: true,
     hasTouch: true,
   });
+  // Tras enviar, la gracias abre WhatsApp: se responde en local.
+  await ctx.route('https://wa.me/**', (route) => route.fulfill({ body: 'WhatsApp (QA)' }));
   const meta = { scripts: [], events: [] };
   ctx.on('request', (r) => {
     const u = new URL(r.url());
@@ -72,7 +80,16 @@ async function newContext() {
     const req = route.request();
     const params = new URLSearchParams(new URL(req.url()).search);
     const body = req.postData();
-    if (body && !params.get('ev')) new URLSearchParams(body).forEach((v, k) => params.set(k, v));
+    // Los eventos largos (el Lead con advanced matching) van como multipart/form-data.
+    if (body && !params.get('ev')) {
+      if ((req.headers()['content-type'] ?? '').startsWith('multipart/')) {
+        for (const m of body.matchAll(/name="([^"]+)"\r?\n\r?\n([\s\S]*?)\r?\n--/g)) {
+          params.set(m[1], m[2]);
+        }
+      } else {
+        new URLSearchParams(body).forEach((v, k) => params.set(k, v));
+      }
+    }
     meta.events.push(Object.fromEntries(params));
     await route.fulfill({ status: 200, contentType: 'image/gif', body: GIF });
   });
@@ -154,22 +171,11 @@ try {
     .catch(() => false);
   check('El reproductor real de YouTube carga tras pulsar play', ready);
 
-  // WhatsApp (botón de la barra fija en móvil): Contact. La navegación a wa.me se cancela.
-  await page.evaluate(() =>
-    document.addEventListener(
-      'click',
-      (e) => {
-        if (e.target instanceof Element && e.target.closest('a[href^="https://wa.me/"]'))
-          e.preventDefault();
-      },
-      true,
-    ),
+  // Sin WhatsApp antes de enviar: la barra fija solo lleva el CTA.
+  check(
+    'Ningún botón de WhatsApp antes de enviar el formulario',
+    (await page.locator('a[href^="https://wa.me/"]').count()) === 0,
   );
-  await page.locator('#por-que').scrollIntoViewIfNeeded();
-  await page.waitForTimeout(600);
-  await page.locator('[data-sticky-cta] a[href^="https://wa.me/"]').click();
-  await waitFor(() => names(meta).includes('Contact'));
-  check('Contact al pulsar WhatsApp', names(meta).includes('Contact'));
 
   // Formulario.
   await page.locator('#valoracion').scrollIntoViewIfNeeded();
@@ -178,20 +184,30 @@ try {
     .filter({ has: page.locator('input[value="Codo"]') })
     .click();
   await page.getByRole('button', { name: 'Continuar' }).click();
-  await waitFor(() => names(meta).includes('FormStart'));
+  await waitFor(() => names(meta).includes('FormStep'));
   const vcForm = meta.events.find(
     (e) => e.ev === 'ViewContent' && e['cd[content_name]'] === 'Formulario',
   );
   check('ViewContent (Formulario) al pulsar Continuar en el paso 1', !!vcForm);
-  check('FormStart al completar el paso 1', names(meta).includes('FormStart'));
+  check('FormStart al tocar el formulario', names(meta).includes('FormStart'));
+  check(
+    'FormStep {step: 1} al completar el paso 1',
+    meta.events.some((e) => e.ev === 'FormStep' && e['cd[step]'] === '1'),
+  );
   check('Sin Lead antes de enviar el formulario', !names(meta).includes('Lead'));
   await page.getByRole('button', { name: 'Saltar este paso' }).click();
   await page.locator('#nombre').fill('Prueba Pixel');
   await page.getByRole('button', { name: 'Continuar' }).click();
   await page.locator('#telefono').fill('600 000 000');
-  await page.locator('label[for="consentimiento_salud"]').click();
-  await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
-  await page.waitForURL(/\/gracias/, { timeout: 15000 });
+  await page.locator('#consentimiento_salud').check();
+  await page.waitForTimeout(3200); // tiempo humano (antispam de 3 s)
+  await page.locator('[data-submit]').click();
+  const thanks = await page
+    .locator('[data-form-done]')
+    .waitFor({ timeout: 15000 })
+    .then(() => true)
+    .catch(() => false);
+  check('Gracias en la tarjeta del formulario', thanks);
   await waitFor(() => names(meta).includes('Lead'));
   const lead = meta.events.find((e) => e.ev === 'Lead');
   const saved = readFileSync(LEADS, 'utf8')
@@ -206,9 +222,27 @@ try {
     `eid=${lead?.eid}`,
   );
   check(
+    'Lead con advanced matching: teléfono, nombre y país cifrados (init antes del Lead)',
+    lead?.['ud[ph]'] === sha('34600000000') &&
+      lead?.['ud[fn]'] === sha('prueba') &&
+      lead?.['ud[country]'] === sha('es'),
+  );
+  check(
     'El servidor recibe el consentimiento de marketing',
     saved?.consentimiento_marketing === true,
   );
+  await waitFor(() => names(meta).includes('Contact'), 6000);
+  check(
+    'Contact (gracias-auto) al abrirse WhatsApp tras enviar',
+    meta.events.some((e) => e.ev === 'Contact' && e['cd[content_category]'] === 'gracias-auto'),
+  );
+  await waitFor(() => {
+    try {
+      return readFileSync(CAPI, 'utf8').includes(saved?.event_id);
+    } catch {
+      return false;
+    }
+  });
   const capi = readFileSync(CAPI, 'utf8')
     .trim()
     .split('\n')
@@ -216,10 +250,12 @@ try {
     .find((b) => b.data[0].event_id === saved?.event_id)?.data[0];
   check('API de conversiones: Lead con el mismo event_id', capi?.event_name === 'Lead');
   check(
-    'API de conversiones: solo ph, fn, ln, fbp, fbc y user agent',
+    'API de conversiones: ph, fn, ln, external_id, país, user agent, IP, fbc y fbp',
     !!capi &&
-      Object.keys(capi.user_data).sort().join(',') === 'client_user_agent,fbc,fbp,fn,ln,ph' &&
-      capi.user_data.fbc.endsWith(`.${FBCLID}`),
+      Object.keys(capi.user_data).sort().join(',') ===
+        'client_ip_address,client_user_agent,country,external_id,fbc,fbp,fn,ln,ph' &&
+      capi.user_data.fbc.endsWith(`.${FBCLID}`) &&
+      capi.user_data.ph[0] === lead?.['ud[ph]'],
     capi ? Object.keys(capi.user_data).join(',') : 'no enviado',
   );
   const capiBlob = JSON.stringify(capi ?? {});

@@ -8,6 +8,8 @@
  * 3. Rellena el formulario llegando desde un anuncio de Meta (UTM + fbclid) y comprueba la fila
  *    de la hoja "Leads", la pestaña "Resumen" y el email de aviso. También prueba el envío sin
  *    JavaScript y que un secreto erróneo no escribe nada.
+ * 4. Contrato: el cuerpo que recibe el Apps Script tiene exactamente estos campos y tipos (los
+ *    del objeto Lead más `secret`). Si alguien añade o quita uno, falla.
  * Requiere un build previo: ASTRO_ADAPTER=node npx astro build
  */
 import { spawn } from 'node:child_process';
@@ -209,11 +211,73 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? '✓' : '✗'} ${name}${detail ? ` · ${detail}` : ''}`);
 };
 
+/** Contrato con el Apps Script: claves y tipos exactos del cuerpo (ver src/pages/api/lead.ts). */
+const CONTRACT = {
+  zona: 'string',
+  detalle: 'string',
+  nombre: 'string',
+  telefono: 'string',
+  consentimiento_salud: 'true',
+  consentimiento_marketing: 'boolean',
+  utm_source: 'string',
+  utm_medium: 'string',
+  utm_campaign: 'string',
+  utm_content: 'string',
+  utm_term: 'string',
+  fbclid: 'string',
+  landing_url: 'string',
+  referrer: 'string',
+  device: 'string',
+  event_id: 'string',
+  started_at: 'number|null',
+  secret: 'string',
+};
+const ZONAS = [
+  'Hombro',
+  'Codo',
+  'Muñeca',
+  'Espalda / lumbar',
+  'Cadera',
+  'Rodilla',
+  'Tobillo / pie',
+  'Otro',
+];
+function contractProblems(body) {
+  const out = [];
+  const keys = Object.keys(body);
+  const expected = Object.keys(CONTRACT);
+  const extra = keys.filter((k) => !expected.includes(k));
+  const missing = expected.filter((k) => !keys.includes(k));
+  if (extra.length) out.push(`de más: ${extra.join(', ')}`);
+  if (missing.length) out.push(`faltan: ${missing.join(', ')}`);
+  for (const [k, type] of Object.entries(CONTRACT)) {
+    const v = body[k];
+    const ok =
+      type === 'true'
+        ? v === true
+        : type === 'number|null'
+          ? v === null || typeof v === 'number'
+          : typeof v === type;
+    if (!ok) out.push(`${k} no es ${type}`);
+  }
+  if (!ZONAS.includes(body.zona)) out.push(`zona ${body.zona}`);
+  if (!['mobile', 'tablet', 'desktop', ''].includes(body.device)) out.push(`device ${body.device}`);
+  return out;
+}
+const bodies = [];
+
 const gas = makeGoogle({ LEAD_SECRET: SECRET, NOTIFY_EMAIL: 'avisos@example.com' });
 const gasServer = createServer((req, res) => {
   let body = '';
   req.on('data', (c) => (body += c));
   req.on('end', () => {
+    if (req.method === 'POST') {
+      try {
+        bodies.push(JSON.parse(body));
+      } catch {
+        bodies.push(null);
+      }
+    }
     const out =
       req.method === 'POST'
         ? gas.context.doPost({ postData: { contents: body } })
@@ -285,6 +349,8 @@ try {
   await ctx.addInitScript(() => {
     localStorage.setItem('rw_consent', JSON.stringify({ v: 1, marketing: false, ts: Date.now() }));
   });
+  // Tras enviar, la gracias abre WhatsApp en móvil: se responde en local.
+  await ctx.route('https://wa.me/**', (route) => route.fulfill({ body: 'WhatsApp (QA)' }));
   const page = await ctx.newPage();
   await page.goto(`${SITE}/?${new URLSearchParams(utm)}`, { waitUntil: 'networkidle' });
   // Navega por la página (la atribución se guarda en la primera visita de la sesión).
@@ -298,10 +364,23 @@ try {
   await page.locator('#nombre').fill('Laura');
   await page.getByRole('button', { name: 'Continuar' }).click();
   await page.locator('#telefono').fill('612 345 678');
-  await page.locator('label[for="consentimiento_salud"]').click();
-  await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
-  await page.waitForURL(/\/gracias/, { timeout: 15000 });
-  check('Tras enviar, la web lleva a /gracias', true, page.url().replace(SITE, ''));
+  await page.locator('#consentimiento_salud').check();
+  // Tiempo humano: el antispam descarta los envíos de menos de 3 s.
+  await page.waitForTimeout(3200);
+  await page.locator('[data-submit]').click();
+  const thanks = await page
+    .locator('[data-form-done]')
+    .waitFor({ timeout: 15000 })
+    .then(() => true)
+    .catch(() => false);
+  check('Tras enviar, la gracias sale en la tarjeta del formulario', thanks);
+  const jsBody = bodies.at(-1);
+  const jsProblems = jsBody ? contractProblems(jsBody) : ['sin cuerpo'];
+  check(
+    'Contrato (con JS): el Apps Script recibe exactamente sus campos y tipos',
+    jsProblems.length === 0 && jsBody.secret === SECRET,
+    jsProblems.join('; ') || `${Object.keys(jsBody).length} campos`,
+  );
 
   const sheet = leads();
   const row = sheet ? sheet.row(2, HEADERS.length) : [];
@@ -376,6 +455,13 @@ try {
   await p2.locator('#consentimiento_salud').check({ force: true });
   await p2.locator('[data-submit]').click();
   await p2.waitForURL(/\/gracias/, { timeout: 15000 });
+  const nojsBody = bodies.at(-1);
+  const nojsProblems = nojsBody ? contractProblems(nojsBody) : ['sin cuerpo'];
+  check(
+    'Contrato (sin JS): el Apps Script recibe exactamente sus campos y tipos',
+    nojsProblems.length === 0 && nojsBody.secret === SECRET && nojsBody.started_at === null,
+    nojsProblems.join('; ') || `${Object.keys(nojsBody).length} campos`,
+  );
   const row3 = leads().row(3, HEADERS.length);
   check(
     'Sin JavaScript también guarda la fila',

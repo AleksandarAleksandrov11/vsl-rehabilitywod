@@ -1,17 +1,21 @@
 /**
  * npm run qa:nav
  * Auditoría de botones y enlaces de todas las páginas: a dónde llevan y dónde queda la pantalla.
- *   A)  Inventario: enlaces internos (200 y anclas), WhatsApp, mailto, tel, redes y pestañas nuevas
- *       con noopener; botones con nombre accesible.
+ *   A)  Inventario: enlaces internos (200 y anclas) y pestañas nuevas con noopener; botones con
+ *       nombre accesible. Salidas de la web solo en /gracias (WhatsApp) y en las legales (teléfono,
+ *       email y AEPD): la home y la 404 no tienen ninguna.
+ *   F)  Fugas: en la home, con Instagram de iPhone (390) y escritorio (1440), con y sin JS, con el
+ *       banner abierto y cerrado, el FAQ abierto, la barra fija a la vista y errores de validación,
+ *       ningún enlace, formulario ni iframe sale del dominio (salvo el reproductor del vídeo).
  *   A2) Ningún botón ni enlace tapado por otro en su punto de toque (móvil y escritorio, con y sin
  *       banner de cookies).
  *   B)  En Chromium móvil, WebKit (iPhone) y escritorio: todos los CTA a #valoracion dejan la
  *       sección del formulario arriba, bajo la cabecera; "Ver el vídeo" lleva al vídeo; cada
- *       tarjeta de "¿Qué te duele?" con un solo toque marca la zona, abre el paso 2 y deja el
- *       formulario arriba; "Volver arriba", "Configurar cookies", FAQ, testimonios, vídeo, logo y
- *       enlaces entre páginas.
+ *       tarjeta de "¿Qué te duele?" (y su enlace "¿Otra duda?", con "Otro") con un solo toque marca
+ *       la zona, abre el paso 2 y deja el formulario arriba; "Configurar cookies", FAQ,
+ *       testimonios, vídeo, logo y enlaces entre páginas.
  * Requiere un build con ASTRO_ADAPTER=node. WebKit es opcional (si no está instalado, se omite).
- * PARTS=A,A2,B para elegir partes.
+ * PARTS=A,F,A2,B para elegir partes.
  */
 import { spawn } from 'node:child_process';
 import { chromium, webkit, devices } from '@playwright/test';
@@ -63,7 +67,21 @@ const headerH = (page) =>
 const top = (page, sel) =>
   page.evaluate((s) => Math.round(document.querySelector(s).getBoundingClientRect().top), sel);
 
-const PARTS = (process.env.PARTS ?? 'A,A2,B').split(',');
+const PARTS = (process.env.PARTS ?? 'A,F,A2,B').split(',');
+const IG_IOS =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 389.0.0.28.81 (iPhone15,3; iOS 18_5; es_ES; es; scale=3.00; 1290x2796; 761254823)';
+// Salidas permitidas por página (todo lo demás debe quedarse en la web).
+const LEGAL_OUT = [
+  /^tel:\+34640995494$/,
+  /^mailto:info@rehabilitywod\.com$/,
+  /^https:\/\/www\.aepd\.es$/,
+];
+const ALLOWED_OUT = {
+  '/gracias': [/^https:\/\/wa\.me\/34640995494\?text=.+/],
+  '/aviso-legal': LEGAL_OUT,
+  '/privacidad': LEGAL_OUT,
+  '/cookies': LEGAL_OUT,
+};
 // ---------- A) Inventario estático de todas las páginas ----------
 if (PARTS.includes('A')) {
   const b = await chromium.launch();
@@ -109,29 +127,9 @@ if (PARTS.includes('A')) {
           bad++;
           report(false, `${path}: ancla rota ${h}`);
         }
-      } else if (h.startsWith('https://wa.me/')) {
-        if (!/^https:\/\/wa\.me\/34640995494\?text=.+/.test(h)) {
-          bad++;
-          report(false, `${path}: WhatsApp mal formado ${h}`);
-        }
-      } else if (h.startsWith('mailto:')) {
-        if (h !== 'mailto:info@rehabilitywod.com') {
-          bad++;
-          report(false, `${path}: mailto raro ${h}`);
-        }
-      } else if (h.startsWith('tel:')) {
-        if (h !== 'tel:+34640995494') {
-          bad++;
-          report(false, `${path}: tel raro ${h}`);
-        }
-      } else if (
-        /^https:\/\/(www\.)?(instagram|tiktok|facebook)\.com\//.test(h) ||
-        h === 'https://www.aepd.es'
-      ) {
-        /* redes y AEPD */
-      } else {
+      } else if (!(ALLOWED_OUT[path] ?? []).some((re) => re.test(h))) {
         bad++;
-        report(false, `${path}: enlace externo no esperado ${h}`);
+        report(false, `${path}: salida de la web no permitida ${h}`);
       }
     }
     for (const bt of items.buttons)
@@ -143,6 +141,77 @@ if (PARTS.includes('A')) {
       bad === 0,
       `${path} (${res.status()}): ${items.links.length} enlaces y ${items.buttons.length} botones revisados`,
     );
+  }
+  await b.close();
+}
+
+// ---------- F) Fugas: nada que saque de la landing antes de enviar ----------
+const outLinks = (page) =>
+  page.evaluate(() => {
+    const out = [];
+    const check = (url, what) => {
+      const u = (url ?? '').trim();
+      if (!u || u.startsWith('#')) return;
+      let parsed = null;
+      try {
+        parsed = new URL(u, location.href);
+      } catch {
+        parsed = null;
+      }
+      if (!parsed || parsed.origin !== location.origin) out.push(`${what} ${u}`);
+    };
+    document
+      .querySelectorAll('a[href], area[href]')
+      .forEach((a) => check(a.getAttribute('href'), 'enlace'));
+    document
+      .querySelectorAll('form[action]')
+      .forEach((f) => check(f.getAttribute('action'), 'formulario'));
+    document.querySelectorAll('iframe[src]').forEach((f) => {
+      const src = f.getAttribute('src');
+      if (!(f.closest('[data-vsl]') && src.startsWith('https://www.youtube-nocookie.com/embed/')))
+        check(src, 'iframe');
+    });
+    return out;
+  });
+if (PARTS.includes('F')) {
+  const b = await chromium.launch();
+  for (const [vpName, device] of [
+    [
+      'Instagram iPhone 390',
+      { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: IG_IOS },
+    ],
+    ['escritorio 1440', { viewport: { width: 1440, height: 900 } }],
+  ]) {
+    for (const js of [true, false]) {
+      const ctx = await b.newContext({ ...device, javaScriptEnabled: js, reducedMotion: 'reduce' });
+      await ctx.route(/facebook|youtube|ytimg|wa\.me/, (r) => r.abort());
+      const page = await ctx.newPage();
+      const found = [];
+      const collect = async (state) =>
+        found.push(...(await outLinks(page)).map((l) => `[${state}] ${l}`));
+      await page.goto(SITE + '/', { waitUntil: 'networkidle' });
+      await collect(js ? 'banner abierto' : 'sin JS');
+      if (js) {
+        for (const bt of await page.locator('#faq button[aria-expanded]').all()) await bt.click();
+        await collect('FAQ abierto');
+        await page.locator('#por-que').scrollIntoViewIfNeeded();
+        await page.waitForTimeout(500);
+        await collect('barra fija');
+        await page.locator('#valoracion').scrollIntoViewIfNeeded();
+        await page.getByRole('button', { name: 'Continuar' }).click();
+        await collect('error paso 1');
+        await page.locator('[data-consent-action="reject"]').click();
+        await collect('banner cerrado');
+      } else {
+        await page.goto(SITE + '/?error=1#valoracion', { waitUntil: 'networkidle' });
+        await collect('sin JS, vuelta con error');
+      }
+      report(
+        found.length === 0,
+        `Fugas ${vpName} ${js ? 'con JS' : 'sin JS'}: ${found.length ? found.join('; ') : 'ninguna salida de la web'}`,
+      );
+      await ctx.close();
+    }
   }
   await b.close();
 }
@@ -176,8 +245,7 @@ if (PARTS.includes('A2'))
         ? ['/']
         : ['/', '/gracias', '/aviso-legal', '/privacidad', '/cookies', '/no-existe']) {
         await page.goto(SITE + path, { waitUntil: 'networkidle' });
-        if (!banner)
-          await page.addStyleTag({ content: '.sticky-cta,.wa-float{display:none!important}' });
+        if (!banner) await page.addStyleTag({ content: '.sticky-cta{display:none!important}' });
         const scope = banner ? '#cookie-banner' : 'body';
         const covered = await page.evaluate(async (scope) => {
           const out = [];
@@ -305,7 +373,8 @@ if (PARTS.includes('B'))
       [...document.querySelectorAll('a[href="#valoracion"]')].map((a, i) => ({
         i,
         cta: a.dataset.cta || a.textContent.trim().slice(0, 30),
-        skip: a.classList.contains('skip-link'),
+        // "¿Otra duda?" (cierre de "¿Qué te duele?"): va como las tarjetas (más abajo).
+        skip: a.classList.contains('skip-link') || a.hasAttribute('data-zona'),
       })),
     );
     for (const { i, cta, skip } of ctas) {
@@ -356,12 +425,17 @@ if (PARTS.includes('B'))
     const zonas = await page
       .locator('#zonas .zcard')
       .evaluateAll((els) => els.map((e) => e.dataset.zona));
-    for (const zona of zonas) {
+    zonas.push('enlace Otro');
+    for (const item of zonas) {
+      const zona = item === 'enlace Otro' ? 'Otro' : item;
       await page
         .locator('#zonas')
         .evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
       await page.waitForTimeout(400);
-      const card = page.locator(`#zonas .zcard[data-zona="${zona}"]`);
+      const card =
+        item === 'enlace Otro'
+          ? page.locator('#zonas a[data-zona="Otro"]')
+          : page.locator(`#zonas .zcard[data-zona="${zona}"]`);
       await card.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
       await page.waitForTimeout(250);
       await press(card);
@@ -389,20 +463,12 @@ if (PARTS.includes('B'))
         s.titleBottom <= s.vh;
       report(
         good,
-        `${name}: tarjeta ${zona} (1 ${touch ? 'toque' : 'clic'}) → ${s.step}, zona ${s.zona}, formulario a ${f}px (cabecera ${Math.round(h)}), título "${s.title}" visible`,
+        `${name}: ${item === 'enlace Otro' ? '"¿Otra duda?"' : `tarjeta ${zona}`} (1 ${touch ? 'toque' : 'clic'}) → ${s.step}, zona ${s.zona}, formulario a ${f}px (cabecera ${Math.round(h)}), título "${s.title}" visible`,
       );
     }
 
-    // 4) Volver arriba, Configurar cookies, FAQ, testimonios, vídeo, logo.
+    // 4) Configurar cookies, FAQ, testimonios, vídeo, logo.
     await page.goto(SITE + '/', { waitUntil: 'networkidle' });
-    const topLink = page.locator('footer a[href="#top"]');
-    await topLink.scrollIntoViewIfNeeded();
-    await press(topLink);
-    await settle(page);
-    report(
-      (await page.evaluate(() => scrollY)) < 5,
-      `${name}: "Volver arriba" → inicio de la página`,
-    );
     const cfg = page.locator('footer [data-open-cookie-settings]');
     await cfg.scrollIntoViewIfNeeded();
     await press(cfg);

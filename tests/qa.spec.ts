@@ -1,12 +1,38 @@
 /**
  * QA de la landing: 12 viewports, capturas, accesibilidad, rendimiento, copy y flujos críticos.
  * Se ejecuta con `npm run qa` (compila con el adaptador de Node y sirve dist/ aplicando vercel.json).
+ * Las pruebas de la optimización para leads (CAPI, fugas, WhatsApp tras enviar, variantes del
+ * hero y contrato con el Apps Script) están en tests/leads.spec.ts; los helpers, en
+ * tests/helpers.ts.
  */
-import { test, expect, type Page, type BrowserContext, type Request } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { mkdirSync, readFileSync, existsSync, rmSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
 import { AD_VARIANTS } from '../src/data/ad-variants';
+import {
+  CONSENT_ACCEPTED,
+  CONSENT_REJECTED,
+  chip,
+  contractProblems,
+  fbRequests,
+  installCspProbe,
+  isMobile,
+  newCtx,
+  openForm,
+  readCapi,
+  readJsonl,
+  readLeads,
+  rmSync,
+  scrollThrough,
+  setConsent,
+  startQaServer,
+  submitBtn,
+  trEvents,
+  trParams,
+  vpName,
+  watchConsole,
+  type Vp,
+} from './helpers';
 
 const VIEWPORTS = [
   { w: 320, h: 568 },
@@ -38,166 +64,7 @@ const SECTIONS = [
   ['08-footer', 'footer.site-footer'],
 ] as const;
 
-const LEADS_FILE = 'qa/.tmp/leads.jsonl';
-const CAPI_FILE = 'qa/.tmp/capi.jsonl';
 const SHOTS = 'qa/screenshots';
-const CONSENT_REJECTED = { v: 1, marketing: false, ts: Date.now() };
-const CONSENT_ACCEPTED = { v: 1, marketing: true, ts: Date.now() };
-
-type Vp = { readonly w: number; readonly h: number; readonly landscape?: boolean };
-const vpName = (vp: Vp) => `${vp.w}x${vp.h}`;
-const isMobile = (vp: Vp) => vp.w < 768 || vp.landscape === true;
-
-// User agent de Chrome normal: fbevents.js descarta los eventos de "HeadlessChrome".
-const UA_MOBILE =
-  'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36';
-const UA_DESKTOP =
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36';
-
-function contextOptions(vp: Vp) {
-  const mobile = isMobile(vp);
-  return {
-    viewport: { width: vp.w, height: vp.h },
-    isMobile: mobile,
-    hasTouch: mobile,
-    deviceScaleFactor: mobile ? 2 : 1,
-    userAgent: mobile ? UA_MOBILE : UA_DESKTOP,
-  };
-}
-
-/**
- * Meta: por defecto se sirve el fbevents.js REAL de Meta desde la caché local (qa/.tmp/fb, la
- * descarga scripts/qa.mjs) y las peticiones a www.facebook.com/tr se responden con un GIF.
- * Así el QA no depende de la red. Con QA_LIVE_META=1 se usa la red real.
- */
-const FB_DIR = 'qa/.tmp/fb';
-const GIF = Buffer.from('R0lGODlhAQABAAAAACw=', 'base64');
-async function stubMeta(ctx: BrowserContext) {
-  if (process.env.QA_LIVE_META === '1') return;
-  if (!existsSync(`${FB_DIR}/fbevents.js`)) return;
-  await ctx.route('https://connect.facebook.net/**', (route) => {
-    const url = route.request().url();
-    const file = url.includes('/fbevents.js')
-      ? 'fbevents.js'
-      : url.includes('/signals/config/')
-        ? 'config.js'
-        : null;
-    if (!file || !existsSync(`${FB_DIR}/${file}`)) return route.fulfill({ status: 404, body: '' });
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/javascript',
-      body: readFileSync(`${FB_DIR}/${file}`),
-    });
-  });
-  await ctx.route(/^https:\/\/www\.facebook\.com\//, (route) =>
-    route.fulfill({ status: 200, contentType: 'image/gif', body: GIF }),
-  );
-}
-
-async function newCtx(
-  browser: import('@playwright/test').Browser,
-  vp: Vp,
-  extra: Record<string, unknown> = {},
-): Promise<BrowserContext> {
-  const ctx = await browser.newContext({ ...contextOptions(vp), ...extra });
-  await stubMeta(ctx);
-  return ctx;
-}
-
-async function setConsent(ctx: BrowserContext, consent: object | null) {
-  await ctx.addInitScript((value) => {
-    try {
-      if (value) window.localStorage.setItem('rw_consent', JSON.stringify(value));
-    } catch {
-      /* ignore */
-    }
-  }, consent);
-}
-
-/** Recoge errores/avisos de consola, errores de página y violaciones de CSP. */
-function watchConsole(page: Page) {
-  const problems: string[] = [];
-  const thirdParty: string[] = [];
-  const origin = new URL(test.info().project.use.baseURL ?? 'http://127.0.0.1:4321').origin;
-  page.on('console', (msg) => {
-    if (msg.type() !== 'error' && msg.type() !== 'warning') return;
-    const url = msg.location()?.url ?? '';
-    const line = `${msg.type()}: ${msg.text()} (${url})`;
-    // Aviso de Chromium sin GPU al iniciar el reproductor de YouTube (no es código de la web).
-    if (/Failed to create WebGPU Context Provider/.test(msg.text())) thirdParty.push(line);
-    else if (!url || url.startsWith(origin) || url.startsWith('about:')) problems.push(line);
-    else thirdParty.push(line);
-  });
-  page.on('pageerror', (err) => problems.push(`pageerror: ${err.message}`));
-  return { problems, thirdParty };
-}
-
-/**
- * Recoge las violaciones de CSP en window.__csp. Las conexiones que el propio fbevents.js de Meta
- * intenta abrir hacia dominios suyos que cambian (p. ej. *.a.run.app o *.on.aws, según la
- * configuración del Pixel que sirve Meta) se bloquean a propósito y van a window.__cspMeta: no son
- * un fallo de la web y el Pixel sigue enviando sus eventos a facebook.com/tr.
- */
-async function installCspProbe(ctx: BrowserContext) {
-  await ctx.addInitScript(() => {
-    const w = window as unknown as { __csp: string[]; __cspMeta: string[] };
-    w.__csp = [];
-    w.__cspMeta = [];
-    document.addEventListener('securitypolicyviolation', (e) => {
-      const line = `${e.violatedDirective} ${e.blockedURI} ${e.sourceFile}:${e.lineNumber}`;
-      const fromMeta =
-        e.violatedDirective.startsWith('connect-src') &&
-        e.sourceFile.startsWith('https://connect.facebook.net/');
-      (fromMeta ? w.__cspMeta : w.__csp).push(line);
-    });
-  });
-}
-
-async function scrollThrough(page: Page) {
-  await page.evaluate(async () => {
-    const step = Math.max(200, Math.floor(window.innerHeight * 0.6));
-    const H = document.documentElement.scrollHeight;
-    for (let y = 0; y <= H; y += step) {
-      window.scrollTo({ top: y, behavior: 'instant' });
-      await new Promise((r) => setTimeout(r, 70));
-    }
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  });
-  await page.waitForTimeout(900);
-}
-
-function fbRequests(page: Page) {
-  const list: Request[] = [];
-  page.on('request', (req) => {
-    if (/facebook\.(com|net)/.test(new URL(req.url()).hostname)) list.push(req);
-  });
-  return list;
-}
-
-const trEvents = (reqs: Request[], ev: string) =>
-  reqs.filter((r) => {
-    const u = new URL(r.url());
-    if (!/\/tr\/?$/.test(u.pathname)) return false;
-    const body = r.postData() ?? '';
-    return u.searchParams.get('ev') === ev || new URLSearchParams(body).get('ev') === ev;
-  });
-
-/** Eventos que /api/lead habría enviado a la API de conversiones (modo QA, sin token). */
-const readCapi = (): Array<{ data: Array<Record<string, unknown>> }> =>
-  existsSync(CAPI_FILE)
-    ? readFileSync(CAPI_FILE, 'utf8')
-        .split('\n')
-        .filter(Boolean)
-        .map((l) => JSON.parse(l))
-    : [];
-
-const readLeads = (): Array<Record<string, unknown>> =>
-  existsSync(LEADS_FILE)
-    ? readFileSync(LEADS_FILE, 'utf8')
-        .split('\n')
-        .filter(Boolean)
-        .map((l) => JSON.parse(l))
-    : [];
 
 /** Botones y enlaces visibles de menos de 44 px (un checkbox cuenta con su <label>). */
 const smallTargets = (page: Page) =>
@@ -886,32 +753,7 @@ test.describe('VSL', () => {
   });
 });
 
-test.describe('Contact, fbc y API de conversiones', () => {
-  test('WhatsApp flotante: Contact solo con consentimiento', async ({ browser }) => {
-    for (const consent of [CONSENT_REJECTED, CONSENT_ACCEPTED]) {
-      const ctx = await newCtx(browser, VIEWPORTS[10]);
-      await setConsent(ctx, consent);
-      const page = await ctx.newPage();
-      const fb = fbRequests(page);
-      ctx.on('page', (p) => void p.close());
-      await page.route('https://wa.me/**', (route) => route.abort());
-      await page.goto('/', { waitUntil: 'networkidle' });
-      await page.locator('#por-que').scrollIntoViewIfNeeded();
-      const wa = page.locator('[data-whatsapp="float"]');
-      await expect(wa).toHaveClass(/is-visible/);
-      await wa.click();
-      if (consent.marketing) {
-        await expect
-          .poll(() => trEvents(fb, 'Contact').length, { timeout: 10_000 })
-          .toBeGreaterThan(0);
-      } else {
-        await page.waitForTimeout(1500);
-        expect(fb).toHaveLength(0);
-      }
-      await ctx.close();
-    }
-  });
-
+test.describe('fbc y API de conversiones', () => {
   test('fbclid del anuncio: _fbc al aceptar, aunque ya no esté en la URL', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     const page = await ctx.newPage();
@@ -919,15 +761,24 @@ test.describe('Contact, fbc y API de conversiones', () => {
     await page.goto(`/?fbclid=${fbclid}`, { waitUntil: 'networkidle' });
     // Sin consentimiento: ninguna cookie de Meta.
     expect((await ctx.cookies()).find((c) => c.name === '_fbc')).toBeUndefined();
+    // El momento en que se vio el fbclid queda guardado para formar el fbc.
+    const seen = await page.evaluate(
+      () => JSON.parse(sessionStorage.getItem('rw_attribution') ?? '{}').fbclid_ts as number,
+    );
+    expect(seen).toBeGreaterThan(Date.now() - 60_000);
     await page.goto('/cookies', { waitUntil: 'networkidle' });
     await page.locator('[data-consent-action="accept"]').click();
     await expect
       .poll(async () => (await ctx.cookies()).find((c) => c.name === '_fbc')?.value ?? '')
-      .toMatch(new RegExp(`^fb\\.1\\.\\d{13}\\.${fbclid}$`));
+      .toBe(`fb.1.${seen}.${fbclid}`);
     await ctx.close();
   });
 
-  test('API de conversiones: solo con consentimiento y sin datos de salud', async ({ request }) => {
+  test('API de conversiones: todos los leads (con y sin cookies), sin datos de salud', async ({
+    request,
+  }) => {
+    const { createHash } = await import('node:crypto');
+    const h = (v: string) => createHash('sha256').update(v).digest('hex');
     const base = {
       zona: 'Rodilla',
       detalle: 'Dolor rotuliano al bajar escaleras',
@@ -940,66 +791,82 @@ test.describe('Contact, fbc y API de conversiones', () => {
     const headers = {
       cookie: '_fbp=fb.1.1700000000000.1234567890',
       'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Instagram 350.0',
+      'x-forwarded-for': '203.0.113.7, 10.0.0.1',
     };
-    const without = crypto.randomUUID();
-    const before = readCapi().length;
-    expect(
-      await (
-        await request.post('/api/lead', {
-          data: { ...base, event_id: without, consentimiento_marketing: false },
-          headers,
-        })
-      ).json(),
-    ).toEqual({ ok: true });
-    expect(readCapi().length).toBe(before);
-    // Solo el booleano true cuenta como consentimiento (ni "true", ni "1", ni "on").
-    for (const value of ['true', '1', 'on', 1]) {
-      expect(
-        await (
-          await request.post('/api/lead', {
-            data: { ...base, event_id: crypto.randomUUID(), consentimiento_marketing: value },
-            headers,
-          })
-        ).json(),
-      ).toEqual({ ok: true });
+    for (const marketing of [false, true]) {
+      const eventId = crypto.randomUUID();
+      const before = readCapi().length;
+      const res = await request.post('/api/lead', {
+        data: { ...base, event_id: eventId, consentimiento_marketing: marketing },
+        headers,
+      });
+      const body = await res.json();
+      // /api/lead ya no envía nada a Meta con JS: devuelve la firma para /api/lead-capi.
+      expect(body).toEqual({ ok: true, sig: expect.stringMatching(/^[0-9a-f]{64}$/) });
+      expect(readCapi().length).toBe(before);
+      const capi = await request.post('/api/lead-capi', {
+        headers: { ...headers, 'content-type': 'text/plain;charset=UTF-8' },
+        data: JSON.stringify({
+          event_id: eventId,
+          nombre: base.nombre,
+          telefono: '+34611223344',
+          fbc: '',
+          fbp: marketing ? 'fb.1.1700000000000.1234567890' : '',
+          fbclid: base.fbclid,
+          fbclid_ts: 1790000000123,
+          event_source_url: 'http://127.0.0.1/?utm_source=ig&fbclid=x',
+          consent_marketing: marketing,
+          sig: body.sig,
+        }),
+      });
+      expect(capi.status()).toBe(204);
+      const sent = readCapi().find((b) => b.data[0]?.event_id === eventId)!;
+      expect(sent, `consentimiento ${marketing}`).toBeTruthy();
+      const ev = sent.data[0]!;
+      expect(Object.keys(ev).sort()).toEqual(
+        [
+          'action_source',
+          'event_id',
+          'event_name',
+          'event_source_url',
+          'event_time',
+          'user_data',
+        ].sort(),
+      );
+      expect(ev.event_name).toBe('Lead');
+      expect(ev.action_source).toBe('website');
+      expect(ev.event_source_url).toBe('http://127.0.0.1/');
+      expect(ev.user_data).toEqual({
+        ph: [h('34611223344')],
+        external_id: [h('34611223344')],
+        fn: [h('laura')],
+        ln: [h('pruebagómez')],
+        country: [h('es')],
+        client_user_agent: headers['user-agent'],
+        client_ip_address: '203.0.113.7',
+        fbc: 'fb.1.1790000000123.IwAR0QaCapiPrueba456',
+        // fbp (cookie del navegador) solo con las cookies de marketing aceptadas.
+        ...(marketing ? { fbp: 'fb.1.1700000000000.1234567890' } : {}),
+      });
+      expect(JSON.stringify(sent)).not.toMatch(
+        /Rodilla|rotuliano|Laura|Gómez|611223344|zona|detalle/i,
+      );
     }
-    expect(readCapi().length).toBe(before);
-
-    const withId = crypto.randomUUID();
-    expect(
-      await (
-        await request.post('/api/lead', {
-          data: { ...base, event_id: withId, consentimiento_marketing: true },
-          headers,
-        })
-      ).json(),
-    ).toEqual({ ok: true });
-    const sent = readCapi().find((b) => b.data[0]?.event_id === withId)!;
-    expect(sent).toBeTruthy();
-    const ev = sent.data[0]!;
-    const { createHash } = await import('node:crypto');
-    const h = (v: string) => createHash('sha256').update(v).digest('hex');
-    expect(Object.keys(ev).sort()).toEqual(
-      [
-        'action_source',
-        'event_id',
-        'event_name',
-        'event_source_url',
-        'event_time',
-        'user_data',
-      ].sort(),
-    );
-    expect(ev.event_name).toBe('Lead');
-    expect(ev.user_data).toEqual({
-      ph: [h('34611223344')],
-      fn: [h('laura')],
-      ln: [h('pruebagómez')],
-      fbp: 'fb.1.1700000000000.1234567890',
-      fbc: expect.stringMatching(/^fb\.1\.\d+\.IwAR0QaCapiPrueba456$/),
-      client_user_agent: headers['user-agent'],
+    // Un número extranjero: sin país.
+    const intl = crypto.randomUUID();
+    const res = await request.post('/api/lead', {
+      data: { ...base, telefono: '+447700900123', event_id: intl, consentimiento_marketing: false },
     });
-    const blob = JSON.stringify(sent);
-    expect(blob).not.toMatch(/Rodilla|rotuliano|Laura|Gómez|611223344|zona|detalle/i);
+    const { sig } = await res.json();
+    await request.post('/api/lead-capi', {
+      data: { event_id: intl, nombre: 'Liam', telefono: '+447700900123', sig },
+    });
+    const ud = readCapi().find((b) => b.data[0]?.event_id === intl)!.data[0]!.user_data as Record<
+      string,
+      unknown
+    >;
+    expect(ud.country).toBeUndefined();
+    expect(ud.fbc).toBeUndefined();
   });
 
   test('caché: /_astro inmutable y el HTML con revalidación', async ({ request, page }) => {
@@ -1017,14 +884,6 @@ test.describe('Contact, fbc y API de conversiones', () => {
 // ---------------------------------------------------------------------------
 // Formulario
 // ---------------------------------------------------------------------------
-
-const chip = (page: Page, zona: string) =>
-  page.locator('#lead-form label.chip').filter({ has: page.locator(`input[value="${zona}"]`) });
-
-async function openForm(page: Page) {
-  await page.goto('/#valoracion', { waitUntil: 'networkidle' });
-  await page.locator('[data-form-root].is-enhanced').waitFor();
-}
 
 test.describe('Mensaje según el anuncio (utm_content)', () => {
   const vp = VIEWPORTS[3];
@@ -1057,8 +916,13 @@ test.describe('Mensaje según el anuncio (utm_content)', () => {
     await ctx.close();
   });
 
+  const DEFAULT_SUB = 'Plan a medida, seguimiento diario y ajustes cada semana. Estés donde estés.';
   for (const v of AD_VARIANTS) {
-    test(`${v.utm}: antetítulo y subtítulo propios desde la primera pintura; H1 y botones iguales`, async ({
+    // Las variantes por anuncio llegan con su utm_content; las de campaña, con utm_campaign.
+    const qs = v.utm
+      ? `utm_source=meta&utm_medium=paid&utm_campaign=cerrar&utm_content=${encodeURIComponent(v.utm)}`
+      : `utm_source=meta&utm_medium=paid&utm_campaign=${encodeURIComponent(v.campaign![0]!)}`;
+    test(`${v.key}: antetítulo (una línea a 390) y subtítulo desde la primera pintura; H1 y botones iguales`, async ({
       browser,
     }) => {
       const ctx = await newCtx(browser, vp);
@@ -1073,18 +937,25 @@ test.describe('Mensaje según el anuncio (utm_content)', () => {
           obs.disconnect();
         }).observe(document, { childList: true, subtree: true });
       });
-      await page.goto(
-        `/?utm_source=meta&utm_medium=paid&utm_campaign=cerrar&utm_content=${encodeURIComponent(v.utm)}`,
-        { waitUntil: 'domcontentloaded' },
-      );
+      await page.goto(`/?${qs}`, { waitUntil: 'load' });
       expect(
         await page.evaluate(() => (window as unknown as { __adAtHero: string }).__adAtHero),
       ).toBe(v.key);
       const st = await heroState(page);
+      // Si falta la regla CSS de esta key, no se ve ningún antetítulo y esto falla.
       expect(st.eyebrow).toEqual([v.eyebrow]);
-      expect(st.sub).toEqual([v.sub]);
+      expect(st.sub).toEqual([v.sub ?? DEFAULT_SUB]);
       expect(st.h1).toBe('Recupérate sin dejar de entrenar.');
       expect(st.ctas).toEqual(['Quiero valorar mi caso', 'Ver el vídeo']);
+      const lines = await page.evaluate(() => {
+        const el = [...document.querySelectorAll<HTMLElement>('.hero-eyebrow')].find(
+          (e) => e.offsetParent !== null,
+        )!;
+        return Math.round(
+          el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight),
+        );
+      });
+      expect(lines).toBe(1);
       const cta = await page.locator('[data-hero-cta]').boundingBox();
       expect(cta!.y + cta!.height).toBeLessThanOrEqual(vp.h);
       await ctx.close();
@@ -1289,20 +1160,14 @@ test.describe('API de conversiones: código de "Probar eventos"', () => {
   async function postLead(port: number, env: Record<string, string>) {
     const capi = `qa/.tmp/capi-test-code-${port}.jsonl`;
     rmSync(capi, { force: true });
-    const server = spawn('node', ['scripts/qa-server.mjs'], {
-      env: { ...process.env, PORT: String(port), LEAD_MOCK: '1', CAPI_MOCK_FILE: capi, ...env },
-      stdio: 'ignore',
+    const server = await startQaServer(port, {
+      CAPI_MOCK_FILE: capi,
+      CAPI_SIGNING_SECRET: 'qa-firma',
+      ...env,
     });
     try {
-      const url = `http://127.0.0.1:${port}`;
-      for (let i = 0; i < 50; i++) {
-        try {
-          if ((await fetch(url)).ok) break;
-        } catch {
-          await new Promise((r) => setTimeout(r, 200));
-        }
-      }
-      const res = await fetch(`${url}/api/lead`, {
+      const eventId = crypto.randomUUID();
+      const res = await fetch(`${server.url}/api/lead`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -1311,14 +1176,29 @@ test.describe('API de conversiones: código de "Probar eventos"', () => {
           telefono: '611000999',
           consentimiento_salud: true,
           consentimiento_marketing: true,
-          event_id: crypto.randomUUID(),
+          event_id: eventId,
           started_at: Date.now() - 60_000,
         }),
       });
-      expect(await res.json()).toEqual({ ok: true });
-      return JSON.parse(readFileSync(capi, 'utf8').trim().split('\n').at(-1)!);
+      const { ok, sig } = await res.json();
+      expect(ok).toBe(true);
+      const beacon = await fetch(`${server.url}/api/lead-capi`, {
+        method: 'POST',
+        headers: { 'content-type': 'text/plain;charset=UTF-8' },
+        body: JSON.stringify({
+          event_id: eventId,
+          nombre: 'Prueba Codigo',
+          telefono: '+34611000999',
+          sig,
+        }),
+      });
+      expect(beacon.status).toBe(204);
+      return readJsonl(capi).at(-1) as {
+        test_event_code?: string;
+        data: Array<{ event_name: string }>;
+      };
     } finally {
-      server.kill();
+      server.stop();
     }
   }
 
@@ -1333,14 +1213,14 @@ test.describe('API de conversiones: código de "Probar eventos"', () => {
       VERCEL_ENV: 'production',
     });
     expect(production.test_event_code).toBeUndefined();
-    expect(production.data[0].event_name).toBe('Lead');
+    expect(production.data[0]!.event_name).toBe('Lead');
   });
 });
 
 test.describe('Formulario', () => {
   const vp = VIEWPORTS[3];
 
-  test('camino feliz: Hombro → saltar → nombre → 612345678 → casilla → enviar', async ({
+  test('camino feliz: Hombro → saltar → nombre → 612345678 → casilla → enviar → gracias', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, vp);
@@ -1349,6 +1229,10 @@ test.describe('Formulario', () => {
     const page = await ctx.newPage();
     const con = watchConsole(page);
     const fb = fbRequests(page);
+    // WhatsApp simulado: la gracias abre wa.me a los 1,5 s en móvil.
+    await page.route('https://wa.me/**', (route) =>
+      route.fulfill({ contentType: 'text/html', body: '<title>wa</title>' }),
+    );
     let apiBody: Record<string, unknown> | null = null;
     page.on('request', (r) => {
       if (r.url().endsWith('/api/lead') && r.method() === 'POST')
@@ -1363,16 +1247,15 @@ test.describe('Formulario', () => {
     await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
     await expect(page.locator('#s2-title')).toBeFocused();
     await expect(page.locator('[data-live]')).toHaveText('Paso 2 de 4');
-    // Paso 1 completado: ViewContent (señal intermedia) y FormStart, sin datos de salud.
+    // Paso 1 completado: ViewContent (señal intermedia), FormStart y FormStep 1, sin salud.
     await expect
       .poll(() => trEvents(fb, 'ViewContent').length, { timeout: 15_000 })
       .toBeGreaterThan(0);
-    const vcForm = decodeURIComponent(
-      `${trEvents(fb, 'ViewContent')[0]!.url()} ${trEvents(fb, 'ViewContent')[0]!.postData() ?? ''}`,
-    );
+    const vcForm = JSON.stringify(trParams(trEvents(fb, 'ViewContent')[0]!));
     expect(vcForm).toContain('Formulario');
     expect(vcForm).not.toContain('Hombro');
     await expect.poll(() => trEvents(fb, 'FormStart').length).toBeGreaterThan(0);
+    await expect.poll(() => trEvents(fb, 'FormStep').length).toBeGreaterThan(0);
     expect(trEvents(fb, 'Lead')).toHaveLength(0);
 
     await page.getByRole('button', { name: 'Saltar este paso' }).click();
@@ -1387,10 +1270,14 @@ test.describe('Formulario', () => {
     const vaq = await page.evaluate(() => JSON.stringify(window.vaq ?? []));
     expect(vaq).toContain('form_step');
 
-    await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
-    await page.waitForURL('**/gracias');
-    await expect(page.locator('h1')).toHaveText('Recibido, Ana.');
-    expect(page.url()).not.toContain('Ana');
+    // En móvil el botón dice que se abre WhatsApp.
+    await expect(submitBtn(page)).toHaveText('Enviar y abrir WhatsApp');
+    await submitBtn(page).click();
+    await expect(page.locator('[data-form-done]')).toBeVisible();
+    await expect(page.locator('[data-done-title]')).toHaveText('Gracias, Ana.');
+    await expect(page.locator('[data-done-title]')).toBeFocused();
+    await expect(page.locator('#lead-form')).toBeHidden();
+    expect(page.url()).not.toContain('gracias');
 
     const body = apiBody as Record<string, unknown> | null;
     expect(body).not.toBeNull();
@@ -1402,12 +1289,18 @@ test.describe('Formulario', () => {
 
     const saved = readLeads().find((l) => l.event_id === body!.event_id);
     expect(saved?.telefono).toBe('+34612345678');
+    expect(contractProblems(saved!)).toEqual([]);
 
     await expect.poll(() => trEvents(fb, 'Lead').length, { timeout: 15_000 }).toBeGreaterThan(0);
-    const lead = trEvents(fb, 'Lead')[0]!;
-    const leadBlob = `${lead.url()} ${lead.postData() ?? ''}`;
-    expect(leadBlob).toContain(`eid=${body!.event_id}`);
-    expect(decodeURIComponent(leadBlob)).not.toMatch(/Hombro|Ana|612345678/);
+    const lead = trParams(trEvents(fb, 'Lead')[0]!);
+    expect(lead.eid).toBe(body!.event_id);
+    expect(JSON.stringify(lead)).not.toMatch(/Hombro|Ana|612345678/);
+    // Lead de servidor con el mismo event_id.
+    await expect
+      .poll(() => readCapi().some((b) => b.data[0]?.event_id === body!.event_id))
+      .toBe(true);
+    // Y WhatsApp se abre solo (móvil).
+    await page.waitForURL(/^https:\/\/wa\.me\//, { timeout: 5000 });
 
     const csp = await page.evaluate(() => (window as unknown as { __csp: string[] }).__csp);
     expect(csp).toEqual([]);
@@ -1432,7 +1325,7 @@ test.describe('Formulario', () => {
     await page.locator('#telefono').fill('611111111');
     await page.locator('#consentimiento_salud').check();
     await page.waitForTimeout(3200);
-    await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
+    await submitBtn(page).click();
     await expect(page.getByRole('button', { name: 'Reintentar el envío' })).toBeVisible();
     await page.waitForTimeout(1500);
     expect(page.url()).not.toContain('/gracias');
@@ -1466,10 +1359,13 @@ test.describe('Formulario', () => {
     await page.locator('#telefono').fill('622334455');
     await page.locator('#consentimiento_salud').check();
     await page.waitForTimeout(3200);
-    await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
+    await submitBtn(page).click();
     await expect(page.locator('[data-form-error]')).toBeVisible();
-    await expect(page.locator('[data-form-error]')).toContainText('No se ha podido enviar');
-    const wa = page.locator('[data-form-error] a', { hasText: 'Escríbeme por WhatsApp' });
+    await expect(page.locator('[data-form-error]')).toContainText(
+      'No se ha podido enviar. Vuelve a intentarlo o mándamelo por WhatsApp con un toque.',
+    );
+    // El enlace de WhatsApp lleva todo lo escrito (ver también tests/leads.spec.ts).
+    const wa = page.locator('[data-form-error] a', { hasText: 'Enviar por WhatsApp' });
     await expect(wa).toBeVisible();
     expect(await wa.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/34640995494\?text=/);
     expect(page.url()).not.toContain('/gracias');
@@ -1479,8 +1375,9 @@ test.describe('Formulario', () => {
     await expect(page.locator('#detalle')).toHaveValue('Esguince que no termina de curar');
     await expect(page.locator('input[name="zona"][value="Tobillo / pie"]')).toBeChecked();
     offline = false;
+    await page.route('https://wa.me/**', (route) => route.fulfill({ body: 'wa' }));
     await page.getByRole('button', { name: 'Reintentar el envío' }).click();
-    await page.waitForURL('**/gracias');
+    await expect(page.locator('[data-form-done]')).toBeVisible();
     expect(readLeads().some((l) => l.nombre === 'Prueba Red' && l.zona === 'Tobillo / pie')).toBe(
       true,
     );
@@ -1507,7 +1404,7 @@ test.describe('Formulario', () => {
     await ctx.close();
   });
 
-  test('validaciones: nombre de 1 carácter, teléfono de 8 dígitos, casilla', async ({
+  test('validaciones: nombre de 1 carácter, teléfono de 8 dígitos, prefijo, casilla', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, vp);
@@ -1530,22 +1427,48 @@ test.describe('Formulario', () => {
 
     await page.locator('#telefono').fill('61234567');
     await page.locator('#consentimiento_salud').check();
-    await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
+    await submitBtn(page).click();
     await expect(page.locator('#err-telefono')).toBeVisible();
+    await expect(page.locator('#err-telefono')).toHaveText(
+      'Revisa el número: 9 cifras, empieza por 6, 7, 8 o 9.',
+    );
     await expect(page.locator('#telefono')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#telefono')).toBeFocused();
+    await expect(page.locator('#telefono')).toHaveAttribute('aria-describedby', 'err-telefono');
+    await expect(page.locator('#prefijo')).toHaveAttribute('aria-describedby', 'err-telefono');
+    // El error también se anuncia a los lectores de pantalla.
+    await expect(page.locator('[data-live]')).toHaveText(
+      'Revisa el número: 9 cifras, empieza por 6, 7, 8 o 9.',
+    );
     expect(posted).toBe(0);
 
+    // Prefijo mal escrito: su propio mensaje.
     await page.locator('#telefono').fill('612345678');
-    await page.locator('#consentimiento_salud').uncheck();
-    await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
-    await expect(page.locator('#err-consentimiento')).toBeVisible();
+    await page.locator('#prefijo').fill('34a');
+    await submitBtn(page).click();
+    await expect(page.locator('#err-telefono')).toContainText('Revisa el prefijo');
+    await page.locator('#prefijo').fill('+34');
     await expect(page.locator('#err-telefono')).toBeHidden();
+
+    await page.locator('#consentimiento_salud').uncheck();
+    await submitBtn(page).click();
+    await expect(page.locator('#err-consentimiento')).toBeVisible();
+    await expect(page.locator('#err-consentimiento')).toHaveText(
+      'Marca la casilla para que pueda valorar tu caso.',
+    );
+    await expect(page.locator('#consentimiento_salud')).toBeFocused();
+    await expect(page.locator('#err-telefono')).toBeHidden();
+    // No se borra nada de lo escrito.
+    await expect(page.locator('#telefono')).toHaveValue('612345678');
+    await expect(page.locator('#nombre')).toHaveValue('Álex');
     await page.waitForTimeout(500);
     expect(posted).toBe(0);
     await ctx.close();
   });
 
-  test('+44 7700 900123 pasa y se normaliza a E.164', async ({ browser }) => {
+  test('+44 7700 900123 pasa y se normaliza a E.164; "+34 612 34 56 78" pegado también', async ({
+    browser,
+  }) => {
     const ctx = await newCtx(browser, vp);
     await setConsent(ctx, CONSENT_REJECTED);
     const page = await ctx.newPage();
@@ -1558,11 +1481,21 @@ test.describe('Formulario', () => {
     await page.getByRole('button', { name: 'Saltar este paso' }).click();
     await page.locator('#nombre').fill('Liam');
     await page.keyboard.press('Enter');
+    // Pegado con +34: el prefijo va a su casilla y el número queda limpio.
+    await page.locator('#telefono').focus();
+    await page.evaluate(() => {
+      const el = document.querySelector<HTMLInputElement>('#telefono')!;
+      el.value = '+34 612 34 56 78';
+      el.dispatchEvent(new Event('paste'));
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await expect(page.locator('#telefono')).toHaveValue('612 34 56 78');
+    await expect(page.locator('#prefijo')).toHaveValue('+34');
     await page.locator('#telefono').fill('+44 7700 900123');
     await page.locator('#consentimiento_salud').check();
     await page.waitForTimeout(3100);
-    await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
-    await page.waitForURL('**/gracias');
+    await submitBtn(page).click();
+    await expect(page.locator('[data-form-done]')).toBeVisible();
     expect((body as Record<string, unknown> | null)?.telefono).toBe('+447700900123');
     await ctx.close();
   });
@@ -1642,16 +1575,16 @@ test.describe('Formulario', () => {
       .locator('#website')
       .evaluate((el: HTMLInputElement) => (el.value = 'https://spam.example'));
     await page.waitForTimeout(3100);
-    // La respuesta se lee al interceptarla: la página pasa a /gracias en cuanto llega.
+    // La respuesta se lee al interceptarla (sin firma: no hay Lead para Meta).
     let body: unknown = null;
     await page.route('**/api/lead', async (route) => {
       const res = await route.fetch();
       body = await res.json();
       await route.fulfill({ response: res });
     });
-    await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
+    await submitBtn(page).click();
     await expect.poll(() => body).toEqual({ ok: true });
-    await page.waitForURL('**/gracias');
+    await expect(page.locator('[data-form-done]')).toBeVisible();
     expect(readLeads().some((l) => l.nombre === 'Bot Honeypot UI')).toBe(false);
 
     const api = await request.post('/api/lead', {
@@ -1712,7 +1645,9 @@ test.describe('Formulario', () => {
     expect(get.status()).toBe(405);
   });
 
-  test('sin JavaScript: formulario entero y POST a /api/lead → /gracias', async ({ browser }) => {
+  test('sin JavaScript: formulario entero, POST a /api/lead → /gracias y Lead de servidor', async ({
+    browser,
+  }) => {
     // reducedMotion: sin scroll suave, que hace reintentar el auto-scroll de Playwright.
     const ctx = await newCtx(browser, vp, { javaScriptEnabled: false, reducedMotion: 'reduce' });
     await installCspProbe(ctx);
@@ -1735,12 +1670,23 @@ test.describe('Formulario', () => {
     await page.locator('#nombre').fill('Sin JS');
     await page.locator('#telefono').fill('655444333');
     await page.locator('#consentimiento_salud').check();
-    await page.getByRole('button', { name: 'Enviar y valorar mi caso' }).click();
+    await expect(submitBtn(page)).toHaveText('Enviar y valorar mi caso');
+    await submitBtn(page).click();
     await page.waitForURL('**/gracias');
     await expect(page.locator('h1')).toHaveText('Recibido.');
     const saved = readLeads().find((l) => l.nombre === 'Sin JS');
     expect(saved?.telefono).toBe('+34655444333');
     expect(saved?.zona).toBe('Tobillo / pie');
+    expect(contractProblems(saved!)).toEqual([]);
+    // Sin JS, /api/lead manda el Lead a la API de conversiones antes de ir a /gracias.
+    const capi = readCapi().find((b) => b.data[0]?.event_id === saved!.event_id);
+    expect(capi?.data[0]?.event_name).toBe('Lead');
+    expect(JSON.stringify(capi)).not.toMatch(/Tobillo|Esguince|655444333/);
+    // /gracias: WhatsApp en la misma pestaña y footer sin redes ni CTA.
+    const wa = page.locator('main a[href^="https://wa.me/"]');
+    await expect(wa).toHaveCount(1);
+    expect(await wa.getAttribute('target')).toBeNull();
+    await expect(page.locator('footer a[href*="instagram"], footer [data-cta]')).toHaveCount(0);
     await ctx.close();
   });
 });
@@ -1759,7 +1705,7 @@ test.describe('Barra CTA fija', () => {
           el.classList.contains('is-visible') && getComputedStyle(el).visibility === 'visible',
       );
 
-  test('aparece al pasar el hero, desaparece en #valoracion, vuelve en el footer', async ({
+  test('aparece al pasar el hero, desaparece en #valoracion y en el footer (con su propio CTA)', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, vp);
@@ -1774,15 +1720,12 @@ test.describe('Barra CTA fija', () => {
     await page.evaluate(() =>
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }),
     );
-    await page.waitForTimeout(400);
-    // En el footer puede reaparecer, pero nunca tapa su contenido (hueco reservado).
-    const copyBottom = await page
-      .locator('.footer-copy')
-      .evaluate((el) => el.getBoundingClientRect().bottom);
-    const barTop = await page
-      .locator('[data-sticky-cta]')
-      .evaluate((el) => el.getBoundingClientRect().top);
-    if (await visible(page)) expect(copyBottom).toBeLessThanOrEqual(barTop);
+    // En el footer no aparece: ya tiene su CTA (nunca dos "Quiero valorar mi caso" a la vez).
+    await expect.poll(() => visible(page)).toBe(false);
+    await expect(page.locator('footer [data-cta="footer"]')).toBeVisible();
+    // Y al volver hacia arriba reaparece.
+    await page.locator('#por-que').scrollIntoViewIfNeeded();
+    await expect.poll(() => visible(page)).toBe(true);
     await ctx.close();
   });
 
@@ -2201,15 +2144,27 @@ test('hover de tarjetas y botones (capturas)', async ({ browser }) => {
       '#opiniones .reviews-marquee',
     ],
     ['opcion-formulario', '#lead-form label.chip >> nth=1', '.chips'],
-    ['redes', '.footer-social-link >> nth=0', '.footer-social'],
+    ['footer-cta', '.site-footer [data-cta="footer"]', '.footer-brand-col'],
     ['footer-wordmark', '.fg-letter >> nth=3', '.footer-giant'],
   ];
   const lifts: Record<string, number> = {};
   for (const [name, sel, area] of targets) {
-    const el = page.locator(sel).first();
+    let el = page.locator(sel).first();
     await el.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'instant' }));
-    // En los marquees, el hover sobre la cinta la pausa: así la tarjeta queda quieta.
-    if (area.includes('marquee')) await page.locator(area).hover();
+    // En los marquees, el hover sobre la cinta la pausa: así la tarjeta queda quieta. Se usa la
+    // primera tarjeta que haya quedado entera a la vista (la cinta se mueve hasta que se pausa).
+    if (area.includes('marquee')) {
+      await page.locator(area).hover();
+      await page.waitForTimeout(300);
+      const cards = page.locator('.marquee-list:not([data-copy]) .t-card');
+      const inView = await cards.evaluateAll((els) =>
+        els.findIndex((e) => {
+          const r = e.getBoundingClientRect();
+          return r.left >= 0 && r.right <= window.innerWidth;
+        }),
+      );
+      el = cards.nth(Math.max(0, inView));
+    }
     await page.waitForTimeout(150);
     const before = await el.evaluate((e) => e.getBoundingClientRect().top);
     await el.hover({ force: true });
@@ -2284,7 +2239,7 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       );
     expect(ctas).toEqual([
       ['hero', 'hero_video'],
-      // "¿Qué te duele?": las tarjetas son botones y su cierre enlaza al formulario y a WhatsApp.
+      // "¿Qué te duele?": las tarjetas son botones y su cierre enlaza al formulario.
       [],
       ['vsl'],
       ['compare'],
@@ -2315,11 +2270,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       .locator('a[data-cta]')
       .evaluateAll((els) => els.map((a) => [a.getAttribute('data-cta'), a.getAttribute('href')]));
     for (const [cta, href] of hrefs) {
-      // Los botones de WhatsApp abren el chat; el resto lleva al formulario (o al vídeo).
-      if (String(cta).startsWith('whatsapp')) {
-        expect(href, String(cta)).toMatch(/^https:\/\/wa\.me\/34640995494\?text=/);
-        continue;
-      }
       expect(href, String(cta)).toBe(cta === 'hero_video' ? '#video' : '#valoracion');
     }
     await ctx.close();
@@ -2416,18 +2366,14 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       'Cuéntame un poco más.',
       '¿Cómo te llamas?',
       '¿A qué número te escribo?',
-      'He leído la política de privacidad (se abre en una pestaña nueva) y consiento el tratamiento de los datos de salud que he indicado para valorar mi caso.',
-      'Enviar y valorar mi caso',
+      'Acepto la política de privacidad (se abre en una pestaña nueva) y consiento el uso de mis datos de salud para valorar mi caso.',
+      '¿Otra duda? Déjame tu WhatsApp y te la resuelvo',
       'Preguntas frecuentes',
       '¿Cómo me vas a ayudar si no me tratas en persona?',
       '¿Cómo sé si esto es para mí?',
       '¿Qué garantías tengo?',
       '¿Y si ya tengo pruebas o diagnóstico por imagen?',
       'Vuelve a entrenar sin dolor.',
-      'Web',
-      'Contacto',
-      '@rehability_wod',
-      'Volver arriba',
       'Aviso legal',
       'Configurar cookies',
       'Fisioterapia online para atletas de CrossFit',
@@ -2452,14 +2398,16 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     expect(text).not.toMatch(/desde 2017/i);
     const hero = norm(await page.locator('#inicio').innerText());
     expect(hero.toLowerCase()).not.toContain('fisioterapia online para atletas de crossfit');
-    // Barra fija: el CTA y, a su derecha, WhatsApp con el mensaje ya escrito.
+    // Footer sin redes ni contacto (están en las páginas legales).
+    expect(text).not.toContain('@rehability_wod');
+    expect(text).not.toContain('Volver arriba');
+    // Barra fija: un solo botón, el de valoración (sin WhatsApp).
     const sticky = norm(
       await page.locator('[data-sticky-cta]').evaluate((el) => el.textContent ?? ''),
     ).trim();
-    expect(sticky).toContain('Quiero valorar mi caso');
-    expect(await page.locator('[data-sticky-cta] a').count()).toBe(2);
-    const wa = page.locator('[data-sticky-cta] [data-cta="whatsapp_sticky"]');
-    await expect(wa).toHaveAttribute('href', /^https:\/\/wa\.me\/34640995494\?text=/);
+    expect(sticky).toBe('Quiero valorar mi caso');
+    expect(await page.locator('[data-sticky-cta] a').count()).toBe(1);
+    await expect(page.locator('[data-whatsapp], .wa-float')).toHaveCount(0);
     for (const z of [
       'Hombro',
       'Codo',
