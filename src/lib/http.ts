@@ -1,6 +1,6 @@
 /**
  * Utilidades de las rutas /api (solo servidor): respuesta JSON, cookies de la petición y
- * comprobación de origen. Las usan /api/lead y /api/lead-capi.
+ * comprobación de origen. Las usan /api/lead, /api/lead-capi y /api/event-capi.
  */
 import { CONFIG } from '../config';
 
@@ -36,4 +36,25 @@ export function sameOrigin(request: Request): boolean {
   } catch {
     return false;
   }
+}
+
+const isOwnHost = (url: string, request: Request): boolean => {
+  try {
+    const u = new URL(url);
+    const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? '';
+    return u.host === host || u.host === new URL(CONFIG.siteUrl).host;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Más estricta que sameOrigin: la petición tiene que decir de dónde viene (Origin o, si el
+ * navegador no lo manda, Referer) y tiene que ser esta web.
+ */
+export function ownOrigin(request: Request): boolean {
+  const origin = request.headers.get('origin');
+  if (origin && origin !== 'null') return isOwnHost(origin, request);
+  const referer = request.headers.get('referer');
+  return !!referer && isOwnHost(referer, request);
 }

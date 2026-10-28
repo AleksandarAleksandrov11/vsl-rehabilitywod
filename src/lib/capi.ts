@@ -1,13 +1,18 @@
 /**
  * API de conversiones de Meta (solo servidor). La usan /api/lead-capi (envíos con JS: el navegador
- * la llama justo después del OK de /api/lead) y /api/lead (envíos sin JS, tras guardar el lead).
+ * la llama justo después del OK de /api/lead), /api/lead (envíos sin JS, tras guardar el lead) y
+ * /api/event-capi (visitas: PageView y ViewContent, también sin cookies aceptadas).
  * - Un evento Lead por cada lead, haya aceptado o no las cookies, con el mismo event_id que el Lead
  *   del Pixel (Meta los deduplica).
+ * - PageView y ViewContent (buildPageEvent): sin datos personales, solo user agent, IP, fbc y fbp si
+ *   existen; con el mismo event_id que el Pixel cuando el Pixel está cargado. Los bots evidentes se
+ *   ignoran (isEvidentBot).
  * - user_data: teléfono (ph), nombre (fn) y apellidos (ln) en SHA-256, external_id (hash del
  *   teléfono), país (hash de "es" con prefijo +34), user agent, IP, fbc y, con cookies de marketing
  *   aceptadas, fbp. Nunca la zona ni el detalle (datos de salud).
- * - fbc: la cookie _fbc (con consentimiento) o, si la visita llegó con fbclid, fb.1.<ms>.<fbclid>
- *   con el momento en que se vio el fbclid por primera vez.
+ * - fbc: el que manda el navegador (la cookie _fbc o, si no existe, el que guardó al aterrizar con
+ *   el fbclid: fb.1.<ms>.<fbclid>), la cookie _fbc (con consentimiento) o, en último caso, el que se
+ *   forma aquí con el fbclid y el momento en que se vio por primera vez.
  * - Firma: /api/lead devuelve sig = HMAC-SHA256(event_id + "." + telefono) con
  *   CAPI_SIGNING_SECRET (o, si no existe, LEAD_SECRET); /api/lead-capi solo envía si cuadra.
  * - test_event_code ("Probar eventos") solo fuera de producción.
@@ -33,6 +38,18 @@ const FBC_RE = /^fb\.\d\.\d{10,13}\.[\w-]{6,500}$/;
 const FBP_RE = /^fb\.\d\.\d{10,13}\.\d{5,25}$/;
 const FBCLID_RE = /^[\w-]{6,500}$/;
 const IP_RE = /^[0-9a-fA-F:.]{3,45}$/;
+
+/** Eventos de visita que acepta /api/event-capi (lista cerrada). */
+export const PAGE_EVENTS = ['PageView', 'ViewContent'] as const;
+export type PageEventName = (typeof PAGE_EVENTS)[number];
+
+export type CapiPageEvent = {
+  event_name: PageEventName;
+  event_id: string;
+  event_source_url?: string;
+  fbc?: string;
+  fbp?: string;
+};
 
 export type CapiLead = {
   event_id: string;
@@ -111,8 +128,21 @@ function sourceUrl(value: string | undefined): string {
   return `${CONFIG.siteUrl}/`;
 }
 
+/**
+ * Bots evidentes (buscadores, vistas previas, monitores, navegadores sin interfaz, Lighthouse y
+ * clientes HTTP): sus visitas no se mandan a Meta.
+ */
+const BOT_RE =
+  /\bbot\b|bot\/|crawl|spider|slurp|headless|lighthouse|pagespeed|facebookexternalhit|facebookcatalog|preview|monitor|pingdom|uptime|vercel|curl\/|wget|python|axios|node-fetch|undici|go-http|java\/|okhttp|scrapy|phantomjs/i;
+export function isEvidentBot(request: Request): boolean {
+  const ua = request.headers.get('user-agent') ?? '';
+  return ua.length < 20 || BOT_RE.test(ua);
+}
+
 function fbcFor(lead: CapiLead, cookies: string | null, withCookies: boolean): string | undefined {
-  const stored = withCookies ? [lead.fbc, readCookie(cookies, '_fbc')] : [];
+  // El que manda el navegador (cookie o el guardado al aterrizar) vale siempre; la cookie que
+  // llega con la petición, solo con las cookies de marketing aceptadas.
+  const stored = [lead.fbc, withCookies ? readCookie(cookies, '_fbc') : ''];
   const fbc = stored.find((v) => v && FBC_RE.test(v));
   if (fbc) return fbc;
   if (!lead.fbclid || !FBCLID_RE.test(lead.fbclid)) return undefined;
@@ -156,12 +186,40 @@ export function buildLeadEvent(lead: CapiLead, request: Request) {
   };
 }
 
+/** PageView o ViewContent: sin datos personales; fbc y fbp solo si existen. */
+export function buildPageEvent(ev: CapiPageEvent, request: Request) {
+  const cookies = request.headers.get('cookie');
+  const fbc = [ev.fbc, readCookie(cookies, '_fbc')].find((v) => v && FBC_RE.test(v));
+  const fbp = [ev.fbp, readCookie(cookies, '_fbp')].find((v) => v && FBP_RE.test(v));
+  const userData: Record<string, unknown> = {
+    client_user_agent: request.headers.get('user-agent') ?? undefined,
+    client_ip_address: clientIp(request),
+  };
+  if (fbc) userData.fbc = fbc;
+  if (fbp) userData.fbp = fbp;
+  return {
+    event_name: ev.event_name,
+    event_time: Math.floor(Date.now() / 1000),
+    event_id: ev.event_id,
+    event_source_url: sourceUrl(ev.event_source_url),
+    action_source: 'website',
+    user_data: userData,
+    // Lo mismo que lleva el ViewContent del Pixel.
+    ...(ev.event_name === 'ViewContent' ? { custom_data: { content_name: 'Formulario' } } : {}),
+  };
+}
+
 /** Envía el Lead a Meta (como mucho 4 s). Nunca lanza error. */
-export async function sendLeadEvent(lead: CapiLead, request: Request): Promise<void> {
+export const sendLeadEvent = (lead: CapiLead, request: Request) =>
+  sendToMeta(() => buildLeadEvent(lead, request));
+
+/** Envía un PageView o un ViewContent a Meta (como mucho 4 s). Nunca lanza error. */
+export const sendPageEvent = (ev: CapiPageEvent, request: Request) =>
+  sendToMeta(() => buildPageEvent(ev, request));
+
+async function sendToMeta(build: () => Record<string, unknown>): Promise<void> {
   try {
-    const body: { data: unknown[]; test_event_code?: string } = {
-      data: [buildLeadEvent(lead, request)],
-    };
+    const body: { data: unknown[]; test_event_code?: string } = { data: [build()] };
     // Si llegara a producción, los Lead irían a "Probar eventos" y Meta no los usaría para
     // optimizar la campaña.
     const testCode = META_TEST_EVENT_CODE?.trim();
