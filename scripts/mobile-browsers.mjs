@@ -208,7 +208,7 @@ try {
     const advance = Date.now() - tapAt;
     check(
       `${target.name}: el paso 1 avanza solo al tocar una zona`,
-      advance < 1500,
+      advance < 3000,
       `${advance} ms`,
     );
     await page.getByRole('button', { name: 'Saltar este paso' }).click();

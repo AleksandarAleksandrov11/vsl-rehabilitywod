@@ -5,8 +5,8 @@
  * se responden en local: así se comprueba qué se enviaría sin meter leads de prueba en las
  * estadísticas del Pixel.
  *
- * Comprueba: nada de Meta sin consentimiento o al rechazar; al aceptar, carga del Pixel y
- * PageView en ese momento; _fbc con el fbclid del anuncio; VideoPlay al dar al play del vídeo
+ * Comprueba: nada de Meta sin consentimiento o al rechazar; al aceptar, carga del Pixel y un solo
+ * PageView en ese momento, con el mismo event_id que el PageView que ya recibió el servidor; _fbc con el fbclid del anuncio; VideoPlay al dar al play del vídeo
  * (facade: el iframe real de YouTube se carga al pulsar); FormStart, ViewContent (Formulario) y
  * FormStep al pasar el paso 1; Lead con advanced matching (teléfono, nombre y país cifrados) y el
  * mismo eventID que el lead que recibe el servidor y que el Lead de la API de conversiones
@@ -143,6 +143,28 @@ try {
   );
   const pv = meta.events.find((e) => e.ev === 'PageView');
   check('PageView con el ID del Pixel', pv?.id === PIXEL_ID, pv ? `id=${pv.id}` : 'no enviado');
+  // El servidor (API de conversiones) ya recibió el PageView de esta carga al aterrizar: el del
+  // Pixel sale con el mismo event_id y Meta lo cuenta una vez.
+  const serverPv = (() => {
+    try {
+      return readFileSync(CAPI, 'utf8')
+        .trim()
+        .split('\n')
+        .map((l) => JSON.parse(l).data[0])
+        .filter((e) => e.event_name === 'PageView');
+    } catch {
+      return [];
+    }
+  })();
+  check(
+    'PageView del Pixel con el mismo event_id que el PageView de servidor',
+    !!pv?.eid && serverPv.some((e) => e.event_id === pv.eid),
+    `eid=${pv?.eid}`,
+  );
+  check(
+    'Al aceptar, un solo PageView del Pixel',
+    meta.events.filter((e) => e.ev === 'PageView').length === 1,
+  );
   const fbp = (await ctx.cookies()).find((c) => c.name === '_fbp');
   check('Cookie _fbp creada tras aceptar', !!fbp, fbp?.value);
   const fbc = (await ctx.cookies()).find((c) => c.name === '_fbc');

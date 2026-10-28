@@ -230,6 +230,9 @@ export async function fillForm(
   await page.locator('#nombre').fill(data.nombre);
   await page.getByRole('button', { name: 'Continuar' }).click();
   await page.locator('#telefono').fill(data.telefono);
+  // Con la transición del paso ya terminada (280 ms): si no, el clic puede caer a mitad.
+  await page.locator('#s4-title').waitFor();
+  await page.waitForTimeout(350);
   await page.locator('#consentimiento_salud').check();
   await page.waitForTimeout(3200); // tiempo humano (> 3 s desde el inicio)
 }

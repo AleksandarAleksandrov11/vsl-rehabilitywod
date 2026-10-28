@@ -408,12 +408,20 @@ test.describe('/api/lead-capi', () => {
       await expect(page.locator('[data-form-done]')).toBeVisible();
       await expect(page.locator('[data-done-title]')).toHaveText('Gracias, Ana Meta.');
       expect(readJsonl(leads).some((l) => l.nombre === 'Ana Meta')).toBe(true);
-      await expect.poll(() => metaCalls.length).toBe(1);
-      expect(metaCalls[0]!.url).toBe('/v24.0/1433154668778788/events?access_token=token-falso-qa');
-      const sent = JSON.parse(metaCalls[0]!.body);
-      expect(sent.data[0].event_name).toBe('Lead');
+      // Además del Lead, Meta recibe las visitas (PageView y ViewContent, /api/event-capi).
+      const named = (n: string) =>
+        metaCalls.filter((c) => JSON.parse(c.body).data[0].event_name === n);
+      await expect.poll(() => named('Lead').length).toBe(1);
+      expect(metaCalls.map((c) => JSON.parse(c.body).data[0].event_name).sort()).toEqual([
+        'Lead',
+        'PageView',
+        'ViewContent',
+      ]);
+      const leadCall = named('Lead')[0]!;
+      expect(leadCall.url).toBe('/v24.0/1433154668778788/events?access_token=token-falso-qa');
+      const sent = JSON.parse(leadCall.body);
       expect(sent.test_event_code).toBeUndefined();
-      expect(metaCalls[0]!.body).not.toMatch(/Codo|Ana|633000111/);
+      for (const call of metaCalls) expect(call.body).not.toMatch(/Codo|Ana|633000111/);
       await expect.poll(() => server.log()).toContain('[capi] Meta respondió 500');
       // Los logs de la CAPI no llevan datos personales ni el token.
       const capiLog = server
@@ -514,6 +522,16 @@ test.describe('Lead, gracias y WhatsApp', () => {
   }) => {
     const ctx = await ctxFor(browser, IG_IPHONE, CONSENT_ACCEPTED);
     const page = await ctx.newPage();
+    // Momento (reloj del navegador, el mismo que el de Node) en que aparece la gracias.
+    await page.addInitScript(() => {
+      new MutationObserver((_, obs) => {
+        const done = document.querySelector('[data-form-done]');
+        if (done && !done.hasAttribute('hidden')) {
+          (window as unknown as { __doneAt: number }).__doneAt = Date.now();
+          obs.disconnect();
+        }
+      }).observe(document, { attributes: true, subtree: true, attributeFilter: ['hidden'] });
+    });
     // Cualquier otra pestaña o ventana sería un window.open (no debe haber ninguna).
     const popups: string[] = [];
     ctx.on('page', (p) => popups.push(p.url()));
@@ -549,7 +567,7 @@ test.describe('Lead, gracias y WhatsApp', () => {
     // Doble toque: un solo envío y un solo Lead.
     await submitBtn(page).dblclick();
     await expect(page.locator('[data-form-done]')).toBeVisible();
-    const shownAt = Date.now();
+    const shownAt = await page.evaluate(() => (window as unknown as { __doneAt: number }).__doneAt);
     await expect(page.locator('[data-form-done]')).toHaveAttribute('role', 'status');
     await expect(page.locator('[data-done-title]')).toHaveText('Gracias, Ana López.');
     await expect(page.locator('[data-done-title]')).toBeFocused();
@@ -568,7 +586,7 @@ test.describe('Lead, gracias y WhatsApp', () => {
 
     await page.waitForRequest(/^https:\/\/wa\.me\//, { timeout: 5000 });
     const waAt = Date.now();
-    expect(waAt - shownAt).toBeGreaterThanOrEqual(1300);
+    expect(waAt - shownAt).toBeGreaterThanOrEqual(1450);
     expect(waAt - shownAt).toBeLessThan(3000);
     expect(waAt - times.lead!).toBeGreaterThanOrEqual(800);
     expect(waText(waUrl)).toBe(expected);
