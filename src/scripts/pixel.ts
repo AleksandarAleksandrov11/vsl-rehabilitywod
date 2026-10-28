@@ -3,10 +3,12 @@
  * Sin <noscript>: la imagen de fallback dispara un PageView sin consentimiento.
  * Nunca se envían datos de salud (zona, detalle). Nombre y teléfono solo en el Lead, como advanced
  * matching manual y ya cifrados en SHA-256 en el navegador (trackLead).
- * Eventos y parámetros cerrados: ver AllowedEvent y SafeParams.
+ * Eventos y parámetros cerrados: ver AllowedEvent y SafeParams. El PageView y el ViewContent
+ * llevan el mismo event_id que los que se mandan a la API de conversiones (meta-events.ts).
  */
 import { hasMarketingConsent } from './consent';
 import { getAttribution } from './utm';
+import { pageViewId, readCookie } from './meta-events';
 
 type FbqFn = ((...args: unknown[]) => void) & {
   callMethod?: (...args: unknown[]) => void;
@@ -55,11 +57,6 @@ export function getPixelId(): string {
 
 const FBC_MAX_AGE = 90 * 24 * 60 * 60; // 90 días, como la cookie de Meta
 
-function readCookie(name: string): string {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : '';
-}
-
 /**
  * Guarda el fbclid del anuncio en la cookie _fbc (formato de Meta: fb.1.<ms>.<fbclid>) para que el
  * Pixel y la API de conversiones lo usen aunque la persona ya no esté en la URL del anuncio.
@@ -71,8 +68,8 @@ function storeFbc(): void {
   if (!fbclid || !/^[\w-]{6,500}$/.test(fbclid)) return;
   const current = readCookie('_fbc');
   if (current.endsWith(`.${fbclid}`)) return;
-  // Momento en que se vio el fbclid por primera vez (si no consta, ahora).
-  const value = `fb.1.${attribution.fbclid_ts || Date.now()}.${fbclid}`;
+  // El mismo fbc que se guardó al aterrizar (y que ya ha recibido la API de conversiones).
+  const value = attribution.fbc || `fb.1.${attribution.fbclid_ts || Date.now()}.${fbclid}`;
   const parts = window.location.hostname.split('.');
   // Del dominio más corto al más largo: el navegador rechaza los sufijos públicos (.com, .app…).
   const domains = parts.length > 1 ? parts.map((_, i) => parts.slice(i).join('.')).reverse() : [];
@@ -94,7 +91,7 @@ export function loadPixel(): void {
     if (revoked) {
       revoked = false;
       window.fbq?.('consent', 'grant');
-      window.fbq?.('track', 'PageView');
+      window.fbq?.('track', 'PageView', {}, { eventID: pageViewId });
     }
     return;
   }
@@ -103,7 +100,8 @@ export function loadPixel(): void {
   // texto de los botones pulsados (p. ej. la zona del dolor) y leería los campos del formulario.
   window.fbq?.('set', 'autoConfig', false, pixelId);
   window.fbq?.('init', pixelId);
-  window.fbq?.('track', 'PageView');
+  // El mismo event_id que el PageView que ya recibió la API de conversiones: Meta lo cuenta una vez.
+  window.fbq?.('track', 'PageView', {}, { eventID: pageViewId });
   initialized = true;
   revoked = false;
 }

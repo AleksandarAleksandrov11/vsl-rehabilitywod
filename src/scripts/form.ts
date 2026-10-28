@@ -13,6 +13,9 @@
  * Eventos de Meta (solo con consentimiento): FormStart una vez por sesión al tocar el formulario o
  * una tarjeta de "¿Qué te duele?", ViewContent (Formulario) y FormStep {step} una vez por paso y
  * sesión, FormError {step, field}; en Vercel, form_step {step} y form_error {step, field}.
+ * ViewContent también por la API de conversiones (/api/event-capi), una vez por sesión y con el
+ * mismo event_id que el del Pixel: al completar el paso 1 o, sin el Pixel cargado, al llegar al
+ * formulario.
  */
 import {
   LIMITS,
@@ -28,6 +31,14 @@ import { hasMarketingConsent } from './consent';
 import { isPixelActive, track as pixelTrack, trackLead, type FormField } from './pixel';
 import { trackEvent } from './tracking';
 import { adVariantByKey } from '../data/ad-variants';
+import {
+  beacon,
+  getFbc,
+  readCookie,
+  sendViewContentOnce,
+  uuidv4,
+  viewContentId,
+} from './meta-events';
 
 const AUTO_ADVANCE_MS = 250;
 const LEAVE_MS = 280;
@@ -39,17 +50,6 @@ const SUBMIT_LABEL = 'Enviar y valorar mi caso';
 const SUBMIT_LABEL_WA = 'Enviar y abrir WhatsApp';
 
 type ErrorKey = 'zona' | 'detalle' | 'nombre' | 'telefono' | 'consentimiento';
-
-function uuidv4(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  const b = crypto.getRandomValues(new Uint8Array(16));
-  b[6] = ((b[6] ?? 0) & 0x0f) | 0x40;
-  b[8] = ((b[8] ?? 0) & 0x3f) | 0x80;
-  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
-}
 
 function detectDevice(): LeadPayload['device'] {
   const ua = navigator.userAgent;
@@ -65,15 +65,6 @@ function detectDevice(): LeadPayload['device'] {
 }
 
 const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-function readCookie(name: string): string {
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  try {
-    return match?.[1] ? decodeURIComponent(match[1]) : '';
-  } catch {
-    return '';
-  }
-}
 
 /**
  * Evento de Meta una sola vez por sesión. Solo cuenta como enviado si el Pixel está activo: si la
@@ -350,11 +341,13 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     completed.add(step);
     trackEvent('form_step', { step });
     formStart();
-    // Señal intermedia para Meta al completar el paso 1, y cada paso una vez por sesión.
+    // Señal intermedia para Meta al completar el paso 1 (Pixel y servidor, mismo event_id), y cada
+    // paso una vez por sesión.
     if (step === 1) {
       pixelOnce('rw_px_viewcontent', () =>
-        pixelTrack('ViewContent', { content_name: 'Formulario' }),
+        pixelTrack('ViewContent', { content_name: 'Formulario' }, { eventID: viewContentId() }),
       );
+      sendViewContentOnce();
     }
     pixelOnce(`rw_px_step${step}`, () => pixelTrack('FormStep', { step }));
   }
@@ -425,6 +418,20 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   // Primer toque del formulario: FormStart (una vez por sesión).
   root.addEventListener('pointerdown', formStart, { passive: true });
   root.addEventListener('focusin', formStart);
+
+  // Sin el Pixel cargado (cookies sin aceptar), el ViewContent de servidor sale al llegar al
+  // formulario; con el Pixel, a la vez que el suyo (al completar el paso 1).
+  if ('IntersectionObserver' in window) {
+    const reached = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting || isPixelActive()) return;
+        sendViewContentOnce();
+        reached.disconnect();
+      },
+      { threshold: 0.25 },
+    );
+    reached.observe(root);
+  }
 
   // Vuelta desde el fallback sin JS con error.
   const params = new URLSearchParams(window.location.search);
@@ -608,11 +615,12 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   function sendCapi(payload: LeadPayload, sig: string | undefined): void {
     if (!sig) return; // sin firma (servidor sin secreto) no hay Lead de servidor
     const attribution = getAttribution();
-    const body = JSON.stringify({
+    beacon('/api/lead-capi', {
       event_id: payload.event_id,
       nombre: payload.nombre,
       telefono: payload.telefono,
-      fbc: readCookie('_fbc'),
+      // La cookie _fbc o el fbc guardado al aterrizar: el mismo que recibieron las visitas.
+      fbc: getFbc(),
       fbp: readCookie('_fbp'),
       fbclid: attribution.fbclid,
       fbclid_ts: attribution.fbclid_ts || null,
@@ -620,20 +628,6 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
       consent_marketing: payload.consentimiento_marketing,
       sig,
     });
-    // text/plain: tipo "simple", que sendBeacon envía en todos los navegadores.
-    const type = 'text/plain;charset=UTF-8';
-    try {
-      if (navigator.sendBeacon?.('/api/lead-capi', new Blob([body], { type }))) return;
-    } catch {
-      // sendBeacon no disponible o rechazado: fetch con keepalive
-    }
-    void fetch('/api/lead-capi', {
-      method: 'POST',
-      headers: { 'content-type': type },
-      body,
-      keepalive: true,
-      credentials: 'same-origin',
-    }).catch(() => undefined);
   }
 
   /** Gracias dentro de la tarjeta; en móvil abre WhatsApp a los 1,5 s. */

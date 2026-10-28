@@ -17,6 +17,8 @@ interface Props {
   robots?: string;
   /** Solo la home: script en línea que adapta el hero al anuncio (utm_content) sin parpadeo. */
   adScript?: boolean;
+  /** Solo la home: manda el PageView a la API de conversiones (boot.ts, data-landing). */
+  landing?: boolean;
   /** JSON-LD opcional (solo en la home). */
   jsonLd?: Record<string, unknown>;
 }
@@ -28,6 +30,7 @@ const {
   noindex = false,
   robots,
   adScript = false,
+  landing = false,
   jsonLd,
 } = Astro.props;
 
@@ -42,7 +45,7 @@ const ogAlt =
 ---
 
 <!doctype html>
-<html lang="es" data-pixel-id={CONFIG.pixelId}>
+<html lang="es" data-pixel-id={CONFIG.pixelId} data-landing={landing ? '' : undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />

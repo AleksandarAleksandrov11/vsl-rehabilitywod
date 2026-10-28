@@ -1,11 +1,13 @@
 /**
- * Arranque común a todas las páginas: atribución, Pixel según consentimiento,
- * clics en CTA, estado del header, barra de progreso, animaciones de entrada y, cuando la
- * página ya ha cargado, la analítica de Vercel.
+ * Arranque común a todas las páginas: atribución, Pixel según consentimiento, PageView para la
+ * API de conversiones en la landing (aunque no se acepten las cookies, con el mismo event_id que
+ * el PageView del Pixel), clics en CTA, estado del header, barra de progreso, animaciones de
+ * entrada y, cuando la página ya ha cargado, la analítica de Vercel.
  */
 import { captureAttribution } from './utm';
 import { getConsent, onConsentChange } from './consent';
 import { loadPixel, revokePixel, track as pixelTrack } from './pixel';
+import { pageViewId, sendVisit } from './meta-events';
 import { trackEvent } from './tracking';
 import './cookie-banner';
 import './reveal';
@@ -21,6 +23,13 @@ onConsentChange((consent) => {
   if (consent.marketing) loadPixel();
   else revokePixel();
 });
+
+// Landing: PageView por la API de conversiones (sendBeacon, sin esperar), en una tarea aparte
+// para no alargar la del arranque. Si las cookies se aceptan después, el PageView del Pixel sale
+// con este mismo event_id y Meta lo cuenta una vez.
+if (document.documentElement.hasAttribute('data-landing')) {
+  window.setTimeout(() => sendVisit('PageView', pageViewId), 0);
+}
 
 // cta_click {location}. Los enlaces a WhatsApp envían además Contact a Meta (con consentimiento);
 // el botón de WhatsApp de la gracias (data-wa="gracias-boton"), con esa categoría y el evento
