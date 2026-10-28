@@ -34,6 +34,8 @@ export default defineConfig({
       LEAD_MOCK: '1',
       LEAD_MOCK_FILE: 'qa/.tmp/leads.jsonl',
       CAPI_MOCK_FILE: 'qa/.tmp/capi.jsonl',
+      // Firma del lead para /api/lead-capi (en Vercel: CAPI_SIGNING_SECRET o LEAD_SECRET).
+      CAPI_SIGNING_SECRET: 'qa-firma-capi',
     },
   },
 });

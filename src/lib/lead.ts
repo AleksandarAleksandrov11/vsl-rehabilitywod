@@ -29,10 +29,15 @@ export const MESSAGES = {
   detalleOtro: 'Cuéntame en pocas palabras qué te pasa (mínimo 5 caracteres).',
   detalleMax: 'Máximo 500 caracteres.',
   nombre: 'Escribe tu nombre (de 2 a 60 caracteres).',
-  telefono: 'Revisa el número: 9 cifras que empiecen por 6, 7, 8 o 9, o con prefijo internacional.',
-  consentimiento: 'Necesito tu consentimiento para poder valorar tu caso.',
-  envio: 'No se ha podido enviar. Inténtalo de nuevo o escríbeme a info@rehabilitywod.com.',
+  telefono: 'Revisa el número: 9 cifras, empieza por 6, 7, 8 o 9.',
+  prefijo: 'Revisa el prefijo: «+» y de 1 a 4 cifras (por ejemplo, +34).',
+  consentimiento: 'Marca la casilla para que pueda valorar tu caso.',
+  envio: 'No se ha podido enviar. Vuelve a intentarlo o mándamelo por WhatsApp con un toque.',
+  /** Vuelta del envío sin JS con error (no hay datos para el enlace de WhatsApp). */
+  envioSinJs: 'No se ha podido enviar. Vuelve a intentarlo, por favor.',
 } as const;
+
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const isZona = (value: unknown): value is Zona =>
   typeof value === 'string' && (ZONAS as readonly string[]).includes(value);

@@ -49,6 +49,12 @@ export default defineConfig({
       LEAD_SECRET: envField.string({ context: 'server', access: 'secret', optional: true }),
       LEAD_MOCK: envField.string({ context: 'server', access: 'secret', optional: true }),
       META_CAPI_TOKEN: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // Opcional: firma del lead para /api/lead-capi. Sin ella se firma con LEAD_SECRET.
+      CAPI_SIGNING_SECRET: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+      }),
       // Solo en Preview: manda los eventos de la CAPI a "Probar eventos" (nunca en producción).
       META_TEST_EVENT_CODE: envField.string({
         context: 'server',

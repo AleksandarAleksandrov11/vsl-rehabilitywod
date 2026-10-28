@@ -3,26 +3,23 @@
  * - Acepta JSON (formulario con JS) o application/x-www-form-urlencoded (fallback sin JS).
  * - Valida en servidor lo mismo que el cliente.
  * - Antispam: honeypot relleno o envío en menos de 3 s → 200 {ok:true} sin guardar nada.
- * - Reenvía a Google Apps Script (GOOGLE_SCRIPT_URL) con el secreto LEAD_SECRET.
+ * - Reenvía a Google Apps Script (GOOGLE_SCRIPT_URL) con el secreto LEAD_SECRET. El cuerpo es
+ *   siempre el objeto Lead más `secret` (appsScriptBody): un test congela sus claves y tipos.
  * - Modo mock (sin GOOGLE_SCRIPT_URL o LEAD_MOCK=1): log en consola con el teléfono enmascarado.
- * - Conversions API de Meta opcional (META_CAPI_TOKEN) y solo con consentimiento de marketing.
+ * - API de conversiones de Meta (src/lib/capi.ts), para todos los leads:
+ *   · con JS, la respuesta lleva `sig` (firma del lead) y el navegador llama a /api/lead-capi;
+ *   · sin JS, se envía aquí mismo tras guardar, esperando como mucho 4 s antes de ir a /gracias.
  * Los logs no llevan datos personales (salvo el modo mock, enmascarado).
  */
 import type { APIRoute } from 'astro';
-import { createHash } from 'node:crypto';
 import { appendFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import {
-  GOOGLE_SCRIPT_URL,
-  LEAD_MOCK,
-  LEAD_SECRET,
-  META_CAPI_TOKEN,
-  META_TEST_EVENT_CODE,
-} from 'astro:env/server';
+import { GOOGLE_SCRIPT_URL, LEAD_MOCK, LEAD_SECRET } from 'astro:env/server';
 import {
   LIMITS,
   MESSAGES,
   TRACKING_KEYS,
+  UUID_RE,
   cleanText,
   isZona,
   maskPhone,
@@ -30,48 +27,20 @@ import {
   validateDetalle,
   validateNombre,
 } from '../../lib/lead';
-import { CONFIG } from '../../config';
+import { firstTime, sendLeadEvent, signLead } from '../../lib/capi';
+import { json, sameOrigin } from '../../lib/http';
 
 export const prerender = false;
 
 const MAX_BODY_BYTES = 16 * 1024;
 const GOOGLE_TIMEOUT_MS = 12000;
-const CAPI_TIMEOUT_MS = 4000;
-const META_GRAPH_VERSION = 'v24.0';
 
 type Raw = Record<string, unknown>;
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
-  });
 
 const redirect = (location: string) =>
   new Response(null, { status: 303, headers: { location, 'cache-control': 'no-store' } });
 
 const truthy = (v: unknown) => v === true || v === 'true' || v === '1' || v === 'on' || v === 1;
-
-function readCookie(header: string | null, name: string): string {
-  if (!header) return '';
-  for (const part of header.split(';')) {
-    const [k, ...rest] = part.trim().split('=');
-    if (k === name) return decodeURIComponent(rest.join('='));
-  }
-  return '';
-}
-
-function sameOrigin(request: Request): boolean {
-  const origin = request.headers.get('origin');
-  if (!origin || origin === 'null') return true; // navegadores antiguos o peticiones sin Origin
-  try {
-    const o = new URL(origin);
-    const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host') ?? '';
-    return o.host === host || o.host === new URL(CONFIG.siteUrl).host;
-  } catch {
-    return false;
-  }
-}
 
 async function readBody(request: Request, isJson: boolean): Promise<Raw | null> {
   const text = await request.text();
@@ -94,87 +63,6 @@ function tooFast(raw: Raw, isJson: boolean): boolean {
   return elapsed < LIMITS.minFillMs;
 }
 
-const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
-
-/** Normalización de Meta para nombres: minúsculas, sin signos ni espacios. */
-const normName = (value: string) =>
-  value
-    .toLowerCase()
-    .normalize('NFC')
-    .replace(/[^\p{L}\p{M}]/gu, '');
-
-/**
- * Evento Lead para la API de conversiones. Solo datos de contacto hasheados (SHA-256) y los
- * identificadores de Meta: teléfono (ph), nombre (fn) y apellidos si los hay (ln), fbp y fbc.
- * Nunca la zona de dolor ni el detalle (datos de salud), ni en user_data ni en custom_data.
- * client_user_agent es obligatorio para eventos con action_source "website".
- */
-function buildCapiEvent(lead: Lead, request: Request) {
-  const cookies = request.headers.get('cookie');
-  const fbp = readCookie(cookies, '_fbp');
-  let fbc = readCookie(cookies, '_fbc');
-  if (!fbc && lead.fbclid) fbc = `fb.1.${lead.started_at ?? Date.now()}.${lead.fbclid}`;
-
-  const [first = '', ...rest] = lead.nombre.trim().split(/\s+/);
-  const fn = normName(first);
-  const ln = normName(rest.join(''));
-  const userData: Record<string, unknown> = {
-    ph: [sha256(lead.telefono.replace(/\D/g, ''))],
-    client_user_agent: request.headers.get('user-agent') ?? undefined,
-  };
-  if (fn) userData.fn = [sha256(fn)];
-  if (ln) userData.ln = [sha256(ln)];
-  if (fbp) userData.fbp = fbp;
-  if (fbc) userData.fbc = fbc;
-
-  return {
-    event_name: 'Lead',
-    event_time: Math.floor(Date.now() / 1000),
-    event_id: lead.event_id,
-    event_source_url: lead.landing_url || CONFIG.siteUrl,
-    action_source: 'website',
-    user_data: userData,
-  };
-}
-
-async function sendCapi(lead: Lead, request: Request) {
-  // Solo con consentimiento de marketing (el mismo que carga el Pixel en el navegador).
-  if (lead.consentimiento_marketing !== true) return;
-  const token = META_CAPI_TOKEN;
-  const pixelId = CONFIG.pixelId;
-  const body: { data: unknown[]; test_event_code?: string } = {
-    data: [buildCapiEvent(lead, request)],
-  };
-  // Código de "Probar eventos": solo fuera de producción. Si llegara a producción, los Lead irían a
-  // la pantalla de pruebas y Meta no los usaría para optimizar la campaña.
-  const testCode = META_TEST_EVENT_CODE?.trim();
-  if (testCode && process.env.VERCEL_ENV !== 'production') body.test_event_code = testCode;
-
-  // Solo para el QA local (sin token): guarda el evento que se enviaría.
-  const mockFile = process.env.CAPI_MOCK_FILE;
-  if (!token && mockFile) {
-    await mkdir(dirname(mockFile), { recursive: true });
-    await appendFile(mockFile, `${JSON.stringify(body)}\n`, 'utf8');
-    return;
-  }
-  if (!token || !pixelId) return;
-
-  try {
-    const res = await fetch(
-      `https://graph.facebook.com/${META_GRAPH_VERSION}/${pixelId}/events?access_token=${encodeURIComponent(token)}`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(CAPI_TIMEOUT_MS),
-      },
-    );
-    if (!res.ok) console.warn('[lead] CAPI respondió', res.status);
-  } catch (error) {
-    console.warn('[lead] CAPI no disponible', error instanceof Error ? error.name : 'error');
-  }
-}
-
 type Lead = {
   zona: string;
   detalle: string;
@@ -194,8 +82,6 @@ type Lead = {
   event_id: string;
   started_at: number | null;
 };
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function buildLead(raw: Raw): { lead?: Lead; fields: string[] } {
   const fields: string[] = [];
@@ -247,6 +133,12 @@ function buildLead(raw: Raw): { lead?: Lead; fields: string[] } {
   };
 }
 
+/**
+ * Cuerpo que recibe el Apps Script: el Lead y el secreto, nada más. No cambiar: la hoja y el aviso
+ * por email dependen de estos campos (lo comprueban `npm run qa` y `npm run qa:sheets`).
+ */
+const appsScriptBody = (lead: Lead) => ({ ...lead, secret: LEAD_SECRET });
+
 async function sendToGoogle(lead: Lead): Promise<boolean> {
   const url = GOOGLE_SCRIPT_URL;
   if (!url || !LEAD_SECRET) {
@@ -258,7 +150,7 @@ async function sendToGoogle(lead: Lead): Promise<boolean> {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ ...lead, secret: LEAD_SECRET }),
+      body: JSON.stringify(appsScriptBody(lead)),
       redirect: 'follow',
       signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
     });
@@ -284,12 +176,35 @@ async function mockSave(lead: Lead): Promise<void> {
     );
   }
   console.info('[lead:mock]', JSON.stringify({ ...lead, telefono: maskPhone(lead.telefono) }));
-  // Solo para el QA local: guarda el lead completo en un archivo si se indica.
+  // Solo para el QA local: guarda en un archivo el cuerpo que recibiría el Apps Script (con el
+  // secreto tapado), para comprobar sus campos.
   const file = process.env.LEAD_MOCK_FILE;
   if (file) {
+    const body = { ...appsScriptBody(lead), secret: LEAD_SECRET ? '[oculto]' : '' };
     await mkdir(dirname(file), { recursive: true });
-    await appendFile(file, `${JSON.stringify(lead)}\n`, 'utf8');
+    await appendFile(file, `${JSON.stringify(body)}\n`, 'utf8');
   }
+}
+
+/** Datos para la API de conversiones en el envío sin JS: el fbclid sale del Referer, si lo hay. */
+function capiFromForm(lead: Lead, request: Request) {
+  let fbclid = lead.fbclid;
+  let source = lead.landing_url;
+  try {
+    const ref = new URL(request.headers.get('referer') ?? '');
+    fbclid ||= ref.searchParams.get('fbclid') ?? '';
+    source ||= `${ref.origin}${ref.pathname}`;
+  } catch {
+    // sin Referer
+  }
+  return {
+    event_id: lead.event_id,
+    nombre: lead.nombre,
+    telefono: lead.telefono,
+    fbclid,
+    event_source_url: source,
+    consent_marketing: false, // sin JS no hay banner de cookies
+  };
 }
 
 export const POST: APIRoute = async ({ request }) => {
@@ -313,10 +228,10 @@ export const POST: APIRoute = async ({ request }) => {
   }
   if (!raw) return fail(400, 'invalid_body');
 
-  const ok = () => (isJson ? json({ ok: true }) : redirect('/gracias'));
-
-  // Antispam: se responde ok sin guardar nada.
-  if (cleanText(raw.website, 200) !== '' || tooFast(raw, isJson)) return ok();
+  // Antispam: se responde ok sin guardar nada (y sin firma: no hay Lead para Meta).
+  if (cleanText(raw.website, 200) !== '' || tooFast(raw, isJson)) {
+    return isJson ? json({ ok: true }) : redirect('/gracias');
+  }
 
   const { lead, fields } = buildLead(raw);
   if (!lead)
@@ -326,13 +241,18 @@ export const POST: APIRoute = async ({ request }) => {
     });
 
   const mock = !GOOGLE_SCRIPT_URL || LEAD_MOCK === '1' || LEAD_MOCK === 'true';
-  // Guardar el lead y avisar a Meta a la vez: la respuesta tarda lo que tarde el más lento.
-  const [saved] = await Promise.all([
-    mock ? mockSave(lead).then(() => true) : sendToGoogle(lead),
-    sendCapi(lead, request).catch(() => undefined),
-  ]);
+  const saved = mock ? await mockSave(lead).then(() => true) : await sendToGoogle(lead);
   if (!saved) return fail(502, 'upstream');
-  return ok();
+
+  if (isJson) {
+    // El navegador manda el Lead a /api/lead-capi con esta firma (sin secreto configurado, no hay).
+    const sig = signLead(lead.event_id, lead.telefono);
+    return json(sig ? { ok: true, sig } : { ok: true });
+  }
+  // Sin JS: el Lead a Meta sale desde aquí antes de ir a /gracias (la llamada a Meta se corta a
+  // los 4 s: CAPI_TIMEOUT_MS en src/lib/capi.ts).
+  if (firstTime(lead.event_id)) await sendLeadEvent(capiFromForm(lead, request), request);
+  return redirect('/gracias');
 };
 
 export const ALL: APIRoute = () =>

@@ -2,7 +2,8 @@
  * Servidor local para el QA. Emula lo que hace Vercel en producción:
  * - sirve dist/client con cleanUrls y trailingSlash: false,
  * - aplica las cabeceras (CSP incluida) y redirecciones de vercel.json,
- * - pasa /api/* al handler de Astro (build con ASTRO_ADAPTER=node),
+ * - pasa /api/* al handler de Astro (build con ASTRO_ADAPTER=node), con la cabecera
+ *   x-forwarded-for que pone Vercel (la IP de quien hace la petición),
  * - responde /_vercel/insights y /_vercel/speed-insights (en Vercel los sirve la plataforma).
  *
  * @astrojs/vercel no admite `astro preview`; por eso existe este servidor.
@@ -157,6 +158,9 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname.startsWith('/api/')) {
+    if (!req.headers['x-forwarded-for']) {
+      req.headers['x-forwarded-for'] = (req.socket.remoteAddress ?? '').replace(/^::ffff:/, '');
+    }
     handler(req, res, () => {
       res.statusCode = 404;
       res.end('Not found');
