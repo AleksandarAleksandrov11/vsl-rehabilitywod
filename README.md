@@ -13,19 +13,20 @@ formulario de valoración.
   escritorio, con un botón). Barra fija de llamada a la acción en móvil.
 - Meta Pixel solo tras el consentimiento de cookies (criterios de la AEPD). API de conversiones de
   Meta para todos los leads (`/api/lead-capi`), con los datos de contacto cifrados y nunca datos de
-  salud.
+  salud, y para las visitas (`/api/event-capi`: `PageView` y `ViewContent`, sin datos personales),
+  para que Meta las vea aunque no se acepten las cookies.
 - Vercel Web Analytics y Speed Insights, sin cookies.
 - Aviso legal, privacidad (RGPD/LOPDGDD, datos de salud) y política de cookies.
 
-| Pieza         | Elección                                                                    |
-| ------------- | --------------------------------------------------------------------------- |
-| Framework     | Astro 5.18 (TypeScript `strict`), estática + `/api/lead` y `/api/lead-capi` |
-| Estilos       | Tailwind CSS v4 (`@tailwindcss/vite`), tokens en `src/styles/global.css`    |
-| Adaptador     | `@astrojs/vercel` (producción) · `@astrojs/node` (solo QA y preview local)  |
-| JS en cliente | TypeScript sin framework, ~14 KB con gzip (animación: 1,3 KB)               |
-| Fuentes       | Big Shoulders Display 800 (titulares) y Work Sans variable, autoalojadas    |
-| Imágenes      | `astro:assets` (AVIF y WebP con `srcset` y dimensiones explícitas)          |
-| Calidad       | ESLint, Prettier, `astro check`, Playwright + axe-core, Lighthouse          |
+| Pieza         | Elección                                                                   |
+| ------------- | -------------------------------------------------------------------------- |
+| Framework     | Astro 5.18 (TypeScript `strict`), estática + 3 funciones `/api/*`          |
+| Estilos       | Tailwind CSS v4 (`@tailwindcss/vite`), tokens en `src/styles/global.css`   |
+| Adaptador     | `@astrojs/vercel` (producción) · `@astrojs/node` (solo QA y preview local) |
+| JS en cliente | TypeScript sin framework, ~14 KB con gzip (animación: 1,3 KB)              |
+| Fuentes       | Big Shoulders Display 800 (titulares) y Work Sans variable, autoalojadas   |
+| Imágenes      | `astro:assets` (AVIF y WebP con `srcset` y dimensiones explícitas)         |
+| Calidad       | ESLint, Prettier, `astro check`, Playwright + axe-core, Lighthouse         |
 
 ---
 
@@ -81,7 +82,7 @@ En **Settings → Environment Variables** (Production y, si se usa, Preview):
 | `SITE_URL`             | `https://vsl.rehabilitywod.com` (sin barra final)                           |
 | `GOOGLE_SCRIPT_URL`    | URL `/exec` de la aplicación web del Apps Script                            |
 | `LEAD_SECRET`          | La misma cadena que la propiedad `LEAD_SECRET` del script                   |
-| `META_CAPI_TOKEN`      | Opcional. Activa la API de conversiones de Meta (todos los leads)           |
+| `META_CAPI_TOKEN`      | Opcional. Activa la API de conversiones de Meta (leads y visitas)           |
 | `CAPI_SIGNING_SECRET`  | Opcional. Firma del lead para `/api/lead-capi`; sin ella se usa LEAD_SECRET |
 | `PUBLIC_META_PIXEL_ID` | Opcional. Por defecto `1433154668778788`                                    |
 | `LEAD_MOCK`            | No crearla (o `0`). Con `1` la API responde «ok» pero no guarda nada        |
@@ -91,7 +92,8 @@ Sin `GOOGLE_SCRIPT_URL` y `LEAD_SECRET` el formulario responde correctamente per
 guarda**: queda solo en los logs de Vercel con un aviso. Cada cambio de variables necesita
 **Redeploy**.
 
-Solo `/api/lead` y `/api/lead-capi` son funciones serverless; el resto de páginas son estáticas.
+Solo `/api/lead`, `/api/lead-capi` y `/api/event-capi` son funciones serverless; el resto de
+páginas son estáticas.
 Sin `META_CAPI_TOKEN` (o sin `CAPI_SIGNING_SECRET` ni `LEAD_SECRET`) la web funciona igual: solo
 se deja de enviar el Lead de servidor a Meta.
 
@@ -143,8 +145,10 @@ Con la extensión **Meta Pixel Helper** o con **Events Manager → Probar evento
 7. En móvil, WhatsApp se abre solo → `Contact` (`content_category: gracias-auto`); con el botón
    «Abrir WhatsApp» → `Contact` (`gracias-boton`).
 
-Si la visita llega de un anuncio con `fbclid`, al aceptar se guarda en la cookie `_fbc` (aunque ya no
-esté en la URL), para que el Pixel y la API de conversiones atribuyan mejor el lead.
+Si la visita llega de un anuncio con `fbclid`, al aterrizar se guarda en `sessionStorage` el `fbc`
+de Meta (`fb.1.<momento del clic>.<fbclid>`), que usan las visitas y el `Lead` de la API de
+conversiones aunque no se acepten las cookies; al aceptar, ese mismo valor va a la cookie `_fbc`
+(aunque ya no esté en la URL), para que el Pixel también atribuya mejor.
 
 Nunca se envían a Meta la zona ni la descripción (datos de salud), ni el nombre o el teléfono en
 claro. Los eventos automáticos están desactivados (`autoConfig: false`), porque enviarían el texto
@@ -170,6 +174,25 @@ configurado, cada lead llega también a Meta desde el servidor:
   personales (`[capi] Meta respondió 400`, por ejemplo).
 - El cuerpo que recibe el Apps Script no cambia (un test congela sus campos y tipos).
 
+**Visitas por la API de conversiones (con o sin cookies).** El Pixel solo se carga con las cookies
+aceptadas, así que sin esto Meta solo veía una de cada diez visitas. Con `META_CAPI_TOKEN`, el
+navegador manda a `/api/event-capi` (con `sendBeacon` o `fetch` con `keepalive`, sin esperar ni
+bloquear el render, el vídeo o el formulario):
+
+- `PageView` al cargar la landing (solo la home), con un `event_id` por carga de página. Si el
+  Pixel está cargado, su `PageView` lleva el mismo `event_id`; si las cookies se aceptan después,
+  el `PageView` del Pixel sale con ese `event_id` ya enviado. Meta lo cuenta una vez.
+- `ViewContent` una vez por sesión: con el Pixel cargado, al completar el paso 1, a la vez que el
+  del Pixel y con el mismo `event_id`; sin el Pixel, al llegar al formulario.
+- Cada evento: `event_id`, `event_source_url` (sin parámetros), `action_source: website` y en
+  `user_data` solo el user agent, la IP, `fbc` (la cookie `_fbc` o, si no existe, el guardado al
+  aterrizar con el `fbclid`) y `fbp` si existe. Sin datos personales.
+- Sin firma (no hay datos del lead): solo se aceptan peticiones de la propia web (`Origin` o, si
+  no viene, `Referer`), la lista cerrada `PageView` y `ViewContent` y un envío por `event_id`. Los
+  bots evidentes (buscadores, vistas previas, monitores, navegadores sin interfaz, Lighthouse y
+  clientes HTTP) reciben 204 y no se envía nada.
+- Sin `META_CAPI_TOKEN` no hace nada y responde 204 (en el QA, `CAPI_MOCK_FILE` guarda el evento).
+
 Para retirar el consentimiento: **Configurar cookies** en el pie → desactivar Marketing → Guardar.
 Se borran `_fbp` y `_fbc` y dejan de enviarse eventos.
 
@@ -181,7 +204,8 @@ de URL indicados en la guía del Apps Script.
 1. Rellena el formulario desde el móvil con un teléfono real.
 2. Debe aparecer la fila en la pestaña **Leads** y llegar el email «Nuevo lead: {nombre} · {zona}».
 3. En Events Manager debe verse el evento `Lead`.
-4. Si algo falla: Vercel → **Logs**, filtrando por `/api/lead` o `/api/lead-capi`. Los logs no
+4. Si algo falla: Vercel → **Logs**, filtrando por `/api/lead`, `/api/lead-capi` o
+   `/api/event-capi`. Los logs no
    contienen datos personales; muestran `Apps Script no confirmó el guardado` si el secreto no
    coincide, `MODO MOCK EN PRODUCCIÓN` si faltan las variables, o `[capi] Meta respondió …` si Meta
    rechaza el evento.
@@ -198,13 +222,14 @@ src/
   pages/                 index, gracias (noindex; solo para el envío sin JS), aviso-legal,
                          privacidad y cookies (noindex, follow; fuera del sitemap), 404,
                          og.jpg (imagen OG generada en el build), robots.txt, api/lead.ts,
-                         api/lead-capi.ts
+                         api/lead-capi.ts, api/event-capi.ts
   components/            Header, Hero, ZonesSection, StatsTicker, VslSection, WhySection, HowItWorks,
                          Testimonials, AboutGerard, ValoracionSection, LeadForm, ZoneIcon, Faq,
                          ClosingBand, Footer, StickyCta, CookieBanner,
                          CtaButton, SectionCta, SplitWords, Wordmark, TitularData
   scripts/               boot, reveal, motion, marquee, dialogs, faq, consent, cookie-banner,
-                         pixel, tracking, insights, utm, form, vsl, sticky, home
+                         pixel, meta-events (event_id y fbc compartidos, beacon), tracking,
+                         insights, utm, form, vsl, sticky, home
   lib/                   lead.ts (validación compartida), images.ts (AVIF/WebP), hero.ts,
                          ad-script.ts (script en línea del hero según el anuncio),
                          capi.ts (API de conversiones y firma), http.ts (utilidades de /api)
@@ -221,6 +246,7 @@ apps-script/             Code.gs e instrucciones de instalación
 tests/qa.spec.ts         Suite de QA (Playwright + axe-core)
 tests/leads.spec.ts      Pruebas de la optimización para leads (CAPI, fugas, WhatsApp, variantes,
                          contrato con el Apps Script); helpers comunes en tests/helpers.ts
+tests/visits.spec.ts     Visitas por la API de conversiones (/api/event-capi)
 scripts/                 qa.mjs, qa-server.mjs, preview.mjs, lighthouse.mjs, inp.mjs,
                          anim-size.mjs, sheets-e2e.mjs, pixel-check.mjs, mobile-browsers.mjs,
                          csp-hash.mjs
@@ -277,8 +303,9 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
 - **Scripts no críticos**: todos los scripts son módulos (diferidos). La analítica de Vercel se
   carga tras el evento `load`, en un momento libre del navegador. El Pixel de Meta se carga en
   cuanto hay consentimiento de marketing (al instante en visitas que ya lo dieron).
-- **Eventos de Meta**: `PageView` al cargar el Pixel (en el mismo momento de aceptar), un solo
-  `ViewContent` (paso 1 del formulario), los personalizados `FormStart` (primer toque, una vez por
+- **Eventos de Meta**: `PageView` al cargar el Pixel (en el mismo momento de aceptar, con el
+  `event_id` del `PageView` que ya recibió el servidor), un solo `ViewContent` (paso 1 del
+  formulario, con el mismo `event_id` que el de servidor), los personalizados `FormStart` (primer toque, una vez por
   sesión), `FormStep` (`step`, una vez por paso y sesión), `FormError` (`step`, `field`) y
   `VideoPlay`, `Contact` (`gracias-auto` o `gracias-boton`) y `Lead` solo cuando `/api/lead`
   responde OK: una vez por `event_id` (`sessionStorage` `rw_lead_<event_id>`), con el mismo
@@ -356,8 +383,8 @@ cambien de forma relevante.
 
 ## QA
 
-`npm run qa` compila, levanta el servidor de QA y ejecuta `tests/qa.spec.ts` y
-`tests/leads.spec.ts`: 12 viewports, capturas
+`npm run qa` compila, levanta el servidor de QA y ejecuta `tests/qa.spec.ts`, `tests/leads.spec.ts`
+y `tests/visits.spec.ts`: 12 viewports, capturas
 (también del primer render del hero), scroll horizontal, consola y CSP, enlaces, imágenes, áreas táctiles, encabezados,
 axe-core, contraste AA del texto sobre fotos, llamadas a la acción, recuento de palabras, altura de
 la home, hero sin animación de entrada, marquees, reveals y parallax, estados hover, consentimiento y Pixel, vídeo,
@@ -366,7 +393,10 @@ presupuesto de JavaScript. `tests/leads.spec.ts` prueba el contrato con el Apps 
 tipos exactos del cuerpo), las fugas (390 con Instagram de iPhone y 1440, con y sin JS),
 `/api/lead-capi` (firma, origen, repetidos, token falso y Meta caído), el envío sin JS, el `Lead`
 una vez con advanced matching, el embudo sin repeticiones, la gracias con WhatsApp, el error con
-los datos en WhatsApp y las variantes del hero. Las capturas quedan en `qa/screenshots/` (las de
+los datos en WhatsApp y las variantes del hero. `tests/visits.spec.ts` prueba `/api/event-capi`
+(lista cerrada, origen, bots, repetidos; con el simulador de Meta, con y sin token), el `PageView`
+y el `ViewContent` desde el navegador, el `fbc` guardado al aterrizar y que al aceptar las cookies
+no hay doble `PageView`. Las capturas quedan en `qa/screenshots/` (las de
 la optimización para leads, en `qa/screenshots/optimizacion-leads/`).
 
 `npm run qa:lighthouse` guarda los informes en `qa/lighthouse/` y `node scripts/inp.mjs` mide la
@@ -377,13 +407,14 @@ capturas en `qa/screenshots/anuncios/`) en Safari de iOS y en el
 navegador integrado de Instagram (necesita WebKit: `npx playwright install webkit` y
 `npx playwright install-deps webkit`; sin él solo prueba Instagram en Android).
 
-Última medición (28 de octubre de 2026, 5 pasadas): Lighthouse 99 en móvil y 100 en escritorio
-(100 en accesibilidad, buenas prácticas y SEO), LCP 1,9 s en móvil con 4G lenta simulada, CLS 0 y
-TBT entre 10 y 40 ms según la pasada (el mismo rango que la versión anterior medida en la misma
-máquina). Latencia de interacción con la CPU 4 veces más lenta (`node scripts/inp.mjs`): la peor,
-152 ms (tocar una zona del formulario). Los informes anteriores al banner compacto están en
-`qa/lighthouse/antes/` y las capturas del banner antes y después en
-`qa/screenshots/banner-antes-despues/`.
+Última medición (28 de octubre de 2026, 5 pasadas, con las visitas por la API de conversiones):
+Lighthouse 99 en móvil y 100 en escritorio (100 en accesibilidad, buenas prácticas y SEO), LCP
+1,9 s en móvil con 4G lenta simulada, CLS 0 y TBT entre 20 y 50 ms según la pasada (el mismo rango
+que la versión anterior medida en la misma máquina). Latencia de interacción con la CPU 4 veces más
+lenta (`node scripts/inp.mjs`): la peor, tocar una zona del formulario, entre 200 y 270 ms en esta
+máquina, igual que la versión anterior medida a la vez (en una máquina más rápida, 152 ms). Los
+informes anteriores al banner compacto están en `qa/lighthouse/antes/` y las capturas del banner
+antes y después en `qa/screenshots/banner-antes-despues/`.
 
 ## Contacto del titular
 
