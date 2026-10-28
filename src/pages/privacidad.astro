@@ -1,7 +1,8 @@
 ---
 /**
  * Política de privacidad. Recoge la API de conversiones de Meta para todos los leads (teléfono y
- * nombre cifrados, identificadores técnicos, nunca datos de salud) y el contacto por WhatsApp tras
+ * nombre cifrados, identificadores técnicos, nunca datos de salud), para las visitas (vista de la
+ * página y llegada al formulario, sin datos personales) y el contacto por WhatsApp tras
  * enviar el formulario. La base jurídica de la medición sin consentimiento de cookies está marcada
  * con "TODO (legal): revisar Aleks".
  */
@@ -46,9 +47,10 @@ const L = CONFIG.legal;
     consentimiento.
   </p>
   <p>
-    Al enviar el formulario también tratamos, para la medición de anuncios del punto 3, tu dirección
-    IP, los datos de tu navegador (user agent) y los identificadores técnicos de Meta cuando los hay
-    (el del clic en el anuncio y, si aceptaste las cookies de marketing, el del navegador).
+    Cuando visitas la página y al enviar el formulario también tratamos, para la medición de
+    anuncios del punto 3, tu dirección IP, los datos de tu navegador (user agent) y los
+    identificadores técnicos de Meta cuando los hay (el del clic en el anuncio y, si aceptaste las
+    cookies de marketing, el del navegador).
   </p>
 
   <h2>3. Para qué los usamos</h2>
@@ -59,13 +61,13 @@ const L = CONFIG.legal;
     </li>
     <li>Prestarte el servicio que contrates, si decides empezar un programa.</li>
     <li>
-      Medir la eficacia de nuestros anuncios en Meta. Cuando envías el formulario, comunicamos a
-      Meta desde nuestro servidor que se ha hecho una solicitud (API de conversiones), con tu
-      teléfono y tu nombre cifrados mediante hash (SHA-256), el país del prefijo, tu dirección IP,
-      tu navegador y los identificadores técnicos indicados en el punto 2. Esto ocurre aceptes o no
-      las cookies; si aceptas las cookies de marketing, además se usa Meta Pixel en tu navegador.
-      Nunca enviamos a Meta tus datos de salud (ni la zona ni la descripción), ni tu nombre o tu
-      teléfono en claro.
+      Medir la eficacia de nuestros anuncios en Meta. Desde nuestro servidor (API de conversiones)
+      comunicamos a Meta que se ha visto la página y que se ha llegado al formulario, solo con tu
+      dirección IP, tu navegador y los identificadores técnicos indicados en el punto 2, y, cuando
+      envías el formulario, que se ha hecho una solicitud, además con tu teléfono y tu nombre
+      cifrados mediante hash (SHA-256) y el país del prefijo. Esto ocurre aceptes o no las cookies;
+      si aceptas las cookies de marketing, además se usa Meta Pixel en tu navegador. Nunca enviamos
+      a Meta tus datos de salud (ni la zona ni la descripción), ni tu nombre o tu teléfono en claro.
     </li>
     <li>
       Al enviar el formulario, abrirte WhatsApp con un mensaje ya escrito (tu nombre, la zona y lo
@@ -81,11 +83,11 @@ const L = CONFIG.legal;
       <strong>Consentimiento</strong> (art. 6.1.a y 9.2.a del RGPD) para tratar tus datos de salud
       al valorar tu caso y, por separado, para las cookies de marketing de Meta (Meta Pixel).
     </li>
-    {/* TODO (legal): revisar Aleks. Base jurídica de la API de conversiones sin consentimiento de cookies. */}
+    {/* TODO (legal): revisar Aleks. Base jurídica de la API de conversiones sin consentimiento de cookies (solicitudes y visitas). */}
     <li>
       <strong>Interés legítimo</strong> (art. 6.1.f del RGPD) en medir la eficacia de nuestros
-      anuncios: la comunicación a Meta de cada solicitud mediante la API de conversiones, con los
-      datos cifrados y sin datos de salud. Puedes oponerte escribiéndonos.
+      anuncios: la comunicación a Meta de las visitas y de cada solicitud mediante la API de
+      conversiones, con los datos cifrados y sin datos de salud. Puedes oponerte escribiéndonos.
     </li>
     <li>
       <strong>Medidas precontractuales</strong> aplicadas a petición tuya (art. 6.1.b del RGPD): la
@@ -114,11 +116,11 @@ const L = CONFIG.legal;
       Web Analytics y Speed Insights).
     </li>
     <li>
-      <strong>Meta Platforms Ireland Ltd.</strong>: medición de los anuncios. Por cada solicitud, la
-      API de conversiones recibe el teléfono y el nombre cifrados mediante hash, el país, la IP, el
-      navegador y los identificadores técnicos de Meta; nunca datos de salud. Meta Pixel, solo si
-      aceptas las cookies de marketing. Si nos escribes por WhatsApp, la conversación se realiza en
-      esa aplicación, también de Meta, con sus propias condiciones.
+      <strong>Meta Platforms Ireland Ltd.</strong>: medición de los anuncios. Por cada visita, la
+      API de conversiones recibe la IP, el navegador y los identificadores técnicos de Meta; por
+      cada solicitud, además, el teléfono y el nombre cifrados mediante hash y el país; nunca datos
+      de salud. Meta Pixel, solo si aceptas las cookies de marketing. Si nos escribes por WhatsApp,
+      la conversación se realiza en esa aplicación, también de Meta, con sus propias condiciones.
     </li>
   </ul>
   <p>Fuera de estos casos, solo comunicaremos datos cuando lo exija la ley.</p>
