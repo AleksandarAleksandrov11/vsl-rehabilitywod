@@ -1,10 +1,17 @@
 ---
+/**
+ * /gracias: solo para el envío sin JavaScript (con JS, la gracias sale en la tarjeta del
+ * formulario). Botón de WhatsApp en la misma pestaña (sin target="_blank") y footer sin CTA.
+ * Si no hay número de WhatsApp en src/config.ts, no hay botón.
+ */
 import Base from '../layouts/Base.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
-import { whatsappLink } from '../config';
+import { CONFIG, whatsappLink } from '../config';
 
-const waHref = whatsappLink('Hola Gerard, acabo de rellenar el formulario de valoración.');
+const waHref = CONFIG.whatsapp
+  ? whatsappLink('Hola Gerard, acabo de rellenar el formulario de valoración.')
+  : '';
 ---
 
 <Base
@@ -28,9 +35,11 @@ const waHref = whatsappLink('Hola Gerard, acabo de rellenar el formulario de val
         adelantarte, escríbeme tú.
       </p>
       <div class="thanks-actions">
-        <a class="btn btn-primary" href={waHref} target="_blank" rel="noopener" data-whatsapp>
-          Escribir por WhatsApp<span class="sr-only"> (se abre en una pestaña nueva)</span>
-        </a>
+        {waHref && (
+          <a class="btn btn-primary" href={waHref} data-wa="gracias-boton">
+            Escribir por WhatsApp
+          </a>
+        )}
         <a class="thanks-link" href="/#valoracion">
           Enviar otra solicitud
         </a>
@@ -40,7 +49,7 @@ const waHref = whatsappLink('Hola Gerard, acabo de rellenar el formulario de val
       </div>
     </div>
   </main>
-  <Footer />
+  <Footer cta={false} />
 </Base>
 
 <style>
@@ -101,13 +110,6 @@ const waHref = whatsappLink('Hola Gerard, acabo de rellenar el formulario de val
 <script>
   import { trackEvent } from '../scripts/tracking';
 
-  // El nombre llega por sessionStorage, nunca por la URL.
-  const title = document.querySelector<HTMLElement>('[data-thanks-title]');
-  try {
-    const nombre = window.sessionStorage.getItem('rw_nombre')?.trim();
-    if (title && nombre) title.textContent = `Recibido, ${nombre.slice(0, 60)}.`;
-  } catch {
-    // sin sessionStorage: "Recibido."
-  }
+  // Solo si alguien llega aquí con JS activo (p. ej., el formulario se envió sin que cargara form.ts).
   trackEvent('lead_thankyou_view');
 </script>

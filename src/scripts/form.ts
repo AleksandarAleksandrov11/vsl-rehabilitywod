@@ -1,6 +1,18 @@
 /**
  * Formulario de valoración: una pregunta por pantalla.
- * Mejora progresiva sobre el <form> nativo (que sin JS envía a /api/lead).
+ * Mejora progresiva sobre el <form> nativo (que sin JS envía a /api/lead y lleva a /gracias).
+ *
+ * Al enviar con éxito:
+ * - Lead del Pixel (una vez por event_id, con advanced matching) y Lead de la API de conversiones
+ *   por /api/lead-capi (sendBeacon, sin esperar respuesta), los dos con el mismo event_id.
+ * - Gracias dentro de la tarjeta, con el foco en el título. En móvil, a los 1,5 s se abre WhatsApp
+ *   con el mensaje ya escrito (window.location, nunca window.open) y queda el botón
+ *   "Abrir WhatsApp" por si no se abre; en escritorio, solo el botón.
+ * Si el envío falla: se conserva todo lo escrito y el enlace de WhatsApp lleva los datos.
+ *
+ * Eventos de Meta (solo con consentimiento): FormStart una vez por sesión al tocar el formulario o
+ * una tarjeta de "¿Qué te duele?", ViewContent (Formulario) y FormStep {step} una vez por paso y
+ * sesión, FormError {step, field}; en Vercel, form_step {step} y form_error {step, field}.
  */
 import {
   LIMITS,
@@ -13,13 +25,18 @@ import {
 } from '../lib/lead';
 import { getAttribution } from './utm';
 import { hasMarketingConsent } from './consent';
-import { isPixelActive, track as pixelTrack } from './pixel';
+import { isPixelActive, track as pixelTrack, trackLead, type FormField } from './pixel';
 import { trackEvent } from './tracking';
 import { adVariantByKey } from '../data/ad-variants';
 
-const NAME_KEY = 'rw_nombre';
 const AUTO_ADVANCE_MS = 250;
 const LEAVE_MS = 280;
+/** Apertura automática de WhatsApp en móvil tras el envío (y al menos 800 ms después del Lead). */
+const WA_AUTO_MS = 1500;
+const WA_AFTER_LEAD_MS = 800;
+const WA_MAX_CHARS = 600;
+const SUBMIT_LABEL = 'Enviar y valorar mi caso';
+const SUBMIT_LABEL_WA = 'Enviar y abrir WhatsApp';
 
 type ErrorKey = 'zona' | 'detalle' | 'nombre' | 'telefono' | 'consentimiento';
 
@@ -48,7 +65,49 @@ function detectDevice(): LeadPayload['device'] {
 }
 
 const reduceMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+function readCookie(name: string): string {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  try {
+    return match?.[1] ? decodeURIComponent(match[1]) : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Evento de Meta una sola vez por sesión. Solo cuenta como enviado si el Pixel está activo: si la
+ * persona acepta las cookies más tarde, el evento sale en la siguiente ocasión.
+ */
+function pixelOnce(key: string, send: () => void): void {
+  if (!isPixelActive()) return;
+  try {
+    if (window.sessionStorage.getItem(key)) return;
+    window.sessionStorage.setItem(key, '1');
+  } catch {
+    // sin sessionStorage: se envía igualmente
+  }
+  send();
+}
+
+const clip = (text: string) =>
+  text.length > WA_MAX_CHARS ? `${text.slice(0, WA_MAX_CHARS - 1).trimEnd()}…` : text;
+
+/** Mensaje de WhatsApp tras enviar el formulario. */
+const thanksMessage = (p: LeadPayload) =>
+  clip(
+    `Hola Gerard, soy ${p.nombre}. Acabo de pedir la valoración en la web. Zona: ${p.zona}.${p.detalle ? ` ${p.detalle}` : ''}`,
+  );
+
+/** Mensaje de WhatsApp si el envío falla: lleva todo lo que se ha escrito. */
+const errorMessage = (p: LeadPayload) =>
+  clip(
+    `Hola Gerard, soy ${p.nombre}. El formulario de la web no se ha enviado. Mi teléfono: ${p.telefono}. Zona: ${p.zona}.${p.detalle ? ` ${p.detalle}` : ''}`,
+  );
+
+/** Prefijo internacional: "+" (o "00") y de 1 a 4 cifras. */
+const validPrefix = (value: string) => /^(\+|00)?\d{1,4}$/.test(value.replace(/[\s\-()]/g, ''));
+const isIntl = (value: string) => /^\s*(\+|00)/.test(value);
 
 function init(root: HTMLElement, form: HTMLFormElement): void {
   const steps = [...form.querySelectorAll<HTMLFieldSetElement>('fieldset[data-step]')];
@@ -75,12 +134,24 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   const prefijo = form.querySelector<HTMLInputElement>('#prefijo');
   const consent = form.querySelector<HTMLInputElement>('#consentimiento_salud');
   const honeypot = form.querySelector<HTMLInputElement>('#website');
+  const formErrorWa = form.querySelector<HTMLAnchorElement>('[data-form-error-wa]');
+  const done = root.querySelector<HTMLElement>('[data-form-done]');
+  const doneTitle = root.querySelector<HTMLElement>('[data-done-title]');
+  const doneText = root.querySelector<HTMLElement>('[data-done-text]');
+  const doneWa = root.querySelector<HTMLAnchorElement>('[data-done-wa]');
+  const waNumber = (root.dataset.wa ?? '').replace(/\D/g, '');
+  const waLink = (text: string) => `https://wa.me/${waNumber}?text=${encodeURIComponent(text)}`;
+  const mobile = detectDevice() === 'mobile';
+  // En móvil, tras enviar se abre WhatsApp: el botón lo dice.
+  const submitText = mobile && waNumber ? SUBMIT_LABEL_WA : SUBMIT_LABEL;
 
   let startedAt = Date.now();
   let eventId = uuidv4();
   const completed = new Set<number>();
   let current = 1;
   let submitting = false;
+  let sent = false;
+  const errorsSent = new Set<string>();
   let arrowNav = false;
   let advanceTimer = 0;
   let leaveTimer = 0;
@@ -104,6 +175,8 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
       text.textContent = message ?? '';
       box.hidden = !message;
     }
+    // Lectores de pantalla: el error también se anuncia (además del aria-describedby del campo).
+    if (message && live) live.textContent = message;
     const field = fieldFor[key];
     if (field) {
       if (message) field.setAttribute('aria-invalid', 'true');
@@ -146,11 +219,34 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     const phoneOk = normalizePhone(telefono?.value ?? '', prefijo?.value ?? '+34') !== null;
     const consentOk = consent?.checked === true;
     if (show) {
-      setError('telefono', phoneOk ? null : MESSAGES.telefono);
+      const prefixBad = !isIntl(telefono?.value ?? '') && !validPrefix(prefijo?.value ?? '');
+      setError('telefono', phoneOk ? null : prefixBad ? MESSAGES.prefijo : MESSAGES.telefono);
       setError('consentimiento', consentOk ? null : MESSAGES.consentimiento);
     }
     return phoneOk && consentOk;
   }
+
+  /** Campo que falla en un paso (para FormError y form_error). */
+  function invalidField(step: number): FormField {
+    if (step === 1) return 'zona';
+    if (step === 2) return 'detalle';
+    if (step === 3) return 'nombre';
+    return normalizePhone(telefono?.value ?? '', prefijo?.value ?? '+34') === null
+      ? 'telefono'
+      : 'consentimiento';
+  }
+
+  function reportError(step: number, field: FormField, reason?: string): void {
+    trackEvent('form_error', reason ? { step, field, reason } : { step, field });
+    // A Meta, cada combinación una vez por página (sin ráfagas al pulsar Enter varias veces).
+    const key = `${step}:${field}`;
+    if (errorsSent.has(key) || !isPixelActive()) return;
+    errorsSent.add(key);
+    pixelTrack('FormError', { step, field });
+  }
+
+  /** FormStart: una vez por sesión, al primer toque del formulario o de una tarjeta de zona. */
+  const formStart = () => pixelOnce('rw_px_formstart', () => pixelTrack('FormStart'));
 
   function firstInvalidField(step: number): HTMLElement | null {
     if (step === 1)
@@ -253,18 +349,21 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     if (completed.has(step)) return;
     completed.add(step);
     trackEvent('form_step', { step });
+    formStart();
+    // Señal intermedia para Meta al completar el paso 1, y cada paso una vez por sesión.
     if (step === 1) {
-      // Señal intermedia para Meta al pulsar "Continuar" en el paso 1.
-      pixelTrack('ViewContent', { content_name: 'Formulario' });
-      pixelTrack('FormStart');
+      pixelOnce('rw_px_viewcontent', () =>
+        pixelTrack('ViewContent', { content_name: 'Formulario' }),
+      );
     }
+    pixelOnce(`rw_px_step${step}`, () => pixelTrack('FormStep', { step }));
   }
 
   function next(): void {
     window.clearTimeout(advanceTimer);
     if (!validateStep(current, true)) {
       firstInvalidField(current)?.focus();
-      trackEvent('form_error', { reason: `validation_step_${current}` });
+      reportError(current, invalidField(current));
       return;
     }
     if (current < total) {
@@ -304,27 +403,33 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   syncOtro();
 
   showStep(1, { focus: false, announce: false });
+  if (submitLabel) submitLabel.textContent = submitText;
 
-  // Al volver atrás desde /gracias el navegador restaura la página con el botón bloqueado:
-  // se deja el formulario limpio y listo para enviar otra solicitud (con otro identificador).
+  // Al volver atrás (por ejemplo, desde WhatsApp) el navegador puede restaurar la página tal cual.
+  // Con la solicitud ya enviada se queda la gracias (así no se envía dos veces); si no, el
+  // formulario vuelve limpio y listo, con otro identificador.
   window.addEventListener('pageshow', (event) => {
-    if (!event.persisted) return;
+    if (!event.persisted || sent) return;
     form.reset();
     completed.clear();
     startedAt = Date.now();
     eventId = uuidv4();
     setSubmitting(false);
-    if (submitLabel) submitLabel.textContent = 'Enviar y valorar mi caso';
+    if (submitLabel) submitLabel.textContent = submitText;
     if (formError) formError.hidden = true;
     syncOtro();
     preselect();
     showStep(1, { focus: false, announce: false });
   });
 
+  // Primer toque del formulario: FormStart (una vez por sesión).
+  root.addEventListener('pointerdown', formStart, { passive: true });
+  root.addEventListener('focusin', formStart);
+
   // Vuelta desde el fallback sin JS con error.
   const params = new URLSearchParams(window.location.search);
   if (params.get('error') === '1' && notice) {
-    notice.textContent = MESSAGES.envio;
+    notice.textContent = MESSAGES.envioSinJs;
     notice.hidden = false;
     params.delete('error');
     const qs = params.toString();
@@ -390,12 +495,16 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     steps[1]?.querySelector<HTMLElement>('.step-title')?.focus({ preventScroll: true });
   }
 
-  // Sección "¿Qué te duele?": baja al formulario con la zona marcada y ya en el paso 2.
+  // Sección "¿Qué te duele?": baja al formulario con la zona marcada y ya en el paso 2. El enlace
+  // "¿Otra duda?" hace lo mismo con "Otro" (sin JS, solo baja al formulario).
   const zoneCards = document.querySelector<HTMLElement>('[data-zonas]');
-  zoneCards?.addEventListener('click', (event) => {
+  document.getElementById('zonas')?.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : null;
-    const zona = target?.closest<HTMLElement>('[data-zona]')?.dataset.zona;
-    if (zona) selectZona(zona, true);
+    const el = target?.closest<HTMLElement>('[data-zona]');
+    if (!el?.dataset.zona) return;
+    event.preventDefault();
+    formStart();
+    selectZona(el.dataset.zona, true);
   });
 
   // Visitas del anuncio del test de hombro: "Hombro" ya marcado en el paso 1 (sin avanzar).
@@ -440,6 +549,17 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   telefono?.addEventListener('input', () => {
     if (normalizePhone(telefono.value, prefijo?.value ?? '+34')) setError('telefono', null);
   });
+  // Número pegado o autocompletado con +34 (o 0034): el prefijo va a su casilla.
+  const splitSpanish = () => {
+    if (!telefono || !prefijo) return;
+    const m = telefono.value.trim().match(/^(?:\+|00)\s*34[\s.-]*([6-9][\d\s.-]{8,})$/);
+    if (!m?.[1] || !normalizePhone(m[1], '+34')) return;
+    prefijo.value = '+34';
+    telefono.value = m[1].trim();
+    setError('telefono', null);
+  };
+  telefono?.addEventListener('change', splitSpanish);
+  telefono?.addEventListener('paste', () => window.setTimeout(splitSpanish, 0));
   prefijo?.addEventListener('input', () => {
     if (normalizePhone(telefono?.value ?? '', prefijo.value)) setError('telefono', null);
   });
@@ -484,16 +604,97 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     };
   }
 
+  /** Lead para la API de conversiones (/api/lead-capi), sin esperar respuesta. */
+  function sendCapi(payload: LeadPayload, sig: string | undefined): void {
+    if (!sig) return; // sin firma (servidor sin secreto) no hay Lead de servidor
+    const attribution = getAttribution();
+    const body = JSON.stringify({
+      event_id: payload.event_id,
+      nombre: payload.nombre,
+      telefono: payload.telefono,
+      fbc: readCookie('_fbc'),
+      fbp: readCookie('_fbp'),
+      fbclid: attribution.fbclid,
+      fbclid_ts: attribution.fbclid_ts || null,
+      event_source_url: payload.landing_url,
+      consent_marketing: payload.consentimiento_marketing,
+      sig,
+    });
+    // text/plain: tipo "simple", que sendBeacon envía en todos los navegadores.
+    const type = 'text/plain;charset=UTF-8';
+    try {
+      if (navigator.sendBeacon?.('/api/lead-capi', new Blob([body], { type }))) return;
+    } catch {
+      // sendBeacon no disponible o rechazado: fetch con keepalive
+    }
+    void fetch('/api/lead-capi', {
+      method: 'POST',
+      headers: { 'content-type': type },
+      body,
+      keepalive: true,
+      credentials: 'same-origin',
+    }).catch(() => undefined);
+  }
+
+  /** Gracias dentro de la tarjeta; en móvil abre WhatsApp a los 1,5 s. */
+  function showThanks(payload: LeadPayload, leadAt: number): void {
+    window.clearTimeout(heightTimer);
+    root.classList.remove('is-resizing');
+    root.style.height = '';
+    form.hidden = true;
+    if (progress) progress.hidden = true;
+    notice?.setAttribute('hidden', '');
+    const auto = mobile && Boolean(waNumber);
+    if (doneTitle) doneTitle.textContent = `Gracias, ${payload.nombre.slice(0, LIMITS.nombreMax)}.`;
+    if (doneText) {
+      doneText.textContent = auto
+        ? 'Te abro WhatsApp para que me escribas ya.'
+        : 'Te escribo por WhatsApp para agendar la videollamada de valoración. Si prefieres adelantarte, escríbeme tú.';
+    }
+    if (doneWa && waNumber) {
+      doneWa.href = waLink(thanksMessage(payload));
+      doneWa.hidden = false;
+    }
+    if (done) done.hidden = false;
+    root.classList.add('is-done');
+    doneTitle?.focus({ preventScroll: true });
+    const rect = root.getBoundingClientRect();
+    if (rect.top < 80 || rect.bottom > window.innerHeight) {
+      root.scrollIntoView({ block: 'center', behavior: reduceMotion() ? 'auto' : 'smooth' });
+    }
+    trackEvent('lead_thankyou_view');
+    if (!auto || !doneWa) return;
+
+    // Al menos 800 ms después del Lead del Pixel, para que salga antes de cambiar de app.
+    const delay = Math.max(WA_AUTO_MS, leadAt ? WA_AFTER_LEAD_MS - (Date.now() - leadAt) : 0);
+    const contact = window.setTimeout(() => {
+      pixelTrack('Contact', { content_category: 'gracias-auto' });
+      trackEvent('whatsapp_auto');
+    }, delay - 300);
+    const open = window.setTimeout(() => {
+      window.location.href = doneWa.href;
+    }, delay);
+    // Si la persona pulsa el botón antes, no se abre dos veces (ni se cuenta como automático).
+    doneWa.addEventListener(
+      'click',
+      () => {
+        window.clearTimeout(contact);
+        window.clearTimeout(open);
+      },
+      { once: true },
+    );
+  }
+
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (submitting) return;
+    if (submitting || sent) return;
     trackEvent('form_submit');
 
     for (let step = 1; step <= total; step += 1) {
       if (!validateStep(step, true)) {
         if (step !== current) showStep(step);
         firstInvalidField(step)?.focus();
-        trackEvent('form_error', { reason: `validation_step_${step}` });
+        reportError(step, invalidField(step));
         return;
       }
     }
@@ -503,6 +704,8 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     if (formError) formError.hidden = true;
     setSubmitting(true);
 
+    type LeadResponse = { ok?: boolean; error?: string; sig?: string };
+    let data: LeadResponse | null;
     try {
       const controller = new AbortController();
       const timer = window.setTimeout(() => controller.abort(), 20000);
@@ -514,26 +717,19 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
         credentials: 'same-origin',
       });
       window.clearTimeout(timer);
-      const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      data = (await res.json().catch(() => null)) as LeadResponse | null;
       if (!res.ok || !data?.ok) throw new Error(data?.error ?? `http_${res.status}`);
-
-      try {
-        window.sessionStorage.setItem(NAME_KEY, payload.nombre);
-      } catch {
-        // sin sessionStorage: /gracias mostrará "Recibido."
-      }
-      trackEvent('lead');
-      // Lead con el mismo eventID que el lead del servidor (deduplicación con la CAPI).
-      pixelTrack('Lead', {}, { eventID: payload.event_id });
-      // Margen para que salgan las peticiones de analítica antes de cambiar de página.
-      await wait(isPixelActive() ? 350 : 0);
-      window.location.assign('/gracias');
     } catch (error) {
       setSubmitting(false);
       if (submitLabel) submitLabel.textContent = 'Reintentar el envío';
       if (formError) {
         const text = formError.querySelector<HTMLElement>('[data-form-error-text]');
         if (text) text.textContent = MESSAGES.envio;
+        // El enlace de WhatsApp lleva lo escrito, para mandarlo con un toque.
+        if (formErrorWa && waNumber) {
+          formErrorWa.href = waLink(errorMessage(payload));
+          formErrorWa.hidden = false;
+        }
         formError.hidden = false;
       }
       const reason =
@@ -542,8 +738,19 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
             ? 'timeout'
             : error.message
           : 'unknown';
-      trackEvent('form_error', { reason: reason.slice(0, 48) });
+      reportError(total, 'envio', reason.slice(0, 48));
+      return;
     }
+
+    sent = true;
+    trackEvent('lead');
+    // Lead del Pixel (una vez por event_id) y Lead de servidor, con el mismo event_id.
+    const leadSent = await trackLead(payload.event_id, {
+      telefono: payload.telefono,
+      nombre: payload.nombre,
+    });
+    sendCapi(payload, data?.sig);
+    showThanks(payload, leadSent ? Date.now() : 0);
   });
 }
 

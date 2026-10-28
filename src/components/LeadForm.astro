@@ -4,13 +4,17 @@
  * Sin JS se ven todos los campos a la vez y el POST va a /api/lead (que redirige a /gracias).
  * Con JS (src/scripts/form.ts) pasa a una pregunta por pantalla. Solo cambia lo visual:
  * ids, nombres y data-atributos son los mismos que usa form.ts.
+ * Tras enviar, form.ts muestra la gracias en esta misma tarjeta ([data-form-done]) con el botón
+ * "Abrir WhatsApp". Los enlaces a WhatsApp (gracias y error de envío) llevan en el HTML un href
+ * interno de relleno (#valoracion, ocultos): form.ts pone el de WhatsApp con el mensaje ya escrito
+ * cuando se muestran (data-wa = número de WhatsApp). Así no hay salidas en el HTML de la home.
  */
 import CircleAlert from '@lucide/astro/icons/circle-alert';
 import ArrowLeft from '@lucide/astro/icons/arrow-left';
 import ArrowRight from '@lucide/astro/icons/arrow-right';
 import ZoneIcon from './ZoneIcon.astro';
 import { ZONAS, LIMITS } from '../lib/lead';
-import { whatsappLink } from '../config';
+import { CONFIG } from '../config';
 
 // Orden visual de arriba abajo del cuerpo (los valores no cambian). Todas las opciones miden
 // lo mismo: 2 columnas x 4 filas en móvil y 4 x 2 desde 768 px.
@@ -27,7 +31,7 @@ const ORDER = [
 const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
 ---
 
-<div class="form-card" data-form-root data-theme="dark">
+<div class="form-card" data-form-root data-theme="dark" data-wa={CONFIG.whatsapp}>
   <div class="progress" data-progress hidden>
     <p class="progress-text eyebrow" data-progress-text aria-hidden="true">
       Paso 1 de 4
@@ -184,6 +188,9 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
           autocomplete="tel-country-code"
           value="+34"
           maxlength="5"
+          pattern="(\+|00)?[0-9]{1,4}"
+          title="Prefijo internacional, por ejemplo +34"
+          aria-describedby="err-telefono"
         />
         <input
           id="telefono"
@@ -215,11 +222,11 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
           aria-describedby="err-consentimiento"
         />
         <label for="consentimiento_salud" class="consent-label">
-          He leído la{' '}
+          Acepto la{' '}
           <a class="link" href="/privacidad" target="_blank" rel="noopener">
             política de privacidad<span class="sr-only"> (se abre en una pestaña nueva)</span>
           </a>{' '}
-          y consiento el tratamiento de los datos de salud que he indicado para valorar mi caso.
+          y consiento el uso de mis datos de salud para valorar mi caso.
         </label>
       </div>
       <p class="field-error" id="err-consentimiento" data-error="consentimiento" hidden>
@@ -231,13 +238,13 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
         <p data-form-error-text></p>
         <a
           class="form-error-wa"
-          href={whatsappLink(
-            'Hola Gerard, quiero valorar mi caso. El formulario de la web no se ha enviado.',
-          )}
+          href="#valoracion"
+          data-form-error-wa
           target="_blank"
           rel="noopener"
+          hidden
         >
-          Escríbeme por WhatsApp
+          Enviar por WhatsApp<span class="sr-only"> (se abre en una pestaña nueva)</span>
         </a>
       </div>
     </fieldset>
@@ -262,14 +269,25 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
         <span data-submit-label>Enviar y valorar mi caso</span>
       </button>
     </div>
-    <p class="nojs-help" data-nojs-only>
-      ¿Algún problema con el formulario? Escríbeme a{' '}
-      <a class="link" href="mailto:info@rehabilitywod.com">
-        info@rehabilitywod.com
-      </a>
-      .
-    </p>
   </form>
+
+  <!-- Gracias (con JS, tras enviar): form.ts rellena el nombre, el texto y el enlace. -->
+  <div class="form-done" data-form-done role="status" hidden>
+    <p class="eyebrow">Solicitud recibida</p>
+    <h3 class="form-done-title" tabindex="-1" data-done-title>
+      Gracias.
+    </h3>
+    <p class="form-done-text" data-done-text></p>
+    <a
+      class="btn btn-primary form-done-wa"
+      href="#valoracion"
+      data-done-wa
+      data-wa="gracias-boton"
+      hidden
+    >
+      Abrir WhatsApp
+    </a>
+  </div>
 </div>
 
 <style>
@@ -752,6 +770,10 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     color: #ffffff;
   }
 
+  .form-error-wa[hidden] {
+    display: none;
+  }
+
   .form-error-wa {
     display: inline-flex;
     align-items: center;
@@ -813,6 +835,7 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     .step-submit {
       flex-basis: 100%;
       order: -1;
+      white-space: nowrap;
     }
 
     .form-nav:global(.is-final) .step-back {
@@ -820,7 +843,7 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     }
   }
 
-  /* Pantallas muy estrechas: "Enviar y valorar mi caso" en una sola línea. */
+  /* Pantallas muy estrechas: "Enviar y abrir WhatsApp" en una sola línea. */
   @media (width < 360px) {
     .step-submit {
       padding-inline: 14px;
@@ -843,13 +866,33 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     }
   }
 
-  .nojs-help {
-    margin-top: 16px;
-    font-size: 0.875rem;
-    color: var(--muted-on-dark);
+  .form-done-title {
+    margin-top: 10px;
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 8vw, 2.75rem);
+    font-weight: 800;
+    line-height: 0.95;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
   }
 
-  .form-card:global(.is-enhanced) [data-nojs-only] {
+  .form-done-title:focus {
+    outline: none;
+  }
+
+  .form-done-text {
+    margin-top: 14px;
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    color: rgba(245, 245, 242, 0.88);
+  }
+
+  .form-done-wa {
+    width: 100%;
+    margin-top: 24px;
+  }
+
+  .form-done-wa[hidden] {
     display: none;
   }
 

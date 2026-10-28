@@ -1,6 +1,8 @@
 /**
  * Eventos personalizados de Vercel Analytics (sin cookies).
  * Si el plan de Vercel no admite eventos personalizados o el script no carga, no rompe nada.
+ * Eventos: cta_click {location: CtaLocation}, vsl_play, form_step {step}, form_submit,
+ * form_error {step, field, reason}, lead, lead_thankyou_view, whatsapp_auto y whatsapp_button.
  */
 import { track as vercelTrack } from '@vercel/analytics';
 
@@ -25,8 +27,7 @@ export type CtaLocation =
   | 'about'
   | 'closing'
   | 'sticky'
-  | 'whatsapp_float'
-  | 'whatsapp_sticky';
+  | 'footer';
 
 export function trackEvent(name: string, data?: Record<string, Primitive>): void {
   try {

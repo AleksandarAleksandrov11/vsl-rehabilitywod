@@ -1,7 +1,9 @@
 /**
  * Meta Pixel cargado de forma programática y SOLO con consentimiento de marketing.
  * Sin <noscript>: la imagen de fallback dispara un PageView sin consentimiento.
- * Nunca se envían datos de salud (zona, detalle), ni nombre ni teléfono.
+ * Nunca se envían datos de salud (zona, detalle). Nombre y teléfono solo en el Lead, como advanced
+ * matching manual y ya cifrados en SHA-256 en el navegador (trackLead).
+ * Eventos y parámetros cerrados: ver AllowedEvent y SafeParams.
  */
 import { hasMarketingConsent } from './consent';
 import { getAttribution } from './utm';
@@ -64,11 +66,13 @@ function readCookie(name: string): string {
  * Se escribe en el dominio principal (como hace Meta) y solo con consentimiento de marketing.
  */
 function storeFbc(): void {
-  const fbclid = getAttribution().fbclid.trim();
-  if (!fbclid || !/^[\w-]{10,500}$/.test(fbclid)) return;
+  const attribution = getAttribution();
+  const fbclid = attribution.fbclid.trim();
+  if (!fbclid || !/^[\w-]{6,500}$/.test(fbclid)) return;
   const current = readCookie('_fbc');
   if (current.endsWith(`.${fbclid}`)) return;
-  const value = `fb.1.${Date.now()}.${fbclid}`;
+  // Momento en que se vio el fbclid por primera vez (si no consta, ahora).
+  const value = `fb.1.${attribution.fbclid_ts || Date.now()}.${fbclid}`;
   const parts = window.location.hostname.split('.');
   // Del dominio más corto al más largo: el navegador rechaza los sufijos públicos (.com, .app…).
   const domains = parts.length > 1 ? parts.map((_, i) => parts.slice(i).join('.')).reverse() : [];
@@ -124,10 +128,36 @@ export function revokePixel(): void {
 }
 
 type StandardEvent = 'PageView' | 'ViewContent' | 'Lead' | 'Contact';
-type CustomEvent = 'FormStart' | 'VideoPlay';
+type CustomEvent = 'FormStart' | 'FormStep' | 'FormError' | 'VideoPlay';
 type AllowedEvent = StandardEvent | CustomEvent;
-const CUSTOM_EVENTS: readonly AllowedEvent[] = ['FormStart', 'VideoPlay'];
-type SafeParams = { content_name?: 'Formulario' };
+const CUSTOM_EVENTS: readonly AllowedEvent[] = ['FormStart', 'FormStep', 'FormError', 'VideoPlay'];
+export type FormField = 'zona' | 'detalle' | 'nombre' | 'telefono' | 'consentimiento' | 'envio';
+const FIELDS: readonly FormField[] = [
+  'zona',
+  'detalle',
+  'nombre',
+  'telefono',
+  'consentimiento',
+  'envio',
+];
+type SafeParams = {
+  content_name?: 'Formulario';
+  content_category?: 'gracias-auto' | 'gracias-boton';
+  step?: number;
+  field?: FormField;
+};
+
+/** Solo pasan los valores previstos: nada de salud ni datos personales. */
+function sanitize(params: SafeParams): SafeParams {
+  const safe: SafeParams = {};
+  if (params.content_name === 'Formulario') safe.content_name = 'Formulario';
+  if (params.content_category === 'gracias-auto' || params.content_category === 'gracias-boton') {
+    safe.content_category = params.content_category;
+  }
+  if (params.step !== undefined && [1, 2, 3, 4].includes(params.step)) safe.step = params.step;
+  if (params.field && FIELDS.includes(params.field)) safe.field = params.field;
+  return safe;
+}
 
 /**
  * Wrapper de eventos. No hace nada sin consentimiento.
@@ -138,15 +168,54 @@ export function track(
   params: SafeParams = {},
   opts: { eventID?: string } = {},
 ): void {
-  if (revoked || !initialized || !hasMarketingConsent() || !window.fbq) return;
-  const safe: SafeParams =
-    params.content_name === 'Formulario' ? { content_name: 'Formulario' } : {};
+  if (!isPixelActive() || !window.fbq) return;
+  const safe = sanitize(params);
   const options = opts.eventID ? { eventID: opts.eventID } : undefined;
-  if (CUSTOM_EVENTS.includes(event)) {
-    window.fbq('trackCustom', event, {}, options);
-  } else {
-    window.fbq('track', event, safe, options);
-  }
+  window.fbq(CUSTOM_EVENTS.includes(event) ? 'trackCustom' : 'track', event, safe, options);
 }
 
 export const isPixelActive = (): boolean => initialized && !revoked && hasMarketingConsent();
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Normalización de Meta para nombres (la misma que en src/lib/capi.ts). */
+const normName = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{M}]/gu, '');
+
+/**
+ * Lead del Pixel, una sola vez por event_id (sessionStorage rw_lead_<event_id>), con el mismo
+ * event_id que la API de conversiones. Antes, advanced matching manual: fbq('init') con el teléfono
+ * (ph), el nombre (fn) y el país (country, si es +34), cifrados aquí en SHA-256.
+ * Devuelve true si el Lead ha salido.
+ */
+export async function trackLead(
+  eventId: string,
+  user: { telefono: string; nombre: string },
+): Promise<boolean> {
+  if (!isPixelActive() || !window.fbq) return false;
+  const key = `rw_lead_${eventId}`;
+  try {
+    if (window.sessionStorage.getItem(key)) return false;
+    window.sessionStorage.setItem(key, '1');
+  } catch {
+    // sin sessionStorage: el Lead sale igualmente (una vez por envío)
+  }
+  try {
+    const phone = user.telefono.replace(/\D/g, '');
+    const fn = normName(user.nombre.trim().split(/\s+/)[0] ?? '');
+    const data: Record<string, string> = { ph: await sha256Hex(phone) };
+    if (fn) data.fn = await sha256Hex(fn);
+    if (user.telefono.startsWith('+34')) data.country = await sha256Hex('es');
+    window.fbq('init', getPixelId(), data);
+  } catch {
+    // sin crypto.subtle (contexto no seguro): Lead sin advanced matching
+  }
+  track('Lead', {}, { eventID: eventId });
+  return true;
+}
