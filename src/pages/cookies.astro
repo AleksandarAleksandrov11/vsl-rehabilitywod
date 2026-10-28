@@ -1,4 +1,8 @@
 ---
+/**
+ * Política de cookies. El almacenamiento de sesión ya no guarda el nombre (la gracias sale en la
+ * propia tarjeta del formulario). La API de conversiones (servidor) se explica en privacidad.
+ */
 import Legal from '../layouts/Legal.astro';
 import TitularData from '../components/TitularData.astro';
 ---
@@ -82,14 +86,18 @@ import TitularData from '../components/TitularData.astro';
   <p>
     Son necesarias para que la web funcione y no requieren consentimiento. Solo guardamos tu
     elección sobre las cookies (<code>rw_consent</code>, en el almacenamiento local del navegador).
-    Además, la web guarda durante la sesión, sin cookies, el origen de tu visita y tu nombre para
-    mostrártelo en la página de confirmación; se borran al cerrar la pestaña.
+    Además, la web guarda durante la sesión, sin cookies, el origen de tu visita (parámetros del
+    anuncio y el momento del clic), el mensaje del anuncio del que vienes y marcas para no repetir
+    eventos de medición; se borran al cerrar la pestaña.
   </p>
 
   <h3>Marketing (Meta)</h3>
   <p>
     Solo se activan si pulsas «Aceptar» o las activas en «Configurar». Hasta entonces no se carga el
-    Pixel de Meta ni se hace ninguna petición a Meta. Nunca enviamos a Meta datos de salud.
+    Pixel de Meta ni tu navegador hace ninguna petición a Meta. Nunca enviamos a Meta datos de
+    salud. Al enviar el formulario, aparte de las cookies, nuestro servidor comunica la solicitud a
+    Meta con datos cifrados (API de conversiones), como se explica en la{' '}
+    <a href="/privacidad">política de privacidad</a>.
   </p>
 
   <h3>Vercel Web Analytics y Speed Insights</h3>
