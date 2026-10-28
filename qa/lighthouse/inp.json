@@ -3,27 +3,27 @@
   "steps": [
     {
       "label": "Rechazar cookies (banner)",
-      "maxMs": 64
+      "maxMs": 112
     },
     {
       "label": "CTA hero → #valoracion",
-      "maxMs": 48
+      "maxMs": 64
     },
     {
       "label": "Chip \"Rodilla\"",
-      "maxMs": 88
+      "maxMs": 152
     },
     {
       "label": "Saltar paso",
-      "maxMs": 144
+      "maxMs": 88
     },
     {
       "label": "Escribir nombre",
-      "maxMs": 48
+      "maxMs": 40
     },
     {
       "label": "Continuar",
-      "maxMs": 88
+      "maxMs": 80
     },
     {
       "label": "Abrir FAQ",
@@ -32,7 +32,11 @@
     {
       "label": "Hover/tap tarjeta",
       "maxMs": 72
+    },
+    {
+      "label": "Tarjeta \"Codo\" de \"¿Qué te duele?\" → paso 2",
+      "maxMs": 72
     }
   ],
-  "worstMs": 144
+  "worstMs": 152
 }
