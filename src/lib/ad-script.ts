@@ -1,24 +1,32 @@
 /**
  * Script en línea del <head> de la home (única excepción a "sin scripts en línea").
- * Se ejecuta antes de pintar el hero: si la visita viene de un anuncio conocido (utm_content en la
- * URL, o guardado en sessionStorage en esta misma sesión), marca <html data-ad="..."> y el CSS del
- * hero muestra su antetítulo y su subtítulo. Así no hay parpadeo y no hace falta renderizar en
- * el servidor. Con un utm_content desconocido se borra lo guardado y el hero queda como siempre.
+ * Se ejecuta antes de pintar el hero y marca <html data-ad="..."> con la variante del anuncio; el
+ * CSS del hero muestra su antetítulo y su subtítulo. Así no hay parpadeo y no hace falta
+ * renderizar en el servidor. Prioridad (ver src/data/ad-variants.ts):
+ *   utm_content reconocido > utm_campaign > sessionStorage (rw_ad) > hero de siempre.
+ * Con parámetros en la URL que no se reconocen, se borra lo guardado y el hero queda como siempre.
  *
  * La CSP de vercel.json lo permite por su hash sha256: si cambia este texto o AD_VARIANTS, hay que
  * actualizarlo con `node scripts/csp-hash.mjs --write` tras el build (un test lo comprueba).
  */
-import { AD_VARIANTS } from '../data/ad-variants';
+import { AD_VARIANTS, UTM_CONTENT_RE } from '../data/ad-variants';
 
 export function buildAdScript(): string {
-  const map = Object.fromEntries(
-    AD_VARIANTS.filter((v) => /^[a-z0-9]+$/.test(v.key)).map((v) => [v.utm, v.key]),
-  );
+  const valid = AD_VARIANTS.filter((v) => /^[a-z0-9]+$/.test(v.key));
+  const keys = valid.map((v) => v.key);
+  const byContent = valid.filter((v) => v.utm).map((v) => v.key);
+  const byCampaign = valid
+    .filter((v) => v.campaign?.length)
+    .map((v) => [v.campaign!.join('|'), v.key]);
   return (
-    `(function(){try{var m=${JSON.stringify(map)},s=sessionStorage,` +
-    `p=new URLSearchParams(location.search).get('utm_content'),k;` +
-    `if(p!==null){k=Object.prototype.hasOwnProperty.call(m,p)?m[p]:'';` +
-    `if(k)s.setItem('rw_ad',k);else s.removeItem('rw_ad')}else{k=s.getItem('rw_ad')}` +
-    `if(k&&/^[a-z0-9]+$/.test(k))document.documentElement.setAttribute('data-ad',k)}catch(e){}})();`
+    `(function(){try{var A=${JSON.stringify(keys)},K=${JSON.stringify(byContent)},` +
+    `C=${JSON.stringify(byCampaign)},s=sessionStorage,q=new URLSearchParams(location.search),` +
+    `c=q.get('utm_content'),g=q.get('utm_campaign'),k='',m,i;` +
+    `if(c!==null){m=c.toLowerCase().trim().match(${UTM_CONTENT_RE});` +
+    `if(m){m=(m[1]+m[2]).replace(/\\.0+$/,'');if(K.indexOf(m)>=0)k=m}}` +
+    `if(!k&&g)for(i=0;i<C.length&&!k;i++)if(new RegExp(C[i][0]).test(g.toLowerCase()))k=C[i][1];` +
+    `if(k)s.setItem('rw_ad',k);else if(c!==null||g!==null)s.removeItem('rw_ad');` +
+    `else k=s.getItem('rw_ad')||'';` +
+    `if(A.indexOf(k)>=0)document.documentElement.setAttribute('data-ad',k)}catch(e){}})();`
   );
 }

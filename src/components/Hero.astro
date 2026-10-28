@@ -6,7 +6,9 @@
  *
  * Mensaje según el anuncio: el script en línea del <head> (src/lib/ad-script.ts) marca
  * <html data-ad="..."> y aquí el CSS muestra el antetítulo y el subtítulo de ese anuncio
- * (src/data/ad-variants.ts). Sin anuncio conocido se ve el subtítulo de siempre y sin antetítulo.
+ * (src/data/ad-variants.ts; una regla por variante, un test comprueba que no falte ninguna). Las
+ * variantes sin subtítulo propio repiten el de siempre. Sin anuncio conocido se ve el subtítulo de
+ * siempre y sin antetítulo.
  *
  * Bajo los botones: "+120 atletas recuperados" (también en la cinta de cifras).
  */
@@ -42,7 +44,10 @@ const { mobile, desktop } = await heroSources();
 
   <div class="container-x hero-content">
     {AD_VARIANTS.map((v) => (
-      <p class="eyebrow hero-eyebrow" data-ad-variant={v.key}>
+      <p
+        class:list={['eyebrow', 'hero-eyebrow', v.eyebrow.length > 32 && 'hero-eyebrow-long']}
+        data-ad-variant={v.key}
+      >
         {v.eyebrow}
       </p>
     ))}
@@ -64,11 +69,19 @@ const { mobile, desktop } = await heroSources();
       <br />
       Estés donde estés.
     </p>
-    {AD_VARIANTS.map((v) => (
-      <p class="hero-sub" data-ad-variant={v.key}>
-        {v.sub}
-      </p>
-    ))}
+    {AD_VARIANTS.map((v) =>
+      v.sub ? (
+        <p class="hero-sub" data-ad-variant={v.key}>
+          {v.sub}
+        </p>
+      ) : (
+        <p class="hero-sub" data-ad-variant={v.key}>
+          Plan a medida, seguimiento diario y ajustes cada semana.
+          <br />
+          Estés donde estés.
+        </p>
+      ),
+    )}
     <div class="hero-ctas">
       <CtaButton location="hero" class="hero-cta" data-hero-cta="">
         Quiero valorar mi caso
@@ -198,6 +211,14 @@ const { mobile, desktop } = await heroSources();
     color: var(--brand-soft);
   }
 
+  /* Antetítulos largos: en una sola línea a 390 px (letra y espaciado algo menores en móvil). */
+  @media (width < 768px) {
+    .hero-eyebrow-long {
+      font-size: 0.6875rem;
+      letter-spacing: 0.12em;
+    }
+  }
+
   /* Con antetítulo, algo menos de aire arriba para que los botones sigan en la primera pantalla. */
   @media (width < 768px) and (orientation: portrait) {
     :global(html[data-ad]) .hero-content {
@@ -205,11 +226,14 @@ const { mobile, desktop } = await heroSources();
     }
   }
 
+  /* Una regla por cada key de AD_VARIANTS (el test "cada variante tiene su regla" lo exige). */
   :global(html[data-ad='mofu1']) [data-ad-variant='mofu1'],
   :global(html[data-ad='mofu2']) [data-ad-variant='mofu2'],
   :global(html[data-ad='mofu3']) [data-ad-variant='mofu3'],
   :global(html[data-ad='bofu1']) [data-ad-variant='bofu1'],
-  :global(html[data-ad='bofu2']) [data-ad-variant='bofu2'] {
+  :global(html[data-ad='bofu2']) [data-ad-variant='bofu2'],
+  :global(html[data-ad='descubrir']) [data-ad-variant='descubrir'],
+  :global(html[data-ad='cierre']) [data-ad-variant='cierre'] {
     display: block;
   }
 
