@@ -19,8 +19,8 @@ export const CONFIG = {
   whatsapp: '34640995494',
   telefono: '+34 640 99 54 94',
   email: 'info@rehabilitywod.com',
+  /** Redes: solo para el JSON-LD (sameAs) de la home. No se enlazan en la página. */
   instagram: 'https://www.instagram.com/rehability_wod/',
-  instagramHandle: '@rehability_wod',
   tiktok: 'https://www.tiktok.com/@rehability_wod',
   facebook: 'https://www.facebook.com/share/18RvRfV4Ec/',
   vslYoutubeId: 'V3AgSalCNJs',
@@ -40,7 +40,7 @@ export const CONFIG = {
     telefonoE164: '+34640995494',
     email: 'info@rehabilitywod.com',
     actividad: 'Fisioterapia y readaptación online',
-    ultimaActualizacion: 'Octubre de 2026',
+    ultimaActualizacion: '28 de octubre de 2026',
   },
 } as const;
 
@@ -50,8 +50,6 @@ export const SEO = {
     'Recupérate de tu lesión sin dejar de entrenar. Plan a medida, seguimiento diario y videollamada de valoración. +120 atletas recuperados.',
 } as const;
 
+/** Enlace de WhatsApp (en /gracias; en la home lo construye form.ts tras enviar el formulario). */
 export const whatsappLink = (text?: string) =>
   `https://wa.me/${CONFIG.whatsapp}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
-
-/** Mensaje con el que se abre WhatsApp desde los botones de la web. */
-export const WHATSAPP_TEXT = 'Hola Gerard, quiero información sobre la valoración.';

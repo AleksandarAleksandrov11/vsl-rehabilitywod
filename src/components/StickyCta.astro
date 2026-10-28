@@ -1,18 +1,18 @@
 ---
 /**
- * Barra CTA fija abajo en móvil (< 768 px): el botón de valoración y, a su derecha, WhatsApp.
- * Aparece en cuanto el CTA del hero sale de pantalla y se oculta con #valoracion en pantalla.
+ * Barra CTA fija abajo en móvil (< 768 px): un solo botón, el de valoración (sin WhatsApp: la
+ * landing no tiene salidas antes de enviar el formulario).
+ * Aparece en cuanto el CTA del hero sale de pantalla y se oculta con #valoracion o el footer en
+ * pantalla.
  * Con el banner de cookies abierto se coloca justo encima (--cb-h, sticky.ts).
  */
 import CtaButton from './CtaButton.astro';
-import WhatsappButton from './WhatsappButton.astro';
 ---
 
 <div class="sticky-cta" data-sticky-cta data-theme="dark" aria-hidden="true">
   <CtaButton location="sticky" full tabindex={-1} class="sticky-btn">
     Quiero valorar mi caso
   </CtaButton>
-  <WhatsappButton variant="inline" location="sticky" tabindex={-1} />
 </div>
 
 <style>
@@ -51,7 +51,6 @@ import WhatsappButton from './WhatsappButton.astro';
     padding-bottom: 10px;
   }
 
-  /* El CTA cede ancho al botón de WhatsApp. */
   .sticky-cta :global(.sticky-btn) {
     flex: 1;
     min-width: 0;

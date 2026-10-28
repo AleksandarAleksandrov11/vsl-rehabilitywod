@@ -5,13 +5,14 @@
  * form.ts baja a #valoracion, deja esa zona marcada y abre el paso 2 (cuenta como paso 1
  * completado). Con el anuncio del test de hombro (utm_content=mofu3.0), form.ts destaca
  * "Hombro" con la etiqueta "Tu zona" sin pulsarla.
- * Sin JS las tarjetas no hacen nada, pero el enlace "Cuéntamelo en el formulario" sí.
+ * Cierre: "¿Otra duda? Déjame tu WhatsApp y te la resuelvo", que lleva al formulario con "Otro"
+ * marcado y el paso 2 abierto (sin salir de la landing). Sin JS las tarjetas no hacen nada, pero
+ * el enlace sí baja al formulario.
  */
 import ArrowRight from '@lucide/astro/icons/arrow-right';
 import SplitWords from './SplitWords.astro';
 import ZoneIcon from './ZoneIcon.astro';
 import { ZONAS } from '../lib/lead';
-import { WHATSAPP_TEXT, whatsappLink } from '../config';
 
 const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
 ---
@@ -55,16 +56,10 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     </ul>
 
     <p class="zonas-alt reveal" data-reveal>
-      <span>¿No lo tienes claro?</span>
-      <span class="zonas-alt-links">
-        <a class="zonas-link" href="#valoracion">
-          Cuéntamelo en el formulario
-        </a>
-        <span>o</span>
-        <a class="zonas-link" href={whatsappLink(WHATSAPP_TEXT)} target="_blank" rel="noopener">
-          escríbeme por WhatsApp
-        </a>
-      </span>
+      <span>¿Otra duda?</span>
+      <a class="zonas-link" href="#valoracion" data-zona="Otro">
+        Déjame tu WhatsApp y te la resuelvo
+      </a>
     </p>
   </div>
 </section>
@@ -245,8 +240,8 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     display: block;
   }
 
-  /* Texto y enlaces en una fila que se parte por elementos enteros: cada enlace ocupa sus 44 px de
-     alto sin montarse sobre el de al lado (con dos líneas, un enlace no tapa al otro). */
+  /* Texto y enlace en una fila que se parte por elementos enteros: el enlace ocupa sus 44 px de
+     alto sin montarse sobre el texto. */
   .zonas-alt {
     display: flex;
     flex-wrap: wrap;
@@ -258,14 +253,6 @@ const label = (zona: string) => (zona === 'Otro' ? 'Otra' : zona);
     font-size: 0.9375rem;
     line-height: 1.4;
     color: var(--muted-on-dark);
-  }
-
-  .zonas-alt-links {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    column-gap: 0.35em;
   }
 
   .zonas-link {

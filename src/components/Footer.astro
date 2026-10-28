@@ -1,54 +1,33 @@
 ---
 /**
- * Footer: marca y redes, tres columnas (Web, Contacto, Legal), barra final con el © y, al
- * final del todo, "REHABILITYWOD" a todo el ancho. Las letras suben una a una al entrar en
- * pantalla y después una ola suave las recorre cada pocos segundos (sin movimiento con
- * prefers-reduced-motion). En escritorio cada letra también sube al pasar el ratón.
+ * Footer: marca y un CTA al formulario, enlaces legales (en una pestaña nueva, para no salir de la
+ * landing) con "Configurar cookies", el © y, al final del todo, "REHABILITYWOD" a todo el ancho.
+ * Sin redes ni contacto (no hay salidas de la landing; los datos de contacto están en las páginas
+ * legales). Las letras del nombre grande suben una a una al entrar en pantalla y después una ola
+ * suave las recorre cada pocos segundos (sin movimiento con prefers-reduced-motion). En escritorio
+ * cada letra también sube al pasar el ratón.
  */
-import ArrowUp from '@lucide/astro/icons/arrow-up';
+import CtaButton from './CtaButton.astro';
 import Wordmark from './Wordmark.astro';
-import { CONFIG } from '../config';
 
 interface Props {
   /** En la home deja hueco para la barra CTA fija en móvil. */
   withStickyGap?: boolean;
+  /** CTA al formulario (no en /gracias, que ya tiene "Enviar otra solicitud"). */
+  cta?: boolean;
 }
 
-const { withStickyGap = false } = Astro.props;
+const { withStickyGap = false, cta = true } = Astro.props;
 const year = new Date().getFullYear();
+const ctaHref = Astro.url.pathname === '/' ? '#valoracion' : '/#valoracion';
 
 const giant = [...'REHABILITY'].map((ch) => ({ ch, wod: false }));
 giant.push(...[...'WOD'].map((ch) => ({ ch, wod: true })));
 
-const social = [
-  {
-    name: 'Instagram',
-    href: CONFIG.instagram,
-    paths: [
-      'M7 2.75h10A4.25 4.25 0 0 1 21.25 7v10A4.25 4.25 0 0 1 17 21.25H7A4.25 4.25 0 0 1 2.75 17V7A4.25 4.25 0 0 1 7 2.75Z',
-      'M15.9 11.5a3.9 3.9 0 1 1-7.8 0 3.9 3.9 0 0 1 7.8 0Z',
-      'M17.6 6.4h.01',
-    ],
-  },
-  {
-    name: 'TikTok',
-    href: CONFIG.tiktok,
-    paths: ['M14.6 2.75v11.9a3.85 3.85 0 1 1-3.85-3.85', 'M14.6 2.75c.45 2.75 2.4 4.55 5.15 4.8'],
-  },
-  {
-    name: 'Facebook',
-    href: CONFIG.facebook,
-    paths: [
-      'M17.5 2.75h-2.75a4.5 4.5 0 0 0-4.5 4.5v2.9H7.5v3.9h2.75v8.2h3.9v-8.2h2.8l.7-3.9h-3.5V7.6c0-.6.45-1 1-1h2.35Z',
-    ],
-  },
-];
-
-const web = [
-  { href: '/#video', text: 'Vídeo' },
-  { href: '/#como-funciona', text: 'Cómo funciona' },
-  { href: '/#opiniones', text: 'Opiniones' },
-  { href: '/#valoracion', text: 'Valorar mi caso' },
+const legal = [
+  { href: '/aviso-legal', text: 'Aviso legal' },
+  { href: '/privacidad', text: 'Privacidad' },
+  { href: '/cookies', text: 'Cookies' },
 ];
 ---
 
@@ -60,107 +39,41 @@ const web = [
           <Wordmark class="footer-wordmark" />
         </a>
         <p class="footer-tag">Fisioterapia online para atletas de CrossFit</p>
-        <ul class="footer-social" role="list" aria-label="Redes sociales">
-          {social.map(({ name, href, paths }) => (
+        {cta && (
+          <div class="footer-cta">
+            <CtaButton href={ctaHref} location="footer">
+              Quiero valorar mi caso
+            </CtaButton>
+          </div>
+        )}
+      </div>
+
+      <nav class="footer-col" aria-label="Legal">
+        <p class="footer-head">Legal</p>
+        <ul class="footer-list" role="list">
+          {legal.map(({ href, text }) => (
             <li>
-              <a class="footer-social-link" href={href} target="_blank" rel="noopener me">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="20"
-                  height="20"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.75"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                  focusable="false"
-                >
-                  {paths.map((d) => (
-                    <path d={d} />
-                  ))}
-                </svg>
-                <span class="sr-only">{name} (se abre en una pestaña nueva)</span>
+              <a class="footer-link link-grow" href={href} target="_blank" rel="noopener">
+                {text}
+                <span class="sr-only"> (se abre en una pestaña nueva)</span>
               </a>
             </li>
           ))}
+          <li>
+            <button
+              type="button"
+              class="footer-link footer-button link-grow"
+              data-open-cookie-settings
+            >
+              Configurar cookies
+            </button>
+          </li>
         </ul>
-      </div>
-
-      <div class="footer-cols">
-        <nav class="footer-col" aria-label="Web">
-          <p class="footer-head">Web</p>
-          <ul class="footer-list" role="list">
-            {web.map(({ href, text }) => (
-              <li>
-                <a class="footer-link link-grow" href={href}>
-                  {text}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <nav class="footer-col" aria-label="Legal">
-          <p class="footer-head">Legal</p>
-          <ul class="footer-list" role="list">
-            <li>
-              <a class="footer-link link-grow" href="/aviso-legal">
-                Aviso legal
-              </a>
-            </li>
-            <li>
-              <a class="footer-link link-grow" href="/privacidad">
-                Privacidad
-              </a>
-            </li>
-            <li>
-              <a class="footer-link link-grow" href="/cookies">
-                Cookies
-              </a>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="footer-link footer-button link-grow"
-                data-open-cookie-settings
-              >
-                Configurar cookies
-              </button>
-            </li>
-          </ul>
-        </nav>
-
-        <div class="footer-col footer-contact">
-          <p class="footer-head">Contacto</p>
-          <ul class="footer-list" role="list">
-            <li>
-              <a class="footer-link link-grow" href={`mailto:${CONFIG.email}`}>
-                {CONFIG.email}
-              </a>
-            </li>
-            <li>
-              <a
-                class="footer-link link-grow"
-                href={CONFIG.instagram}
-                target="_blank"
-                rel="noopener"
-              >
-                {CONFIG.instagramHandle}
-                <span class="sr-only"> en Instagram (se abre en una pestaña nueva)</span>
-              </a>
-            </li>
-          </ul>
-        </div>
-      </div>
+      </nav>
     </div>
 
     <div class="footer-bottom">
       <p class="footer-copy">© {year} Gerard Barrantes Bautista · RehabilityWOD</p>
-      <a class="footer-top-link link-grow" href="#top">
-        Volver arriba
-        <ArrowUp size={16} stroke-width={1.75} aria-hidden="true" />
-      </a>
     </div>
   </div>
 
@@ -215,44 +128,8 @@ const web = [
     color: var(--muted-on-dark);
   }
 
-  .footer-social {
-    display: flex;
-    gap: 10px;
-    margin: 20px 0 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .footer-social-link {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border: 1px solid var(--hair-strong-on-dark);
-    border-radius: 50%;
-    color: var(--ink-on-dark);
-    transition:
-      background-color 0.3s var(--ease),
-      border-color 0.3s var(--ease),
-      color 0.3s var(--ease),
-      transform 0.3s var(--ease);
-  }
-
-  .footer-social-link:hover {
-    border-color: var(--brand-bright);
-    background: var(--brand-bright);
-    color: var(--void);
-    transform: translateY(-2px);
-  }
-
-  .footer-cols {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 32px 20px;
-  }
-
-  .footer-contact {
-    grid-column: 1 / -1;
+  .footer-cta {
+    margin-top: 24px;
   }
 
   .footer-head {
@@ -307,18 +184,6 @@ const web = [
   .footer-copy {
     font-size: 0.875rem;
     color: var(--muted-on-dark);
-  }
-
-  .footer-top-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 44px;
-    color: var(--ink-on-dark);
-    font-size: 0.875rem;
-    font-weight: 600;
-    text-decoration: none;
-    background-position: 0 calc(50% + 0.8em);
   }
 
   /* "REHABILITYWOD" a todo el ancho del contenedor. */
@@ -411,15 +276,6 @@ const web = [
       gap: 48px;
     }
 
-    .footer-cols {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 32px;
-    }
-
-    .footer-contact {
-      grid-column: auto;
-    }
-
     .footer-bottom {
       margin-top: 72px;
     }
@@ -430,10 +286,10 @@ const web = [
     }
   }
 
-  /* Escritorio: marca a la izquierda y las tres columnas a la derecha. */
-  @media (width >= 1024px) {
+  /* Tablet y escritorio: marca y CTA a la izquierda, legal a la derecha. */
+  @media (width >= 768px) {
     .footer-top {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 64px;
       align-items: start;
     }

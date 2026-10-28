@@ -2,7 +2,8 @@
 /**
  * Sección 2: VSL con el reproductor de YouTube (modo de privacidad mejorada) en facade.
  * Se ve la portada del vídeo servida desde la web con el botón de play de YouTube; el iframe
- * solo se carga al pulsar play (vsl.ts) y arranca solo.
+ * solo se carga al pulsar play (vsl.ts) y arranca solo. Sin JS, un aviso en texto (sin enlace a
+ * YouTube).
  */
 import RotateCcw from '@lucide/astro/icons/rotate-ccw';
 import Crosshair from '@lucide/astro/icons/crosshair';
@@ -76,9 +77,7 @@ const keys = [
       </svg>
     </button>
     <noscript>
-      <a class="vsl-noscript" href={`https://www.youtube.com/watch?v=${id}`}>
-        Ver el vídeo en YouTube
-      </a>
+      <p class="vsl-noscript">Para ver el vídeo, activa JavaScript en el navegador.</p>
     </noscript>
   </div>
 
@@ -217,11 +216,16 @@ const keys = [
     opacity: 1;
   }
 
+  /* Sin JS: solo un aviso (sin enlaces que saquen de la landing). */
   .vsl-noscript {
     position: absolute;
     z-index: 4;
     left: 16px;
     bottom: 16px;
+    margin: 0;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(10, 10, 10, 0.78);
     color: #ffffff;
     font-weight: 600;
   }
