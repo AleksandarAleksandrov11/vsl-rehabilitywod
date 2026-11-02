@@ -255,6 +255,35 @@ const { mobile, desktop } = await heroSources();
     color: var(--brand-bright);
   }
 
+  /* Móvil bajo (375x667 y menos alto): menos aire entre bloques para que el botón y "+120" se vean
+     enteros encima del banner de cookies también con antetítulo y subtítulo largos del anuncio. */
+  @media (width < 768px) and (orientation: portrait) and (height < 740px) {
+    .hero-content {
+      padding-top: calc(var(--header-h) + env(safe-area-inset-top) + 16px);
+    }
+
+    :global(html[data-ad]) .hero-content {
+      padding-top: calc(var(--header-h) + env(safe-area-inset-top) + 6px);
+    }
+
+    .hero-eyebrow {
+      margin-bottom: 6px;
+    }
+
+    .hero-sub {
+      margin-top: 14px;
+    }
+
+    .hero-ctas {
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .hero-proof {
+      margin-top: 10px;
+    }
+  }
+
   /* Tablet: la misma foto vertical, algo más centrada, y velo uniforme con el texto al centro. */
   @media (width >= 768px) {
     .hero-img {
