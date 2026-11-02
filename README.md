@@ -4,8 +4,11 @@ Landing de captación para **RehabilityWOD** (fisioterapia online para atletas d
 [vsl.rehabilitywod.com](https://vsl.rehabilitywod.com). Un solo objetivo: que el atleta rellene el
 formulario de valoración.
 
-- Secciones: hero con cinta de datos, vídeo, por qué, cómo funciona, opiniones y quién está detrás,
-  formulario de valoración, preguntas frecuentes, banda de cierre y footer.
+- Secciones, en este orden: hero con cinta de datos, «¿Qué te duele?» (zonas), formulario de
+  valoración, vídeo, por qué, cómo funciona, opiniones y quién está detrás, preguntas frecuentes,
+  banda de cierre y footer. El formulario va justo después de las zonas para que se vea pronto: en
+  un móvil de 390x844 empieza a 1,95 pantallas del inicio (antes, a 8,3).
+- Landing de anuncios: todas las páginas llevan `noindex` y no hay sitemap.
 - Formulario de 4 pasos, uno por pantalla, que también funciona sin JavaScript.
 - Cada solicitud se guarda en Google Sheets (`/api/lead` → Google Apps Script) y se avisa por email.
 - Sin salidas antes de enviar: ni WhatsApp, ni redes, ni email en la home. Tras enviar, la gracias
@@ -122,7 +125,7 @@ Vercel Analytics no usa cookies y por eso funciona sin consentimiento.
 ## 5. Dominio
 
 El dominio es `vsl.rehabilitywod.com`, apuntado a Vercel con un registro `CNAME`. `SITE_URL` debe
-coincidir con él: de ahí salen la URL canónica, el sitemap y las etiquetas Open Graph.
+coincidir con él: de ahí salen la URL canónica y las etiquetas Open Graph.
 
 Redirecciones incluidas: `/vsl` → `/#video` (301) y `/aviso-legal.html` → `/aviso-legal`.
 
@@ -220,7 +223,7 @@ src/
   layouts/Base.astro     <head>, fuentes y precargas, SEO, analítica, banner de cookies
   layouts/Legal.astro    Plantilla de las páginas legales
   pages/                 index, gracias (noindex; solo para el envío sin JS), aviso-legal,
-                         privacidad y cookies (noindex, follow; fuera del sitemap), 404,
+                         privacidad y cookies (noindex, follow, como la home), 404,
                          og.jpg (imagen OG generada en el build), robots.txt, api/lead.ts,
                          api/lead-capi.ts, api/event-capi.ts
   components/            Header, Hero, ZonesSection, StatsTicker, VslSection, WhySection, HowItWorks,
@@ -315,11 +318,17 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
 - **Barra CTA fija (móvil)**: un solo botón (sin WhatsApp). Aparece en cuanto el CTA del hero queda
   fuera de pantalla (o detrás de la cabecera) y se oculta con el formulario en pantalla. Con el
   banner de cookies abierto se coloca justo encima de él, sin taparlo.
+- **Hero en móviles bajos**: por debajo de 740 px de alto (375x667, por ejemplo) hay menos aire
+  entre bloques, para que el botón principal y «+120 atletas recuperados» se vean enteros encima
+  del banner de cookies también con el antetítulo y el subtítulo de cada anuncio. Sin CLS, y sin
+  hueco entre el hero y la sección siguiente.
 - **Banner de cookies**: barra compacta abajo (unos 93 px en móvil) con Aceptar y Rechazar del
   mismo tamaño y estilo y el enlace Configurar. No es modal: no bloquea el scroll ni los clics y
   deja a la vista los dos botones del hero.
-- **SEO**: el sitemap solo lleva la home (`/sitemap.xml` redirige con 301 a `/sitemap-index.xml`);
-  la canonical y `og:url` de la home llevan barra final (`https://vsl.rehabilitywod.com/`).
+- **SEO**: es una landing de anuncios, así que nada se indexa: la home y las legales llevan
+  `noindex, follow`, y `/gracias` y la 404, `noindex, nofollow`. No hay sitemap (`/sitemap.xml`
+  da 404) y `robots.txt` deja rastrear para que los buscadores vean el `noindex`. La canonical y
+  `og:url` de la home llevan barra final (`https://vsl.rehabilitywod.com/`).
 - **Caché**: los archivos con hash (`/_astro/*`) con `max-age` de un año e `immutable`; el HTML y el
   resto con `max-age=0, must-revalidate`.
 - **Formulario**: `autocomplete` `given-name` en el nombre y `tel-country-code` + `tel-national` en
@@ -386,8 +395,9 @@ cambien de forma relevante.
 `npm run qa` compila, levanta el servidor de QA y ejecuta `tests/qa.spec.ts`, `tests/leads.spec.ts`
 y `tests/visits.spec.ts`: 12 viewports, capturas
 (también del primer render del hero), scroll horizontal, consola y CSP, enlaces, imágenes, áreas táctiles, encabezados,
-axe-core, contraste AA del texto sobre fotos, llamadas a la acción, recuento de palabras, altura de
-la home, hero sin animación de entrada, marquees, reveals y parallax, estados hover, consentimiento y Pixel, vídeo,
+axe-core, contraste AA del texto sobre fotos, llamadas a la acción (todas a `#valoracion`), recuento
+de palabras, altura de la home, formulario a menos de 2,5 pantallas en 390x844, hero sin animación
+de entrada, marquees, reveals y parallax, estados hover, consentimiento y Pixel, vídeo,
 formulario (camino feliz, casos límite y sin JavaScript), barra fija, páginas legales, cabeceras y
 presupuesto de JavaScript. `tests/leads.spec.ts` prueba el contrato con el Apps Script (campos y
 tipos exactos del cuerpo), las fugas (390 con Instagram de iPhone y 1440, con y sin JS),
@@ -407,12 +417,15 @@ capturas en `qa/screenshots/anuncios/`) en Safari de iOS y en el
 navegador integrado de Instagram (necesita WebKit: `npx playwright install webkit` y
 `npx playwright install-deps webkit`; sin él solo prueba Instagram en Android).
 
-Última medición (28 de octubre de 2026, 5 pasadas, con las visitas por la API de conversiones):
-Lighthouse 99 en móvil y 100 en escritorio (100 en accesibilidad, buenas prácticas y SEO), LCP
-1,9 s en móvil con 4G lenta simulada, CLS 0 y TBT entre 20 y 50 ms según la pasada (el mismo rango
-que la versión anterior medida en la misma máquina). Latencia de interacción con la CPU 4 veces más
-lenta (`node scripts/inp.mjs`): la peor, tocar una zona del formulario, entre 200 y 270 ms en esta
-máquina, igual que la versión anterior medida a la vez (en una máquina más rápida, 152 ms). Los
+Última medición (2 de noviembre de 2026, 5 pasadas, con el formulario justo después de las
+zonas): Lighthouse 99 en móvil y 100 en escritorio en rendimiento (100 en accesibilidad y buenas
+prácticas; 69 en SEO, a propósito, por el `noindex`), LCP 1,9 s en móvil con 4G lenta simulada
+(0,55 s en escritorio), CLS 0 y TBT entre 15 y 70 ms según la pasada (la primera, en frío, 361 ms).
+Peso que mide Lighthouse: 161 KB en móvil (antes 170 KB: carga el fondo del formulario, 16 KB, en
+vez de la portada del vídeo, 37 KB, que ahora queda más abajo) y 271 KB en escritorio (antes
+244 KB: el fondo del formulario, 26 KB, ahora cerca del inicio). Latencia de interacción con la
+CPU 4 veces más lenta (`node scripts/inp.mjs`, 28 de octubre): la peor, tocar una zona del
+formulario, entre 200 y 270 ms en esta máquina (en una máquina más rápida, 152 ms). Los
 informes anteriores al banner compacto están en `qa/lighthouse/antes/` y las capturas del banner
 antes y después en `qa/screenshots/banner-antes-despues/`.
 

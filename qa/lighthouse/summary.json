@@ -5,34 +5,34 @@
         "performance": 99,
         "accessibility": 100,
         "best-practices": 100,
-        "seo": 100,
+        "seo": 69,
         "agentic-browsing": 100
       },
       "metrics": {
-        "FCP": 1265.6128750000003,
-        "LCP": 1878.6903000000002,
-        "TBT": 33,
+        "FCP": 1255.6627499999997,
+        "LCP": 1879.5301999999997,
+        "TBT": 15.5,
         "CLS": 0,
-        "SI": 1265.6128750000003,
-        "bytes": 170085
+        "SI": 1255.6627499999997,
+        "bytes": 160924
       }
     },
     "runs": [
       {
         "scores": {
-          "performance": 99,
+          "performance": 89,
           "accessibility": 100,
           "best-practices": 100,
-          "seo": 100,
+          "seo": 69,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 1313.024375,
-          "LCP": 1921.4195,
-          "TBT": 23.5,
+          "FCP": 1719.21985,
+          "LCP": 2094.329775,
+          "TBT": 361.0000000000002,
           "CLS": 0,
-          "SI": 1313.024375,
-          "bytes": 170085
+          "SI": 2647.0158516666916,
+          "bytes": 160924
         }
       },
       {
@@ -40,16 +40,16 @@
           "performance": 99,
           "accessibility": 100,
           "best-practices": 100,
-          "seo": 100,
+          "seo": 69,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 1271.558,
-          "LCP": 1883.4464000000003,
-          "TBT": 36.5,
+          "FCP": 1273.243125,
+          "LCP": 1880.7945,
+          "TBT": 52,
           "CLS": 0,
-          "SI": 1271.558,
-          "bytes": 170085
+          "SI": 1273.243125,
+          "bytes": 160924
         }
       },
       {
@@ -57,16 +57,16 @@
           "performance": 99,
           "accessibility": 100,
           "best-practices": 100,
-          "seo": 100,
+          "seo": 69,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 1265.6128750000003,
-          "LCP": 1878.6903000000002,
-          "TBT": 33,
+          "FCP": 1255.6627499999997,
+          "LCP": 1879.5301999999997,
+          "TBT": 15.5,
           "CLS": 0,
-          "SI": 1265.6128750000003,
-          "bytes": 170085
+          "SI": 1255.6627499999997,
+          "bytes": 160924
         }
       },
       {
@@ -74,16 +74,16 @@
           "performance": 99,
           "accessibility": 100,
           "best-practices": 100,
-          "seo": 100,
+          "seo": 69,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 1289.9021249999996,
-          "LCP": 1882.1216999999997,
-          "TBT": 24,
+          "FCP": 1278.7682499999996,
+          "LCP": 1878.8146000000002,
+          "TBT": 26.5,
           "CLS": 0,
-          "SI": 1289.9021249999996,
-          "bytes": 170085
+          "SI": 1278.7682499999996,
+          "bytes": 160924
         }
       },
       {
@@ -91,16 +91,16 @@
           "performance": 99,
           "accessibility": 100,
           "best-practices": 100,
-          "seo": 100,
+          "seo": 69,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 1265.2583750000001,
-          "LCP": 1876.8067,
-          "TBT": 52.5,
+          "FCP": 1261.747,
+          "LCP": 1879.5976,
+          "TBT": 67,
           "CLS": 0,
-          "SI": 1265.2583750000001,
-          "bytes": 170085
+          "SI": 1261.747,
+          "bytes": 160924
         }
       }
     ]
@@ -111,16 +111,16 @@
         "performance": 100,
         "accessibility": 100,
         "best-practices": 100,
-        "seo": 100,
+        "seo": 69,
         "agentic-browsing": 100
       },
       "metrics": {
-        "FCP": 323.188,
-        "LCP": 525.7504,
-        "TBT": 32,
+        "FCP": 320.228125,
+        "LCP": 544.1825,
+        "TBT": 20,
         "CLS": 0,
-        "SI": 400.8941284482753,
-        "bytes": 243776
+        "SI": 371.0857146466717,
+        "bytes": 270660
       }
     },
     "runs": [
@@ -129,16 +129,16 @@
           "performance": 100,
           "accessibility": 100,
           "best-practices": 100,
-          "seo": 100,
+          "seo": 69,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 325.481,
-          "LCP": 525.1848,
-          "TBT": 26,
+          "FCP": 324.833125,
+          "LCP": 547.0665,
+          "TBT": 12,
           "CLS": 0,
-          "SI": 379.1000193939715,
-          "bytes": 243776
+          "SI": 364.45048466553544,
+          "bytes": 270660
         }
       },
       {
@@ -146,16 +146,16 @@
           "performance": 100,
           "accessibility": 100,
           "best-practices": 100,
-          "seo": 100,
+          "seo": 69,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 318.51300000000003,
-          "LCP": 522.0104,
+          "FCP": 331.8125,
+          "LCP": 544.65,
           "TBT": 0,
           "CLS": 0,
-          "SI": 382.0937998158794,
-          "bytes": 243776
+          "SI": 380.6956706176128,
+          "bytes": 270660
         }
       },
       {
@@ -163,50 +163,50 @@
           "performance": 100,
           "accessibility": 100,
           "best-practices": 100,
-          "seo": 100,
+          "seo": 69,
           "agentic-browsing": 100
         },
         "metrics": {
-          "FCP": 323.188,
-          "LCP": 525.7504,
-          "TBT": 32,
-          "CLS": 0,
-          "SI": 400.8941284482753,
-          "bytes": 243776
-        }
-      },
-      {
-        "scores": {
-          "performance": 100,
-          "accessibility": 100,
-          "best-practices": 100,
-          "seo": 100,
-          "agentic-browsing": 100
-        },
-        "metrics": {
-          "FCP": 322.77750000000003,
-          "LCP": 525.422,
-          "TBT": 0,
-          "CLS": 0,
-          "SI": 409.7446392158681,
-          "bytes": 243776
-        }
-      },
-      {
-        "scores": {
-          "performance": 100,
-          "accessibility": 100,
-          "best-practices": 100,
-          "seo": 100,
-          "agentic-browsing": 100
-        },
-        "metrics": {
-          "FCP": 323.635,
-          "LCP": 526.908,
+          "FCP": 320.228125,
+          "LCP": 544.1825,
           "TBT": 20,
           "CLS": 0,
-          "SI": 376.38639388816796,
-          "bytes": 243776
+          "SI": 371.0857146466717,
+          "bytes": 270660
+        }
+      },
+      {
+        "scores": {
+          "performance": 100,
+          "accessibility": 100,
+          "best-practices": 100,
+          "seo": 69,
+          "agentic-browsing": 100
+        },
+        "metrics": {
+          "FCP": 318.381125,
+          "LCP": 545.1049,
+          "TBT": 0,
+          "CLS": 0,
+          "SI": 342.3080711144472,
+          "bytes": 270660
+        }
+      },
+      {
+        "scores": {
+          "performance": 100,
+          "accessibility": 100,
+          "best-practices": 100,
+          "seo": 69,
+          "agentic-browsing": 100
+        },
+        "metrics": {
+          "FCP": 324.61862499999995,
+          "LCP": 545.2949,
+          "TBT": 42.00000000000006,
+          "CLS": 0,
+          "SI": 372.65542339129695,
+          "bytes": 270660
         }
       }
     ]
