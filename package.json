@@ -24,7 +24,6 @@
     "qa:nav": "node scripts/nav-audit.mjs"
   },
   "dependencies": {
-    "@astrojs/sitemap": "^3.7.4",
     "@astrojs/vercel": "^9.0.5",
     "@fontsource-variable/work-sans": "^5.3.0",
     "@fontsource/big-shoulders-display": "^5.3.0",

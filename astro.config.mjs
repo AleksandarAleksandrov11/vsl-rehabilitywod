@@ -1,7 +1,6 @@
 // @ts-check
 import { defineConfig, envField } from 'astro/config';
 import vercel from '@astrojs/vercel';
-import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 import { loadEnv } from 'vite';
 
@@ -28,15 +27,6 @@ export default defineConfig({
     process.env.ASTRO_ADAPTER === 'node'
       ? (await import('@astrojs/node')).default({ mode: 'middleware' })
       : vercel(),
-  integrations: [
-    // El sitemap solo lleva la home: /gracias y las legales son noindex.
-    sitemap({
-      filter: (page) =>
-        !['/gracias', '/aviso-legal', '/cookies', '/privacidad'].some((p) =>
-          new URL(page).pathname.startsWith(p),
-        ),
-    }),
-  ],
   security: {
     // El checkOrigin de Astro compara Origin con la URL que reconstruye el servidor, y en Vercel
     // (sin allowedDomains) esa URL sale como "localhost": rechazaría el formulario sin JS.

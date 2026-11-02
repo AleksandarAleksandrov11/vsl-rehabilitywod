@@ -13,7 +13,7 @@ interface Props {
   /** Ruta canónica, p. ej. "/" o "/privacidad". */
   path?: string;
   noindex?: boolean;
-  /** Meta robots explícito (p. ej. "noindex, follow" en las legales). Tiene prioridad sobre noindex. */
+  /** Meta robots explícito. Tiene prioridad sobre noindex. */
   robots?: string;
   /** Solo la home: script en línea que adapta el hero al anuncio (utm_content) sin parpadeo. */
   adScript?: boolean;
@@ -37,8 +37,8 @@ const {
 // La home con barra final (https://dominio/); el resto sin ella (trailingSlash: 'never').
 const canonical =
   path === '/' ? `${CONFIG.siteUrl}/` : `${CONFIG.siteUrl}${path.replace(/\/+$/, '')}`;
-const robotsContent =
-  robots ?? (noindex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large');
+// Landing de anuncios: nada se indexa (sin sitemap); se siguen los enlaces salvo en /gracias y 404.
+const robotsContent = robots ?? (noindex ? 'noindex, nofollow' : 'noindex, follow');
 const ogImage = `${CONFIG.siteUrl}/og.jpg`;
 const ogAlt =
   'RehabilityWOD. Recupérate sin dejar de entrenar. Fisioterapia online para atletas de CrossFit.';
