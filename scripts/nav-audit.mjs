@@ -382,7 +382,12 @@ if (PARTS.includes('B'))
       await page.goto(SITE + '/', { waitUntil: 'networkidle' });
       const loc = page.locator('a[href="#valoracion"]').nth(i);
       if (cta === 'sticky') {
-        await page.evaluate(() => window.scrollTo({ top: 1600, behavior: 'instant' }));
+        // Pasado el formulario (va justo después de las zonas), con la barra a la vista.
+        await page.evaluate(() =>
+          document
+            .getElementById('por-que')
+            ?.scrollIntoView({ block: 'start', behavior: 'instant' }),
+        );
         await page.waitForTimeout(700);
       } else
         await loc.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));

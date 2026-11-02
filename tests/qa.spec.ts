@@ -992,14 +992,14 @@ test.describe('Mensaje según el anuncio (utm_content)', () => {
 });
 
 test.describe('Sección "¿Qué te duele?"', () => {
-  test('va justo después del hero y antes del vídeo; el hero ya no lleva la fila de zonas', async ({
+  test('va justo después del hero y antes del formulario; el hero ya no lleva la fila de zonas', async ({
     page,
   }) => {
     await page.goto('/');
     const order = await page.evaluate(() =>
-      [...document.querySelectorAll('main > section')].slice(0, 3).map((s) => s.id),
+      [...document.querySelectorAll('main > section')].slice(0, 4).map((s) => s.id),
     );
-    expect(order).toEqual(['inicio', 'zonas', 'video']);
+    expect(order).toEqual(['inicio', 'zonas', 'valoracion', 'video']);
     await expect(page.locator('#inicio [data-zona]')).toHaveCount(0);
     await expect(page.locator('#inicio .hero-proof')).toHaveText(/\+120\s+atletas recuperados/);
     await expect(page.locator('#zonas-title')).toHaveText(/¿Qué te\s*duele\?/);
@@ -1697,6 +1697,12 @@ test.describe('Formulario', () => {
 
 test.describe('Barra CTA fija', () => {
   const vp = VIEWPORTS[3];
+  /** El CTA del hero queda detrás de la cabecera y el formulario aún no asoma. */
+  const scrollPastHeroCta = (page: Page) =>
+    page.evaluate(() => {
+      const cta = document.querySelector('[data-hero-cta]')!.getBoundingClientRect();
+      window.scrollTo({ top: cta.top + window.scrollY + 10, behavior: 'instant' });
+    });
   const visible = (page: Page) =>
     page
       .locator('[data-sticky-cta]')
@@ -1713,10 +1719,14 @@ test.describe('Barra CTA fija', () => {
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
     expect(await visible(page)).toBe(false);
-    await page.locator('#video').scrollIntoViewIfNeeded();
+    // Entre el hero y el formulario (que ahora va justo después de "¿Qué te duele?").
+    await scrollPastHeroCta(page);
     await expect.poll(() => visible(page)).toBe(true);
     await page.locator('#valoracion [data-form-root]').scrollIntoViewIfNeeded();
     await expect.poll(() => visible(page)).toBe(false);
+    // Pasado el formulario vuelve.
+    await page.locator('#por-que').scrollIntoViewIfNeeded();
+    await expect.poll(() => visible(page)).toBe(true);
     await page.evaluate(() =>
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }),
     );
@@ -1724,7 +1734,7 @@ test.describe('Barra CTA fija', () => {
     await expect.poll(() => visible(page)).toBe(false);
     await expect(page.locator('footer [data-cta="footer"]')).toBeVisible();
     // Y al volver hacia arriba reaparece.
-    await page.locator('#por-que').scrollIntoViewIfNeeded();
+    await page.locator('#opiniones').scrollIntoViewIfNeeded();
     await expect.poll(() => visible(page)).toBe(true);
     await ctx.close();
   });
@@ -1736,7 +1746,7 @@ test.describe('Barra CTA fija', () => {
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
     await expect(page.locator('#cookie-banner')).toBeVisible();
-    await page.locator('#video').scrollIntoViewIfNeeded();
+    await scrollPastHeroCta(page);
     await expect.poll(() => visible(page)).toBe(true);
     await page.waitForTimeout(600);
     const pos = await page.evaluate(() => ({
@@ -2135,7 +2145,7 @@ test('hover de tarjetas y botones (capturas)', async ({ browser }) => {
     ['boton-secundario', '#inicio [data-cta="hero_video"]', '#inicio .hero-ctas'],
     ['header-cta', '.site-header [data-cta="header"]', '.site-header'],
     ['tarjeta-te-suena', '.suena-card >> nth=0', '.suena-list'],
-    ['paso', '.step >> nth=1', '.steps'],
+    ['paso', '#como-funciona .step >> nth=1', '.steps'],
     ['capturas-app', '.app >> nth=0', '.apps'],
     ['dato-gerard', '.about-fact >> nth=0', '.about-facts'],
     [
@@ -2223,11 +2233,11 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     expect(ids).toEqual([
       'inicio',
       'zonas',
+      'valoracion',
       'video',
       'por-que',
       'como-funciona',
       'opiniones',
-      'valoracion',
       'faq',
     ]);
     const ctas = await page
@@ -2241,11 +2251,12 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       ['hero', 'hero_video'],
       // "¿Qué te duele?": las tarjetas son botones y su cierre enlaza al formulario.
       [],
+      // El formulario.
+      [],
       ['vsl'],
       ['compare'],
       ['how'],
       ['about'],
-      [],
       [],
       ['closing'],
     ]);
@@ -2474,6 +2485,46 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     await ctx.close();
   });
 
+  test('formulario arriba: #valoracion empieza antes de 2,5 pantallas en 390x844, justo tras "¿Qué te duele?"', async ({
+    browser,
+  }) => {
+    const ctx = await newCtx(browser, VIEWPORTS[3]);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    await page.goto('/', { waitUntil: 'networkidle' });
+    const m = await page.evaluate(() => {
+      const top = (sel: string) =>
+        document.querySelector(sel)!.getBoundingClientRect().top + scrollY;
+      return {
+        h: innerHeight,
+        section: top('#valoracion'),
+        form: top('#valoracion [data-form-root]'),
+        prev: document.querySelector('#valoracion')!.previousElementSibling?.id,
+        forms: document.querySelectorAll('[data-form-root]').length,
+      };
+    });
+    test.info().annotations.push({
+      type: 'form-top-390',
+      description: `${Math.round(m.section)} px (${(m.section / m.h).toFixed(2)} pantallas)`,
+    });
+    expect(m.prev).toBe('zonas');
+    expect(m.section / m.h).toBeLessThanOrEqual(2.5);
+    expect(m.form / m.h).toBeLessThanOrEqual(2.5);
+    // Un solo formulario.
+    expect(m.forms).toBe(1);
+    // Todos los enlaces internos al formulario (CTA, "Saltar al formulario", cierre, footer)
+    // apuntan a #valoracion.
+    const hrefs = await page
+      .locator('a[href*="valoracion"]')
+      .evaluateAll((els) => [...new Set(els.map((a) => a.getAttribute('href')))]);
+    expect(hrefs).toEqual(['#valoracion']);
+    await expect(page.locator('a.skip-link')).toHaveAttribute('href', '#valoracion');
+    for (const cta of ['hero', 'closing', 'sticky', 'footer']) {
+      await expect(page.locator(`a[data-cta="${cta}"]`)).toHaveAttribute('href', '#valoracion');
+    }
+    await ctx.close();
+  });
+
   test('home: altura total en 390x844 ≤ 10 000 px', async ({ browser }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     await setConsent(ctx, CONSENT_REJECTED);
@@ -2635,29 +2686,28 @@ test.describe('Páginas legales y rutas', () => {
     expect(res.headers().location).toBe('/#video');
   });
 
-  test('/gracias es noindex y no está en el sitemap', async ({ page, request }) => {
+  test('/gracias es noindex, nofollow', async ({ page }) => {
     await page.goto('/gracias');
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
       'content',
       'noindex, nofollow',
     );
-    const sm = await (await request.get('/sitemap-0.xml')).text();
-    expect(sm).not.toContain('/gracias');
   });
 
-  test('sitemap solo con la home; legales noindex, follow; og:url = canonical', async ({
+  test('landing de anuncios: home y legales noindex, follow; sin sitemap; og:url = canonical', async ({
     page,
     request,
   }) => {
-    const sm = await (await request.get('/sitemap-0.xml')).text();
-    expect([...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => new URL(m[1]!).pathname)).toEqual([
-      '/',
-    ]);
-    const redirect = await request.get('/sitemap.xml', { maxRedirects: 0 });
-    expect(redirect.status()).toBe(301);
-    expect(redirect.headers()['location']).toMatch(/\/sitemap-index\.xml$/);
+    for (const path of ['/sitemap-index.xml', '/sitemap-0.xml', '/sitemap.xml']) {
+      expect((await request.get(path, { maxRedirects: 0 })).status(), path).toBe(404);
+    }
+    const robots = await (await request.get('/robots.txt')).text();
+    expect(robots).not.toMatch(/sitemap/i);
+    // Se deja rastrear (si no, los buscadores no verían el noindex).
+    expect(robots).toMatch(/^Allow: \/$/m);
 
     await page.goto('/');
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, follow');
     const canonical = await page.locator('link[rel="canonical"]').getAttribute('href');
     expect(canonical).toMatch(/\/$/);
     await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', canonical!);
