@@ -145,6 +145,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   let sent = false;
   const errorsSent = new Set<string>();
   let arrowNav = false;
+  let editing = false;
   let advanceTimer = 0;
   let leaveTimer = 0;
 
@@ -208,14 +209,17 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
       if (show) setError('nombre', ok ? null : MESSAGES.nombre);
       return ok;
     }
-    const phoneOk = normalizePhone(telefono?.value ?? '', prefijo?.value ?? '+34') !== null;
-    const consentOk = consent?.checked === true;
-    if (show) {
-      const prefixBad = !isIntl(telefono?.value ?? '') && !validPrefix(prefijo?.value ?? '');
-      setError('telefono', phoneOk ? null : prefixBad ? MESSAGES.prefijo : MESSAGES.telefono);
-      setError('consentimiento', consentOk ? null : MESSAGES.consentimiento);
+    if (step === 4) {
+      const phoneOk = normalizePhone(telefono?.value ?? '', prefijo?.value ?? '+34') !== null;
+      if (show) {
+        const prefixBad = !isIntl(telefono?.value ?? '') && !validPrefix(prefijo?.value ?? '');
+        setError('telefono', phoneOk ? null : prefixBad ? MESSAGES.prefijo : MESSAGES.telefono);
+      }
+      return phoneOk;
     }
-    return phoneOk && consentOk;
+    const consentOk = consent?.checked === true;
+    if (show) setError('consentimiento', consentOk ? null : MESSAGES.consentimiento);
+    return consentOk;
   }
 
   /** Campo que falla en un paso (para FormError y form_error). */
@@ -223,9 +227,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     if (step === 1) return 'zona';
     if (step === 2) return 'detalle';
     if (step === 3) return 'nombre';
-    return normalizePhone(telefono?.value ?? '', prefijo?.value ?? '+34') === null
-      ? 'telefono'
-      : 'consentimiento';
+    return step === 4 ? 'telefono' : 'consentimiento';
   }
 
   function reportError(step: number, field: FormField, reason?: string): void {
@@ -248,8 +250,23 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
       );
     if (step === 2) return detalle;
     if (step === 3) return nombre;
-    if (normalizePhone(telefono?.value ?? '', prefijo?.value ?? '+34') === null) return telefono;
-    return consent;
+    return step === 4 ? telefono : consent;
+  }
+
+  // ---------- Confirmación (último paso) ----------
+  const summaryText = (selector: string, text: string) => {
+    const el = form.querySelector<HTMLElement>(selector);
+    if (el) el.textContent = text;
+  };
+  function fillSummary(): void {
+    const phone = normalizePhone(telefono?.value ?? '', prefijo?.value ?? '+34');
+    const detail = (detalle?.value ?? '').trim();
+    summaryText('[data-summary-zona]', zonaValue());
+    summaryText('[data-summary-detalle]', detail);
+    const detailRow = form.querySelector<HTMLElement>('[data-summary-detalle-row]');
+    if (detailRow) detailRow.hidden = !detail;
+    summaryText('[data-summary-nombre]', (nombre?.value ?? '').trim());
+    summaryText('[data-summary-phone]', phone ? formatPhone(phone) : '');
   }
 
   // ---------- Navegación ----------
@@ -320,6 +337,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
       }, LEAVE_MS);
     }
     applyNav(step);
+    if (step === total) fillSummary();
     if (animate) animateHeight(fromHeight);
     segments.forEach((seg) =>
       seg.classList.toggle('is-done', Number(seg.dataset.progressSeg) <= step),
@@ -362,7 +380,21 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     }
     if (current < total) {
       completeStep(current);
-      showStep(current + 1);
+      if (editing) {
+        // Tras "Cambiar" en la confirmación, vuelve a ella (o al primer paso que haya quedado mal,
+        // por ejemplo el detalle si la zona nueva es "Otro").
+        let target = total;
+        for (let step = 1; step < total; step += 1) {
+          if (!validateStep(step, false)) {
+            target = step;
+            break;
+          }
+        }
+        if (target === total) editing = false;
+        showStep(target);
+      } else {
+        showStep(current + 1);
+      }
     } else {
       form.requestSubmit();
     }
@@ -370,6 +402,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
 
   function back(): void {
     window.clearTimeout(advanceTimer);
+    editing = false;
     if (current > 1) showStep(current - 1);
   }
 
@@ -454,11 +487,16 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     if (!target) return;
     if (target.closest('[data-next]')) next();
     else if (target.closest('[data-back]')) back();
-    else if (target.closest('[data-skip]')) {
+    else if (target.closest('[data-edit-step]')) {
+      const step = Number(target.closest<HTMLElement>('[data-edit-step]')?.dataset.editStep);
+      if (step >= 1 && step < total) {
+        editing = true;
+        showStep(step);
+      }
+    } else if (target.closest('[data-skip]')) {
       if (zonaValue() === 'Otro') return;
       setError('detalle', null);
-      completeStep(2);
-      showStep(3);
+      next();
     }
   });
 

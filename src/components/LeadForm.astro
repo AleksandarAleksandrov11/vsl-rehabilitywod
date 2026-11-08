@@ -34,10 +34,10 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
 <div class="form-card" data-form-root data-theme="dark" data-wa={CONFIG.whatsapp}>
   <div class="progress" data-progress hidden>
     <p class="progress-text eyebrow" data-progress-text aria-hidden="true">
-      Paso 1 de 4
+      Paso 1 de 5
     </p>
     <div class="progress-track" aria-hidden="true">
-      {[1, 2, 3, 4].map((n) => (
+      {[1, 2, 3, 4, 5].map((n) => (
         <span class:list={['progress-seg', n === 1 && 'is-done']} data-progress-seg={n}></span>
       ))}
     </div>
@@ -213,6 +213,48 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
         <CircleAlert size={16} stroke-width={1.75} aria-hidden="true" />
         <span></span>
       </p>
+    </fieldset>
+
+    <!-- Paso 5: confirmar los datos y aceptar. Sin JS no hay resumen: se ve lo que ya está arriba. -->
+    <fieldset class="step" data-step="5">
+      <legend class="step-legend">
+        <h3 class="step-title" id="s5-title" tabindex="-1">
+          Confirma tus datos
+        </h3>
+      </legend>
+      <dl class="summary" data-summary data-js-only hidden>
+        <div class="summary-row">
+          <dt>Zona</dt>
+          <dd data-summary-zona></dd>
+          <button type="button" class="summary-edit" data-edit-step="1">
+            Cambiar<span class="sr-only"> la zona</span>
+          </button>
+        </div>
+        <div class="summary-row" data-summary-detalle-row hidden>
+          <dt>Tu caso</dt>
+          <dd class="summary-detalle" data-summary-detalle></dd>
+          <button type="button" class="summary-edit" data-edit-step="2">
+            Cambiar<span class="sr-only"> lo que te pasa</span>
+          </button>
+        </div>
+        <div class="summary-row">
+          <dt>Nombre</dt>
+          <dd data-summary-nombre></dd>
+          <button type="button" class="summary-edit" data-edit-step="3">
+            Cambiar<span class="sr-only"> el nombre</span>
+          </button>
+        </div>
+        <div class="summary-row summary-row-phone">
+          <dt>Móvil</dt>
+          <dd class="summary-phone tabular" data-summary-phone></dd>
+          <button type="button" class="summary-edit" data-edit-step="4">
+            Cambiar<span class="sr-only"> el móvil</span>
+          </button>
+        </div>
+      </dl>
+      <p class="summary-hint" data-js-only hidden>
+        Revisa que todo esté bien: te escribiré a ese móvil.
+      </p>
 
       <div class="consent">
         <input
@@ -324,7 +366,7 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     transition: height 0.28s var(--ease);
   }
 
-  /* Progreso: "Paso 1 de 4" y barra segmentada en 4 tramos. */
+  /* Progreso: "Paso 1 de 5" y barra segmentada en 5 tramos. */
   .progress {
     margin-bottom: 22px;
   }
@@ -687,6 +729,91 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     font-weight: 700;
     letter-spacing: 0.02em;
     white-space: nowrap;
+  }
+
+  /* Paso 5: resumen de lo escrito, con un "Cambiar" por dato. */
+  .summary {
+    margin: 0;
+    border: 1px solid var(--hair-on-dark);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  /* Etiqueta y "Cambiar" arriba; el dato debajo, a todo el ancho (el móvil no se corta). */
+  .summary-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 12px;
+    padding: 4px 14px 12px;
+    border-top: 1px solid var(--hair-on-dark);
+  }
+
+  .summary-row:first-child {
+    border-top: 0;
+  }
+
+  .summary-row[hidden] {
+    display: none;
+  }
+
+  .summary dt {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-on-dark);
+  }
+
+  .summary dd {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .summary-detalle {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+    font-weight: 500;
+  }
+
+  /* El móvil, lo más grande: es lo que hay que comprobar. */
+  .summary-phone {
+    font-size: 1.625rem !important;
+    letter-spacing: 0.02em;
+    color: var(--brand-bright);
+    white-space: nowrap;
+  }
+
+  .summary-edit {
+    grid-column: 2;
+    grid-row: 1;
+    min-height: 44px;
+    padding: 0 4px;
+    border: 0;
+    background: none;
+    color: var(--ink-on-dark);
+    font: inherit;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: var(--brand-bright);
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .summary-hint {
+    margin: 12px 0 18px;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    color: var(--muted-on-dark);
   }
 
   .skip-step {
