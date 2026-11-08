@@ -460,7 +460,7 @@ if (PARTS.includes('B'))
       });
       const h = await headerH(page);
       const good =
-        s.zona === zona && s.step === 'Paso 2 de 4' && s.titleTop >= h && s.titleBottom <= s.vh;
+        s.zona === zona && s.step === 'Paso 2 de 5' && s.titleTop >= h && s.titleBottom <= s.vh;
       report(
         good,
         `${name}: zona ${zona} (1 ${touch ? 'toque' : 'clic'}) → ${s.step}, zona ${s.zona}, título "${s.title}" visible (cabecera ${Math.round(h)})`,

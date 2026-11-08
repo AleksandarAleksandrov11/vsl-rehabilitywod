@@ -364,6 +364,9 @@ try {
   await page.locator('#nombre').fill('Laura');
   await page.getByRole('button', { name: 'Continuar' }).click();
   await page.locator('#telefono').fill('633 417 829');
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  await page.locator('#s5-title').waitFor();
+  await page.waitForTimeout(400);
   await page.locator('#consentimiento_salud').check();
   // Tiempo humano: el antispam descarta los envíos de menos de 3 s.
   await page.waitForTimeout(3200);

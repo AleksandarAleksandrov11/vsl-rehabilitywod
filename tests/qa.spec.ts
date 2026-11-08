@@ -15,7 +15,6 @@ import {
   chip,
   contractProblems,
   fbRequests,
-  fillForm,
   installCspProbe,
   isMobile,
   newCtx,
@@ -986,7 +985,7 @@ test.describe('Mensaje según el anuncio (utm_content)', () => {
     const page = await ctx.newPage();
     await page.goto('/?utm_content=mofu3.0', { waitUntil: 'networkidle' });
     await expect(page.locator('input[name="zona"][value="Hombro"]')).toBeChecked();
-    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 1 de 4');
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 1 de 5');
     expect(readLeads().some((l) => l.utm_content === 'mofu3.0')).toBe(false);
     await ctx.close();
   });
@@ -1054,7 +1053,7 @@ test.describe('Sección "¿Qué te duele?" con el formulario', () => {
         expect(h).toBeLessThanOrEqual(iconMax);
       }
       expect(m.inView).toBe(true);
-      expect(m.step).toBe('Paso 1 de 4');
+      expect(m.step).toBe('Paso 1 de 5');
       await ctx.close();
     });
   }
@@ -1084,7 +1083,7 @@ test.describe('Sección "¿Qué te duele?" con el formulario', () => {
     expect(covered).toEqual([]);
     await chip(page, 'Rodilla').tap();
     await expect(page.locator('input[name="zona"][value="Rodilla"]')).toBeChecked();
-    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 5');
     await expect(page.locator('#s2-title')).toBeFocused();
     await expect
       .poll(() => trEvents(fb, 'FormStart').length, { timeout: 15_000 })
@@ -1103,7 +1102,7 @@ test.describe('Sección "¿Qué te duele?" con el formulario', () => {
     await page.goto('/', { waitUntil: 'networkidle' });
     await chip(page, 'Otro').click();
     await expect(page.locator('input[name="zona"][value="Otro"]')).toBeChecked();
-    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 5');
     await page.getByRole('button', { name: 'Continuar' }).click();
     await expect(page.locator('#err-detalle')).toBeVisible();
     await page.waitForTimeout(1000);
@@ -1119,7 +1118,7 @@ test.describe('Sección "¿Qué te duele?" con el formulario', () => {
     const page = await ctx.newPage();
     await page.goto('/?utm_content=mofu3.0', { waitUntil: 'networkidle' });
     await expect(page.locator('input[name="zona"][value="Hombro"]')).toBeChecked();
-    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 1 de 4');
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 1 de 5');
     await page.goto('/?utm_content=', { waitUntil: 'networkidle' });
     await expect(page.locator('input[name="zona"]:checked')).toHaveCount(0);
     await ctx.close();
@@ -1210,13 +1209,13 @@ test.describe('Formulario', () => {
     });
     await openForm(page);
 
-    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 1 de 4');
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 1 de 5');
     await chip(page, 'Hombro').click();
     // Avanza solo a los 250 ms
     await expect(page.locator('fieldset[data-step="2"]')).toBeVisible();
-    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 5');
     await expect(page.locator('#s2-title')).toBeFocused();
-    await expect(page.locator('[data-live]')).toHaveText('Paso 2 de 4');
+    await expect(page.locator('[data-live]')).toHaveText('Paso 2 de 5');
     // Paso 1 completado: ViewContent (señal intermedia), FormStart y FormStep 1, sin salud.
     await expect
       .poll(() => trEvents(fb, 'ViewContent').length, { timeout: 15_000 })
@@ -1234,6 +1233,14 @@ test.describe('Formulario', () => {
     await page.getByRole('button', { name: 'Continuar' }).click();
     await expect(page.locator('#s4-title')).toBeFocused();
     await page.locator('#telefono').fill('633417829');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    // Confirmación: los datos a la vista, con el móvil en grupos, y la casilla.
+    await expect(page.locator('#s5-title')).toBeFocused();
+    await expect(page.locator('[data-summary-zona]')).toHaveText('Hombro');
+    await expect(page.locator('[data-summary-nombre]')).toHaveText('Ana');
+    await expect(page.locator('[data-summary-phone]')).toHaveText('+34 633 417 829');
+    await expect(page.locator('[data-summary-detalle-row]')).toBeHidden();
+    await page.waitForTimeout(350);
     await page.locator('#consentimiento_salud').check();
     await page.waitForTimeout(3200); // tiempo humano (> 3 s desde el inicio)
 
@@ -1293,6 +1300,9 @@ test.describe('Formulario', () => {
     await page.locator('#nombre').fill('Prueba Fallo');
     await page.getByRole('button', { name: 'Continuar' }).click();
     await page.locator('#telefono').fill('611223344');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await page.locator('#s5-title').waitFor();
+    await page.waitForTimeout(350);
     await page.locator('#consentimiento_salud').check();
     await page.waitForTimeout(3200);
     await submitBtn(page).click();
@@ -1327,6 +1337,9 @@ test.describe('Formulario', () => {
     await page.locator('#nombre').fill('Prueba Red');
     await page.getByRole('button', { name: 'Continuar' }).click();
     await page.locator('#telefono').fill('622334455');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await page.locator('#s5-title').waitFor();
+    await page.waitForTimeout(350);
     await page.locator('#consentimiento_salud').check();
     await page.waitForTimeout(3200);
     await submitBtn(page).click();
@@ -1396,9 +1409,9 @@ test.describe('Formulario', () => {
     await expect(page.locator('fieldset[data-step="4"]')).toBeVisible();
 
     await page.locator('#telefono').fill('63341782');
-    await page.locator('#consentimiento_salud').check();
-    await submitBtn(page).click();
+    await page.getByRole('button', { name: 'Continuar' }).click();
     await expect(page.locator('#err-telefono')).toBeVisible();
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 4 de 5');
     await expect(page.locator('#err-telefono')).toHaveText(
       'Revisa tu móvil: 9 cifras y empieza por 6 o 7. Si es de otro país, cambia el prefijo.',
     );
@@ -1415,12 +1428,15 @@ test.describe('Formulario', () => {
     // Prefijo mal escrito: su propio mensaje.
     await page.locator('#telefono').fill('633417829');
     await page.locator('#prefijo').fill('34a');
-    await submitBtn(page).click();
+    await page.getByRole('button', { name: 'Continuar' }).click();
     await expect(page.locator('#err-telefono')).toContainText('Revisa el prefijo');
     await page.locator('#prefijo').fill('+34');
     await expect(page.locator('#err-telefono')).toBeHidden();
 
-    await page.locator('#consentimiento_salud').uncheck();
+    // Paso 5: sin la casilla no se envía.
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 5 de 5');
+    await page.waitForTimeout(3300);
     await submitBtn(page).click();
     await expect(page.locator('#err-consentimiento')).toBeVisible();
     await expect(page.locator('#err-consentimiento')).toHaveText(
@@ -1428,6 +1444,16 @@ test.describe('Formulario', () => {
     );
     await expect(page.locator('#consentimiento_salud')).toBeFocused();
     await expect(page.locator('#err-telefono')).toBeHidden();
+    // "Cambiar" el móvil desde la confirmación vuelve a ella con el dato nuevo.
+    await page.getByRole('button', { name: 'Cambiar el móvil' }).click();
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 4 de 5');
+    await page.locator('#telefono').fill('722553190');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await expect(page.locator('[data-progress-text]')).toHaveText('Paso 5 de 5');
+    await expect(page.locator('[data-summary-phone]')).toHaveText('+34 722 553 190');
+    await page.getByRole('button', { name: 'Cambiar el móvil' }).click();
+    await page.locator('#telefono').fill('633417829');
+    await page.getByRole('button', { name: 'Continuar' }).click();
     // No se borra nada de lo escrito.
     await expect(page.locator('#telefono')).toHaveValue('633417829');
     await expect(page.locator('#nombre')).toHaveValue('Álex');
@@ -1447,7 +1473,12 @@ test.describe('Formulario', () => {
       if (r.url().endsWith('/api/lead') && r.method() === 'POST') posted++;
     });
     await page.goto('/', { waitUntil: 'networkidle' });
-    await fillForm(page, { zona: 'Hombro', nombre: 'Álex', telefono: '633417829' });
+    await chip(page, 'Hombro').click();
+    await page.getByRole('button', { name: 'Saltar este paso' }).click();
+    await page.locator('#nombre').fill('Álex');
+    await page.keyboard.press('Enter');
+    await page.locator('#s4-title').waitFor();
+    await page.locator('#telefono').fill('633417829');
     // El número que se enviará, en grupos de tres, bajo el campo.
     await expect(page.locator('[data-phone-echo]')).toBeVisible();
     await expect(page.locator('[data-phone-echo-value]')).toHaveText('+34 633 417 829');
@@ -1465,7 +1496,7 @@ test.describe('Formulario', () => {
     for (const n of bad) {
       await page.locator('#telefono').fill(n);
       await expect(page.locator('[data-phone-echo]'), n).toBeHidden();
-      await submitBtn(page).click();
+      await page.getByRole('button', { name: 'Continuar' }).click();
       await expect(page.locator('#err-telefono'), n).toBeVisible();
     }
     expect(posted).toBe(0);
@@ -1508,6 +1539,10 @@ test.describe('Formulario', () => {
     await expect(page.locator('#telefono')).toHaveValue('633 41 78 29');
     await expect(page.locator('#prefijo')).toHaveValue('+34');
     await page.locator('#telefono').fill('+44 7700 900123');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await page.locator('#s5-title').waitFor();
+    await page.waitForTimeout(350);
+    await expect(page.locator('[data-summary-phone]')).toHaveText('+447700900123');
     await page.locator('#consentimiento_salud').check();
     await page.waitForTimeout(3100);
     await submitBtn(page).click();
@@ -1569,7 +1604,16 @@ test.describe('Formulario', () => {
     await page.keyboard.press('Tab');
     await expect(page.locator('#telefono')).toBeFocused();
     await page.keyboard.type('699 11 22 33');
-    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#s5-title')).toBeFocused();
+    // Cuatro "Cambiar" y el enlace de privacidad antes de la casilla.
+    for (let i = 0; i < 8; i += 1) {
+      await page.keyboard.press('Tab');
+      if (
+        await page.locator('#consentimiento_salud').evaluate((el) => el === document.activeElement)
+      )
+        break;
+    }
     await expect(page.locator('#consentimiento_salud')).toBeFocused();
     await page.keyboard.press('Space');
     await expect(page.locator('#consentimiento_salud')).toBeChecked();
@@ -1586,6 +1630,9 @@ test.describe('Formulario', () => {
     await page.locator('#nombre').fill('Bot Honeypot UI');
     await page.keyboard.press('Enter');
     await page.locator('#telefono').fill('612000111');
+    await page.keyboard.press('Enter');
+    await page.locator('#s5-title').waitFor();
+    await page.waitForTimeout(350);
     await page.locator('#consentimiento_salud').check();
     await page
       .locator('#website')
@@ -2389,7 +2436,9 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       '+120 atletas recuperados',
       'Gerard Barrantes Fundador de RehabilityWOD',
       'Elige la zona y empieza tu valoración. 30 segundos.',
-      'Paso 1 de 4',
+      'Paso 1 de 5',
+      'Confirma tus datos',
+      'Revisa que todo esté bien: te escribiré a ese móvil.',
       '¿Qué te duele?',
       'Cuéntame un poco más.',
       '¿Cómo te llamas?',

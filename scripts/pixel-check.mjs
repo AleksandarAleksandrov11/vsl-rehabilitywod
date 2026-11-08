@@ -221,6 +221,9 @@ try {
   await page.locator('#nombre').fill('Prueba Pixel');
   await page.getByRole('button', { name: 'Continuar' }).click();
   await page.locator('#telefono').fill('600 123 987');
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  await page.locator('#s5-title').waitFor();
+  await page.waitForTimeout(400);
   await page.locator('#consentimiento_salud').check();
   await page.waitForTimeout(3200); // tiempo humano (antispam de 3 s)
   await page.locator('[data-submit]').click();

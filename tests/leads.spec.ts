@@ -206,7 +206,7 @@ test.describe('Fugas: nada que saque de la landing antes de enviar', () => {
       // "Otro" en "¿Qué te duele?" y errores de validación de cada paso.
       await page.locator('#valoracion').scrollIntoViewIfNeeded();
       await chip(page, 'Otro').click();
-      await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
+      await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 5');
       await page.getByRole('button', { name: 'Continuar' }).click();
       await expect(page.locator('#err-detalle')).toBeVisible();
       await page.locator('#detalle').fill('Una duda sobre el plan');
@@ -217,8 +217,13 @@ test.describe('Fugas: nada que saque de la landing antes de enviar', () => {
       await page.locator('#nombre').fill('Ana');
       await page.keyboard.press('Enter');
       await page.locator('#telefono').fill('123');
-      await submitBtn(page).click();
+      await page.getByRole('button', { name: 'Continuar' }).click();
       await expect(page.locator('#err-telefono')).toBeVisible();
+      await page.locator('#telefono').fill('633417829');
+      await page.getByRole('button', { name: 'Continuar' }).click();
+      await page.locator('#s5-title').waitFor();
+      await page.waitForTimeout(3300);
+      await submitBtn(page).click();
       await expect(page.locator('#err-consentimiento')).toBeVisible();
       await collect(page, 'errores de validación');
       // Banner cerrado (rechazar).
@@ -735,11 +740,11 @@ test('embudo: FormStart, ViewContent y cada FormStep una vez por sesión; FormEr
   // Primer toque: una zona.
   await page.locator('#valoracion').scrollIntoViewIfNeeded();
   await chip(page, 'Rodilla').tap();
-  await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
+  await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 5');
   // Atrás y otra zona: el paso 1 no se vuelve a contar.
   await page.getByRole('button', { name: 'Atrás' }).click();
   await chip(page, 'Codo').click();
-  await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
+  await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 5');
   await page.getByRole('button', { name: 'Saltar este paso' }).click();
   await page.locator('#nombre').fill('A');
   await page.keyboard.press('Enter');
@@ -747,14 +752,14 @@ test('embudo: FormStart, ViewContent y cada FormStep una vez por sesión; FormEr
   await expect(page.locator('#err-nombre')).toBeVisible();
   await page.locator('#nombre').fill('Ana');
   await page.keyboard.press('Enter');
-  await expect(page.locator('[data-progress-text]')).toHaveText('Paso 4 de 4');
+  await expect(page.locator('[data-progress-text]')).toHaveText('Paso 4 de 5');
   await page.getByRole('button', { name: 'Atrás' }).click();
   await page.keyboard.press('Enter');
   // Recarga en la misma sesión y otro toque del formulario: nada se repite.
   await page.reload({ waitUntil: 'networkidle' });
   await openForm(page);
   await chip(page, 'Hombro').click();
-  await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
+  await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 5');
   await page.waitForTimeout(1500);
 
   const steps = trEvents(fb, 'FormStep').map((r) => trParams(r)['cd[step]']);
@@ -970,10 +975,18 @@ test('capturas: zonas con el formulario, errores, gracias, footer, barra fija y 
     await page.locator('#nombre').fill('Ana');
     await page.keyboard.press('Enter');
     await page.locator('#telefono').fill('12345');
-    await submitBtn(page).click();
-    await expect(page.locator('#err-consentimiento')).toBeVisible();
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await expect(page.locator('#err-telefono')).toBeVisible();
     await shot(page, 'form-paso4-errores', '[data-form-root]');
     await page.locator('#telefono').fill('633417829');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await page.locator('#s5-title').waitFor();
+    await page.waitForTimeout(400);
+    await shot(page, 'form-paso5-confirmacion', '[data-form-root]');
+    await page.waitForTimeout(3000);
+    await submitBtn(page).click();
+    await expect(page.locator('#err-consentimiento')).toBeVisible();
+    await shot(page, 'form-paso5-errores', '[data-form-root]');
     await page.locator('label[for="consentimiento_salud"]').click();
     await page.waitForTimeout(3200);
     let fail = true;
