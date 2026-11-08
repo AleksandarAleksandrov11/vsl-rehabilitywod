@@ -10,8 +10,8 @@
  *   "Abrir WhatsApp" por si no se abre; en escritorio, solo el botón.
  * Si el envío falla: se conserva todo lo escrito y el enlace de WhatsApp lleva los datos.
  *
- * Eventos de Meta (solo con consentimiento): FormStart una vez por sesión al tocar el formulario o
- * una tarjeta de "¿Qué te duele?", ViewContent (Formulario) y FormStep {step} una vez por paso y
+ * Eventos de Meta (solo con consentimiento): FormStart una vez por sesión al tocar el formulario,
+ * ViewContent (Formulario) y FormStep {step} una vez por paso y
  * sesión, FormError {step, field}; en Vercel, form_step {step} y form_error {step, field}.
  * ViewContent también por la API de conversiones (/api/event-capi), una vez por sesión y con el
  * mismo event_id que el del Pixel: al completar el paso 1 o, sin el Pixel cargado, al llegar al
@@ -21,6 +21,7 @@ import {
   LIMITS,
   MESSAGES,
   isZona,
+  formatPhone,
   normalizePhone,
   validateDetalle,
   validateNombre,
@@ -236,7 +237,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     pixelTrack('FormError', { step, field });
   }
 
-  /** FormStart: una vez por sesión, al primer toque del formulario o de una tarjeta de zona. */
+  /** FormStart: una vez por sesión, al primer toque del formulario. */
   const formStart = () => pixelOnce('rw_px_formstart', () => pixelTrack('FormStart'));
 
   function firstInvalidField(step: number): HTMLElement | null {
@@ -480,8 +481,8 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   });
   chips?.addEventListener('change', syncOtro);
 
-  /** Marca una zona del paso 1 desde fuera del formulario; con `advance`, pasa al paso 2. */
-  function selectZona(value: string, advance: boolean): void {
+  /** Marca una zona del paso 1 sin avanzar. */
+  function selectZona(value: string): void {
     const input = [...form.querySelectorAll<HTMLInputElement>('input[name="zona"]')].find(
       (el) => el.value === value,
     );
@@ -490,46 +491,12 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     setError('zona', null);
     notice?.setAttribute('hidden', '');
     syncOtro();
-    if (!advance) return;
-    window.clearTimeout(advanceTimer);
-    completeStep(1);
-    // El formulario está lejos: cambia de paso sin la animación de altura (que en Safari puede
-    // cortar el scroll suave) y baja hasta él en el mismo toque, con el título del paso a la vista.
-    showStep(2, { focus: false, transition: false });
-    const headerH = document.querySelector<HTMLElement>('[data-header]')?.offsetHeight ?? 0;
-    const top = root.getBoundingClientRect().top + window.scrollY - headerH - 12;
-    window.scrollTo({ top: Math.max(0, top), behavior: reduceMotion() ? 'auto' : 'smooth' });
-    steps[1]?.querySelector<HTMLElement>('.step-title')?.focus({ preventScroll: true });
   }
-
-  // Sección "¿Qué te duele?": baja al formulario con la zona marcada y ya en el paso 2. El enlace
-  // "¿Otra duda?" hace lo mismo con "Otro" (sin JS, solo baja al formulario).
-  const zoneCards = document.querySelector<HTMLElement>('[data-zonas]');
-  document.getElementById('zonas')?.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    const el = target?.closest<HTMLElement>('[data-zona]');
-    if (!el?.dataset.zona) return;
-    event.preventDefault();
-    formStart();
-    selectZona(el.dataset.zona, true);
-  });
 
   // Visitas del anuncio del test de hombro: "Hombro" ya marcado en el paso 1 (sin avanzar).
   function preselect(): void {
     const zona = adVariantByKey(document.documentElement.dataset.ad)?.zona;
-    if (!zona) return;
-    if (!zonaValue()) selectZona(zona, false);
-    // Y su tarjeta destacada con "Tu zona" (sin pulsarla).
-    const card = [...(zoneCards?.querySelectorAll<HTMLElement>('[data-zona]') ?? [])].find(
-      (el) => el.dataset.zona === zona,
-    );
-    if (card && !card.classList.contains('is-suggested')) {
-      card.classList.add('is-suggested');
-      card.setAttribute(
-        'aria-label',
-        `${card.getAttribute('aria-label')?.replace(':', ' (tu zona):') ?? zona}`,
-      );
-    }
+    if (zona && !zonaValue()) selectZona(zona);
   }
   preselect();
 
@@ -553,8 +520,19 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   nombre?.addEventListener('input', () => {
     if (validateNombre(nombre.value)) setError('nombre', null);
   });
+  // El número que se enviará, en grupos de tres, bajo el campo: así se ve un dígito mal tecleado.
+  const phoneEcho = form.querySelector<HTMLElement>('[data-phone-echo]');
+  const phoneEchoValue = form.querySelector<HTMLElement>('[data-phone-echo-value]');
+  function updatePhoneEcho(): void {
+    const phone = normalizePhone(telefono?.value ?? '', prefijo?.value ?? '+34');
+    if (phoneEcho && phoneEchoValue) {
+      phoneEchoValue.textContent = phone ? formatPhone(phone) : '';
+      phoneEcho.hidden = !phone;
+    }
+  }
   telefono?.addEventListener('input', () => {
     if (normalizePhone(telefono.value, prefijo?.value ?? '+34')) setError('telefono', null);
+    updatePhoneEcho();
   });
   // Número pegado o autocompletado con +34 (o 0034): el prefijo va a su casilla.
   const splitSpanish = () => {
@@ -564,11 +542,13 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     prefijo.value = '+34';
     telefono.value = m[1].trim();
     setError('telefono', null);
+    updatePhoneEcho();
   };
   telefono?.addEventListener('change', splitSpanish);
   telefono?.addEventListener('paste', () => window.setTimeout(splitSpanish, 0));
   prefijo?.addEventListener('input', () => {
     if (normalizePhone(telefono?.value ?? '', prefijo.value)) setError('telefono', null);
+    updatePhoneEcho();
   });
   consent?.addEventListener('change', () => {
     if (consent.checked) setError('consentimiento', null);

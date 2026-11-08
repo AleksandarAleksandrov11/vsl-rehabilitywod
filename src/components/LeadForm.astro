@@ -206,6 +206,9 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
           aria-describedby="err-telefono"
         />
       </div>
+      <p class="phone-echo" data-phone-echo hidden>
+        Te escribiré al <strong data-phone-echo-value></strong>. Compruébalo antes de enviar.
+      </p>
       <p class="field-error" id="err-telefono" data-error="telefono" hidden>
         <CircleAlert size={16} stroke-width={1.75} aria-hidden="true" />
         <span></span>
@@ -670,6 +673,20 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
   .prefix {
     text-align: center;
     padding-inline: 8px;
+  }
+
+  .phone-echo {
+    margin-top: 10px;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    color: var(--muted-on-dark);
+  }
+
+  .phone-echo strong {
+    color: var(--ink-on-dark);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
   }
 
   .skip-step {

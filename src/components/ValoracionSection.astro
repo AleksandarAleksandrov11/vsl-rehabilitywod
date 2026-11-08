@@ -1,7 +1,8 @@
 ---
 /**
- * Valoración (el formulario): justo después de "¿Qué te duele?" y antes del vídeo, para que se vea
- * pronto (a menos de 2,5 pantallas del inicio en 390x844; lo comprueba el QA).
+ * "¿Qué te duele?" y el formulario en una sola sección, justo debajo del hero y antes del vídeo,
+ * para que se vea pronto (a menos de 1,5 pantallas del inicio en 390x844; lo comprueba el QA). El
+ * paso 1 del formulario son las zonas (una pulsación elige y pasa al paso 2).
  * Foto de box a sangre casi tapada por un velo (--void al 88 %) y un resplandor verde tenue
  * arriba. En móvil la foto solo asoma arriba para no restar legibilidad.
  */
@@ -43,10 +44,10 @@ const bg = await responsive(formPhoto, WIDTHS.landscape, QUALITY_VEILED);
       <SplitWords
         id="valoracion-title"
         class="h2-display valoracion-title"
-        parts={['Cuéntame', { br: 'always' }, { text: 'qué te pasa.', accent: true }]}
+        parts={['¿Qué te', { br: 'always' }, { text: 'duele?', accent: true }]}
       />
       <p class="lead valoracion-lead reveal" data-reveal style="--i:2">
-        Rellénalo en 30 segundos y únete a los más de 120 atletas recuperados.
+        Elige la zona y empieza tu valoración. 30 segundos.
       </p>
     </div>
 
@@ -97,9 +98,16 @@ const bg = await responsive(formPhoto, WIDTHS.landscape, QUALITY_VEILED);
       linear-gradient(180deg, rgba(10, 10, 10, 0.84) 0, rgba(10, 10, 10, 0.9) 360px, #0a0a0a 720px);
   }
 
-  /* Con line-height 0.9 la tilde de "QUÉ" toca "CUÉNTAME": un poco más de aire. */
-  .valoracion-title {
-    line-height: 1.04;
+  /* El paso 1 del formulario repite "¿Qué te duele?": solo para lectores de pantalla (es la
+     etiqueta del grupo de zonas). */
+  .valoracion :global(#s1-title) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   .valoracion-head {
