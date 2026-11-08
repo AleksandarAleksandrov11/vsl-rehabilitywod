@@ -9,7 +9,10 @@ formulario de valoración.
   preguntas frecuentes, banda de cierre y footer. El formulario va justo debajo del hero: en un
   móvil de 390x844 la sección empieza a 1 pantalla del inicio (antes, a 8,3).
 - Landing de anuncios: todas las páginas llevan `noindex` y no hay sitemap.
-- Formulario de 4 pasos, uno por pantalla, que también funciona sin JavaScript.
+- Formulario de 5 pasos, uno por pantalla (zona, detalle, nombre, móvil y confirmación), que también
+  funciona sin JavaScript. El último paso, «Confirma tus datos», muestra lo escrito (zona, caso,
+  nombre y el móvil en grande y en grupos) con un «Cambiar» por dato, y es donde está la casilla
+  de la política de privacidad y los datos de salud, antes del botón de enviar.
 - Cada solicitud se guarda en Google Sheets (`/api/lead` → Google Apps Script) y se avisa por email.
 - Sin salidas antes de enviar: ni WhatsApp, ni redes, ni email en la home. Tras enviar, la gracias
   sale en la propia tarjeta y WhatsApp se abre con el mensaje ya escrito (solo en móvil; en
@@ -336,7 +339,8 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
   servidor): móvil español de verdad (6xx o 71x a 74x; no valen fijos ni rangos sin asignar) y se
   rechazan los números de relleno (una sola cifra, escaleras como 612345678 o bloques repetidos
   como 612612612). Debajo del campo se muestra el número en grupos («Te escribiré al +34 633 417
-  829») para que se vea una cifra mal tecleada. Un número pegado con +34 pasa el prefijo a su casilla. Errores con
+  829») y otra vez, en grande, en la confirmación del paso 5 (que es donde se acepta la casilla), para
+  que se vea una cifra mal tecleada. «Cambiar» en la confirmación lleva a ese paso y vuelve a ella. Un número pegado con +34 pasa el prefijo a su casilla. Errores con
   `aria-describedby`, foco en el campo y aviso en la región `data-live`. Si falla la red se muestra
   el error, se conserva todo lo escrito para reintentar y el enlace de WhatsApp lleva todos los
   datos. En móvil el botón dice «Enviar y abrir WhatsApp».
