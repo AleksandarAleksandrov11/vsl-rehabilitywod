@@ -11,8 +11,8 @@
  *       banner de cookies).
  *   B)  En Chromium móvil, WebKit (iPhone) y escritorio: todos los CTA a #valoracion dejan la
  *       sección del formulario arriba, bajo la cabecera; "Ver el vídeo" lleva al vídeo; cada
- *       tarjeta de "¿Qué te duele?" (y su enlace "¿Otra duda?", con "Otro") con un solo toque marca
- *       la zona, abre el paso 2 y deja el formulario arriba; "Configurar cookies", FAQ,
+ *       zona de "¿Qué te duele?" (paso 1 del formulario) con un solo toque se marca, abre el paso
+ *       2 y deja su título a la vista; "Configurar cookies", FAQ,
  *       testimonios, vídeo, logo y enlaces entre páginas.
  * Requiere un build con ASTRO_ADAPTER=node. WebKit es opcional (si no está instalado, se omite).
  * PARTS=A,F,A2,B para elegir partes.
@@ -373,8 +373,7 @@ if (PARTS.includes('B'))
       [...document.querySelectorAll('a[href="#valoracion"]')].map((a, i) => ({
         i,
         cta: a.dataset.cta || a.textContent.trim().slice(0, 30),
-        // "¿Otra duda?" (cierre de "¿Qué te duele?"): va como las tarjetas (más abajo).
-        skip: a.classList.contains('skip-link') || a.hasAttribute('data-zona'),
+        skip: a.classList.contains('skip-link'),
       })),
     );
     for (const { i, cta, skip } of ctas) {
@@ -425,24 +424,25 @@ if (PARTS.includes('B'))
       );
     }
 
-    // 3) Las 8 tarjetas de "¿Qué te duele?": un toque → formulario arriba, zona marcada, paso 2.
-    await page.goto(SITE + '/', { waitUntil: 'networkidle' });
-    const zonas = await page
-      .locator('#zonas .zcard')
-      .evaluateAll((els) => els.map((e) => e.dataset.zona));
-    zonas.push('enlace Otro');
-    for (const item of zonas) {
-      const zona = item === 'enlace Otro' ? 'Otro' : item;
+    // 3) Las 8 zonas de "¿Qué te duele?": un toque → zona marcada y paso 2 con su título a la vista.
+    for (const zona of [
+      'Hombro',
+      'Codo',
+      'Muñeca',
+      'Espalda / lumbar',
+      'Cadera',
+      'Rodilla',
+      'Tobillo / pie',
+      'Otro',
+    ]) {
+      await page.goto(SITE + '/', { waitUntil: 'networkidle' });
       await page
-        .locator('#zonas')
+        .locator('#valoracion')
         .evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
       await page.waitForTimeout(400);
-      const card =
-        item === 'enlace Otro'
-          ? page.locator('#zonas a[data-zona="Otro"]')
-          : page.locator(`#zonas .zcard[data-zona="${zona}"]`);
-      await card.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
-      await page.waitForTimeout(250);
+      const card = page
+        .locator('#lead-form label.chip')
+        .filter({ has: page.locator(`input[value="${zona}"]`) });
       await press(card);
       await settle(page);
       const s = await page.evaluate(() => {
@@ -459,16 +459,11 @@ if (PARTS.includes('B'))
         };
       });
       const h = await headerH(page);
-      const f = await top(page, '[data-form-root]');
       const good =
-        s.zona === zona &&
-        s.step === 'Paso 2 de 4' &&
-        Math.abs(f - (h + 12)) <= tol &&
-        s.titleTop >= h &&
-        s.titleBottom <= s.vh;
+        s.zona === zona && s.step === 'Paso 2 de 4' && s.titleTop >= h && s.titleBottom <= s.vh;
       report(
         good,
-        `${name}: ${item === 'enlace Otro' ? '"¿Otra duda?"' : `tarjeta ${zona}`} (1 ${touch ? 'toque' : 'clic'}) → ${s.step}, zona ${s.zona}, formulario a ${f}px (cabecera ${Math.round(h)}), título "${s.title}" visible`,
+        `${name}: zona ${zona} (1 ${touch ? 'toque' : 'clic'}) → ${s.step}, zona ${s.zona}, título "${s.title}" visible (cabecera ${Math.round(h)})`,
       );
     }
 

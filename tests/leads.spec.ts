@@ -203,9 +203,9 @@ test.describe('Fugas: nada que saque de la landing antes de enviar', () => {
       await page.locator('#por-que').scrollIntoViewIfNeeded();
       await page.waitForTimeout(600);
       await collect(page, 'barra fija');
-      // Cierre de "¿Qué te duele?" y errores de validación de cada paso.
-      await page.locator('#zonas').scrollIntoViewIfNeeded();
-      await page.locator('#zonas a[data-zona="Otro"]').click();
+      // "Otro" en "¿Qué te duele?" y errores de validación de cada paso.
+      await page.locator('#valoracion').scrollIntoViewIfNeeded();
+      await chip(page, 'Otro').click();
       await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
       await page.getByRole('button', { name: 'Continuar' }).click();
       await expect(page.locator('#err-detalle')).toBeVisible();
@@ -256,7 +256,7 @@ test.describe('Fugas: nada que saque de la landing antes de enviar', () => {
     const page = await ctx.newPage();
     await page.route('**/api/lead', (route) => route.abort('internetdisconnected'));
     await openForm(page);
-    await fillForm(page, { zona: 'Cadera', nombre: 'Ana', telefono: '612345678' });
+    await fillForm(page, { zona: 'Cadera', nombre: 'Ana', telefono: '633417829' });
     await submitBtn(page).click();
     await expect(page.locator('[data-form-error]')).toBeVisible();
     const links = await externalLinks(page);
@@ -561,7 +561,7 @@ test.describe('Lead, gracias y WhatsApp', () => {
       zona: 'Rodilla',
       detalle: 'Me duele al bajar escaleras',
       nombre: 'Ana López',
-      telefono: '612345678',
+      telefono: '633417829',
     });
     await expect(submitBtn(page)).toHaveText('Enviar y abrir WhatsApp');
     // Doble toque: un solo envío y un solo Lead.
@@ -603,7 +603,7 @@ test.describe('Lead, gracias y WhatsApp', () => {
     // (init con los datos cifrados antes del Lead; el PageView del principio no los lleva).
     expect(trEvents(fb, 'Lead')).toHaveLength(1);
     const lead = trParams(trEvents(fb, 'Lead')[0]!);
-    expect(lead['ud[ph]']).toBe(sha('34612345678'));
+    expect(lead['ud[ph]']).toBe(sha('34633417829'));
     expect(lead['ud[fn]']).toBe(sha('ana'));
     expect(lead['ud[country]']).toBe(sha('es'));
     expect(trParams(trEvents(fb, 'PageView')[0]!)['ud[ph]']).toBeUndefined();
@@ -732,9 +732,9 @@ test('embudo: FormStart, ViewContent y cada FormStep una vez por sesión; FormEr
   const page = await ctx.newPage();
   const fb = fbRequests(page);
   await page.goto('/', { waitUntil: 'networkidle' });
-  // Primer toque: una tarjeta de zona.
-  await page.locator('#zonas').scrollIntoViewIfNeeded();
-  await page.getByRole('button', { name: 'Rodilla: empezar la valoración' }).tap();
+  // Primer toque: una zona.
+  await page.locator('#valoracion').scrollIntoViewIfNeeded();
+  await chip(page, 'Rodilla').tap();
   await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
   // Atrás y otra zona: el paso 1 no se vuelve a contar.
   await page.getByRole('button', { name: 'Atrás' }).click();
@@ -931,7 +931,7 @@ test.describe('Variantes del hero', () => {
 // Capturas del resto de cambios
 // ---------------------------------------------------------------------------
 
-test('capturas: zonas, formulario, errores, gracias, footer, barra fija y /gracias', async ({
+test('capturas: zonas con el formulario, errores, gracias, footer, barra fija y /gracias', async ({
   browser,
 }) => {
   test.setTimeout(240_000);
@@ -951,9 +951,9 @@ test('capturas: zonas, formulario, errores, gracias, footer, barra fija y /graci
     const page = await ctx.newPage();
     await page.route('https://wa.me/**', () => undefined); // la gracias no sale de la página
     await page.goto('/', { waitUntil: 'networkidle' });
-    await page.locator('#zonas .zonas-alt').scrollIntoViewIfNeeded();
+    await page.locator('#valoracion').scrollIntoViewIfNeeded();
     await page.waitForTimeout(400);
-    await shot(page, 'zonas-cierre', '#zonas');
+    await shot(page, 'zonas-formulario', '#valoracion');
     if (name === '390') {
       await page.locator('#por-que').scrollIntoViewIfNeeded();
       await page.waitForTimeout(600);
@@ -973,7 +973,7 @@ test('capturas: zonas, formulario, errores, gracias, footer, barra fija y /graci
     await submitBtn(page).click();
     await expect(page.locator('#err-consentimiento')).toBeVisible();
     await shot(page, 'form-paso4-errores', '[data-form-root]');
-    await page.locator('#telefono').fill('612345678');
+    await page.locator('#telefono').fill('633417829');
     await page.locator('label[for="consentimiento_salud"]').click();
     await page.waitForTimeout(3200);
     let fail = true;

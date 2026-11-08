@@ -15,6 +15,7 @@ import {
   chip,
   contractProblems,
   fbRequests,
+  fillForm,
   installCspProbe,
   isMobile,
   newCtx,
@@ -170,7 +171,7 @@ async function pageChecks(page: Page, vp: Vp, path: string) {
   const widows = await page.evaluate(() => {
     const out: string[] = [];
     // "¿Qué te / duele?": salto de línea pedido expresamente, no cuenta como viuda.
-    for (const el of document.querySelectorAll('h1, h2:not(#zonas-title)')) {
+    for (const el of document.querySelectorAll('h1, h2:not(#valoracion-title)')) {
       const r0 = el.getBoundingClientRect();
       if (!r0.width || el.closest('[hidden],dialog:not([open])')) continue;
       const range = document.createRange();
@@ -991,29 +992,33 @@ test.describe('Mensaje según el anuncio (utm_content)', () => {
   });
 });
 
-test.describe('Sección "¿Qué te duele?"', () => {
-  test('va justo después del hero y antes del formulario; el hero ya no lleva la fila de zonas', async ({
+test.describe('Sección "¿Qué te duele?" con el formulario', () => {
+  test('una sola sección justo debajo del hero y antes del vídeo; el hero no lleva la fila de zonas', async ({
     page,
   }) => {
     await page.goto('/');
     const order = await page.evaluate(() =>
-      [...document.querySelectorAll('main > section')].slice(0, 4).map((s) => s.id),
+      [...document.querySelectorAll('main > section')].slice(0, 3).map((s) => s.id),
     );
-    expect(order).toEqual(['inicio', 'zonas', 'valoracion', 'video']);
+    expect(order).toEqual(['inicio', 'valoracion', 'video']);
+    await expect(page.locator('#zonas')).toHaveCount(0);
     await expect(page.locator('#inicio [data-zona]')).toHaveCount(0);
     await expect(page.locator('#inicio .hero-proof')).toHaveText(/\+120\s+atletas recuperados/);
-    await expect(page.locator('#zonas-title')).toHaveText(/¿Qué te\s*duele\?/);
-    await expect(page.locator('#zonas .zonas-lead')).toHaveText(
+    await expect(page.locator('#valoracion-title')).toHaveText(/¿Qué te\s*duele\?/);
+    await expect(page.locator('#valoracion .valoracion-lead')).toHaveText(
       'Elige la zona y empieza tu valoración. 30 segundos.',
     );
+    // El paso 1 del formulario (las zonas) está en esa misma sección y a la vista sin pulsar nada.
+    await expect(page.locator('#valoracion [data-form-root]')).toHaveCount(1);
+    await expect(page.locator('#valoracion #lead-form label.chip')).toHaveCount(8);
   });
 
   for (const [vp, cols, minH, iconMin, iconMax] of [
-    [VIEWPORTS[3], 2, 72, 56, 64],
-    [VIEWPORTS[1], 2, 72, 56, 64],
-    [VIEWPORTS[10], 4, 150, 80, 96],
+    [VIEWPORTS[3], 2, 56, 40, 64],
+    [VIEWPORTS[1], 2, 56, 40, 64],
+    [VIEWPORTS[10], 4, 56, 40, 96],
   ] as const) {
-    test(`${vpName(vp)}: 8 tarjetas grandes en ${cols} columnas, figura de tamaño fijo`, async ({
+    test(`${vpName(vp)}: 8 opciones de zona con su figura en ${cols} columnas, todas a la vista sin avanzar`, async ({
       browser,
     }) => {
       const ctx = await newCtx(browser, vp);
@@ -1021,22 +1026,15 @@ test.describe('Sección "¿Qué te duele?"', () => {
       const page = await ctx.newPage();
       await page.goto('/', { waitUntil: 'networkidle' });
       const m = await page.evaluate(() => {
-        const cards = [...document.querySelectorAll<HTMLElement>('#zonas .zcard')];
+        const chips = [...document.querySelectorAll<HTMLElement>('#lead-form label.chip')];
         const r = (el: Element) => el.getBoundingClientRect();
         return {
-          names: cards.map((c) => c.querySelector('.zcard-name')!.textContent!.trim()),
-          labels: cards.map((c) => c.getAttribute('aria-label')),
-          cols: new Set(cards.map((c) => Math.round(r(c).left))).size,
-          minH: Math.min(...cards.map((c) => r(c).height)),
-          icons: cards.map((c) => {
-            const svg = c.querySelector('svg.zone-icon')!;
-            return [r(svg).height, getComputedStyle(svg).height];
-          }),
-          font: getComputedStyle(cards[0]!.querySelector('.zcard-name')!).fontFamily,
-          upper: getComputedStyle(cards[0]!.querySelector('.zcard-name')!).textTransform,
-          arrows: cards.filter((c) => c.querySelector('.zcard-arrow svg')).length,
-          buttons: cards.filter((c) => c instanceof HTMLButtonElement && c.type === 'button')
-            .length,
+          names: chips.map((c) => c.querySelector('.chip-text')!.textContent!.trim()),
+          cols: new Set(chips.map((c) => Math.round(r(c).left))).size,
+          minH: Math.min(...chips.map((c) => r(c).height)),
+          icons: chips.map((c) => r(c.querySelector('svg.zone-icon')!).height),
+          inView: chips.every((c) => r(c).top >= 0),
+          step: document.querySelector('[data-progress-text]')?.textContent,
         };
       });
       expect(m.names.map((n) => n.replace(/\u00a0/g, ' '))).toEqual([
@@ -1047,25 +1045,21 @@ test.describe('Sección "¿Qué te duele?"', () => {
         'Cadera',
         'Rodilla',
         'Tobillo / pie',
-        'Otra',
+        'Otro',
       ]);
-      expect(m.labels[0]).toBe('Hombro: empezar la valoración');
       expect(m.cols).toBe(cols);
       expect(m.minH).toBeGreaterThanOrEqual(minH);
-      for (const [h, css] of m.icons) {
+      for (const h of m.icons) {
         expect(h).toBeGreaterThanOrEqual(iconMin);
         expect(h).toBeLessThanOrEqual(iconMax);
-        expect(css).toMatch(/px$/);
       }
-      expect(m.font).toContain('Big Shoulders');
-      expect(m.upper).toBe('uppercase');
-      expect(m.arrows).toBe(8);
-      expect(m.buttons).toBe(8);
+      expect(m.inView).toBe(true);
+      expect(m.step).toBe('Paso 1 de 4');
       await ctx.close();
     });
   }
 
-  test('un solo toque en una tarjeta: zona marcada, paso 2 a la vista y FormStart con consentimiento', async ({
+  test('un solo toque en una zona: marcada, paso 2 a la vista y FormStart con consentimiento', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
@@ -1073,11 +1067,10 @@ test.describe('Sección "¿Qué te duele?"', () => {
     const page = await ctx.newPage();
     const fb = fbRequests(page);
     await page.goto('/', { waitUntil: 'networkidle' });
-    await page.locator('#zonas').scrollIntoViewIfNeeded();
     await page.waitForTimeout(600);
-    // La barra fija no tapa las tarjetas: el centro de cada tarjeta visible es la tarjeta.
+    // La barra fija no tapa las opciones: el centro de cada una es la propia opción.
     const covered = await page.evaluate(() =>
-      [...document.querySelectorAll<HTMLElement>('#zonas .zcard')]
+      [...document.querySelectorAll<HTMLElement>('#lead-form label.chip')]
         .filter((c) => {
           const r = c.getBoundingClientRect();
           return r.top >= 0 && r.bottom <= window.innerHeight;
@@ -1086,29 +1079,13 @@ test.describe('Sección "¿Qué te duele?"', () => {
           const r = c.getBoundingClientRect();
           return !c.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
         })
-        .map((c) => c.dataset.zona),
+        .map((c) => c.textContent?.trim()),
     );
     expect(covered).toEqual([]);
-    // En móvil no hay estado "al pasar el ratón": si lo hubiera, en iPhone el primer toque solo
-    // activaría ese estado y haría falta un segundo toque.
-    const card = page.getByRole('button', { name: 'Rodilla: empezar la valoración' });
-    const border = await card.evaluate((el) => getComputedStyle(el).borderColor);
-    await card.hover();
-    await page.waitForTimeout(300);
-    expect(await card.evaluate((el) => getComputedStyle(el).borderColor)).toBe(border);
-    // Un solo toque: zona marcada, paso 2 y el formulario a la vista.
-    await card.tap();
+    await chip(page, 'Rodilla').tap();
     await expect(page.locator('input[name="zona"][value="Rodilla"]')).toBeChecked();
     await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
     await expect(page.locator('#s2-title')).toBeFocused();
-    await expect
-      .poll(() =>
-        page.evaluate(() => {
-          const t = document.getElementById('s2-title')!.getBoundingClientRect();
-          return t.top >= 68 && t.bottom <= window.innerHeight;
-        }),
-      )
-      .toBe(true);
     await expect
       .poll(() => trEvents(fb, 'FormStart').length, { timeout: 15_000 })
       .toBeGreaterThan(0);
@@ -1116,7 +1093,7 @@ test.describe('Sección "¿Qué te duele?"', () => {
     await ctx.close();
   });
 
-  test('teclado: Enter en una tarjeta enfocada; sin consentimiento no sale nada a Meta', async ({
+  test('"Otro" lleva al paso 2 con el detalle obligatorio; sin consentimiento no sale nada a Meta', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, VIEWPORTS[10]);
@@ -1124,34 +1101,27 @@ test.describe('Sección "¿Qué te duele?"', () => {
     const page = await ctx.newPage();
     const fb = fbRequests(page);
     await page.goto('/', { waitUntil: 'networkidle' });
-    const card = page.getByRole('button', { name: 'Otra: empezar la valoración' });
-    await card.focus();
-    await expect
-      .poll(() => card.evaluate((el) => getComputedStyle(el).borderColor))
-      .toBe('rgb(52, 211, 153)');
-    await page.keyboard.press('Enter');
+    await chip(page, 'Otro').click();
     await expect(page.locator('input[name="zona"][value="Otro"]')).toBeChecked();
     await expect(page.locator('[data-progress-text]')).toHaveText('Paso 2 de 4');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await expect(page.locator('#err-detalle')).toBeVisible();
     await page.waitForTimeout(1000);
     expect(fb).toHaveLength(0);
     await ctx.close();
   });
 
-  test('mofu3.0: "Hombro" destacado con "Tu zona", sin pulsarse', async ({ browser }) => {
+  test('mofu3.0: "Hombro" ya marcado en el paso 1, sin avanzar; sin anuncio, ninguna marcada', async ({
+    browser,
+  }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
     await setConsent(ctx, CONSENT_REJECTED);
     const page = await ctx.newPage();
     await page.goto('/?utm_content=mofu3.0', { waitUntil: 'networkidle' });
-    const hombro = page.locator('#zonas .zcard[data-zona="Hombro"]');
-    await expect(hombro).toHaveClass(/is-suggested/);
-    await expect(hombro.locator('.zcard-tag')).toBeVisible();
-    await expect(hombro.locator('.zcard-tag')).toHaveText('Tu zona');
-    await expect(page.locator('#zonas .zcard.is-suggested')).toHaveCount(1);
+    await expect(page.locator('input[name="zona"][value="Hombro"]')).toBeChecked();
     await expect(page.locator('[data-progress-text]')).toHaveText('Paso 1 de 4');
-    // Sin anuncio: ninguna destacada.
     await page.goto('/?utm_content=', { waitUntil: 'networkidle' });
-    await expect(page.locator('#zonas .zcard.is-suggested')).toHaveCount(0);
-    await expect(page.locator('#zonas .zcard-tag:visible')).toHaveCount(0);
+    await expect(page.locator('input[name="zona"]:checked')).toHaveCount(0);
     await ctx.close();
   });
 });
@@ -1220,7 +1190,7 @@ test.describe('API de conversiones: código de "Probar eventos"', () => {
 test.describe('Formulario', () => {
   const vp = VIEWPORTS[3];
 
-  test('camino feliz: Hombro → saltar → nombre → 612345678 → casilla → enviar → gracias', async ({
+  test('camino feliz: Hombro → saltar → nombre → 633417829 → casilla → enviar → gracias', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, vp);
@@ -1263,7 +1233,7 @@ test.describe('Formulario', () => {
     await page.locator('#nombre').fill('Ana');
     await page.getByRole('button', { name: 'Continuar' }).click();
     await expect(page.locator('#s4-title')).toBeFocused();
-    await page.locator('#telefono').fill('612345678');
+    await page.locator('#telefono').fill('633417829');
     await page.locator('#consentimiento_salud').check();
     await page.waitForTimeout(3200); // tiempo humano (> 3 s desde el inicio)
 
@@ -1281,20 +1251,20 @@ test.describe('Formulario', () => {
 
     const body = apiBody as Record<string, unknown> | null;
     expect(body).not.toBeNull();
-    expect(body!.telefono).toBe('+34612345678');
+    expect(body!.telefono).toBe('+34633417829');
     expect(body!.zona).toBe('Hombro');
     expect(String(body!.event_id)).toMatch(/^[0-9a-f-]{36}$/);
     expect(body!.consentimiento_salud).toBe(true);
     expect(body!.consentimiento_marketing).toBe(true);
 
     const saved = readLeads().find((l) => l.event_id === body!.event_id);
-    expect(saved?.telefono).toBe('+34612345678');
+    expect(saved?.telefono).toBe('+34633417829');
     expect(contractProblems(saved!)).toEqual([]);
 
     await expect.poll(() => trEvents(fb, 'Lead').length, { timeout: 15_000 }).toBeGreaterThan(0);
     const lead = trParams(trEvents(fb, 'Lead')[0]!);
     expect(lead.eid).toBe(body!.event_id);
-    expect(JSON.stringify(lead)).not.toMatch(/Hombro|Ana|612345678/);
+    expect(JSON.stringify(lead)).not.toMatch(/Hombro|Ana|633417829/);
     // Lead de servidor con el mismo event_id.
     await expect
       .poll(() => readCapi().some((b) => b.data[0]?.event_id === body!.event_id))
@@ -1322,7 +1292,7 @@ test.describe('Formulario', () => {
     await page.getByRole('button', { name: 'Saltar este paso' }).click();
     await page.locator('#nombre').fill('Prueba Fallo');
     await page.getByRole('button', { name: 'Continuar' }).click();
-    await page.locator('#telefono').fill('611111111');
+    await page.locator('#telefono').fill('611223344');
     await page.locator('#consentimiento_salud').check();
     await page.waitForTimeout(3200);
     await submitBtn(page).click();
@@ -1425,12 +1395,12 @@ test.describe('Formulario', () => {
     await page.keyboard.press('Enter');
     await expect(page.locator('fieldset[data-step="4"]')).toBeVisible();
 
-    await page.locator('#telefono').fill('61234567');
+    await page.locator('#telefono').fill('63341782');
     await page.locator('#consentimiento_salud').check();
     await submitBtn(page).click();
     await expect(page.locator('#err-telefono')).toBeVisible();
     await expect(page.locator('#err-telefono')).toHaveText(
-      'Revisa el número: 9 cifras, empieza por 6, 7, 8 o 9.',
+      'Revisa tu móvil: 9 cifras y empieza por 6 o 7. Si es de otro país, cambia el prefijo.',
     );
     await expect(page.locator('#telefono')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#telefono')).toBeFocused();
@@ -1438,12 +1408,12 @@ test.describe('Formulario', () => {
     await expect(page.locator('#prefijo')).toHaveAttribute('aria-describedby', 'err-telefono');
     // El error también se anuncia a los lectores de pantalla.
     await expect(page.locator('[data-live]')).toHaveText(
-      'Revisa el número: 9 cifras, empieza por 6, 7, 8 o 9.',
+      'Revisa tu móvil: 9 cifras y empieza por 6 o 7. Si es de otro país, cambia el prefijo.',
     );
     expect(posted).toBe(0);
 
     // Prefijo mal escrito: su propio mensaje.
-    await page.locator('#telefono').fill('612345678');
+    await page.locator('#telefono').fill('633417829');
     await page.locator('#prefijo').fill('34a');
     await submitBtn(page).click();
     await expect(page.locator('#err-telefono')).toContainText('Revisa el prefijo');
@@ -1459,14 +1429,60 @@ test.describe('Formulario', () => {
     await expect(page.locator('#consentimiento_salud')).toBeFocused();
     await expect(page.locator('#err-telefono')).toBeHidden();
     // No se borra nada de lo escrito.
-    await expect(page.locator('#telefono')).toHaveValue('612345678');
+    await expect(page.locator('#telefono')).toHaveValue('633417829');
     await expect(page.locator('#nombre')).toHaveValue('Álex');
     await page.waitForTimeout(500);
     expect(posted).toBe(0);
     await ctx.close();
   });
 
-  test('+44 7700 900123 pasa y se normaliza a E.164; "+34 612 34 56 78" pegado también', async ({
+  test('teléfono: rechaza fijos, rangos sin asignar y números de relleno; muestra el número en grupos para revisarlo', async ({
+    browser,
+  }) => {
+    const ctx = await newCtx(browser, vp);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    let posted = 0;
+    page.on('request', (r) => {
+      if (r.url().endsWith('/api/lead') && r.method() === 'POST') posted++;
+    });
+    await page.goto('/', { waitUntil: 'networkidle' });
+    await fillForm(page, { zona: 'Hombro', nombre: 'Álex', telefono: '633417829' });
+    // El número que se enviará, en grupos de tres, bajo el campo.
+    await expect(page.locator('[data-phone-echo]')).toBeVisible();
+    await expect(page.locator('[data-phone-echo-value]')).toHaveText('+34 633 417 829');
+    const bad = [
+      '612345678', // escalera
+      '666666666', // una sola cifra
+      '600000000',
+      '612612612', // bloque repetido
+      '698765432', // escalera descendente
+      '912345678', // fijo
+      '812345678',
+      '700123456', // 70x sin asignar
+      '755123456', // 75x
+    ];
+    for (const n of bad) {
+      await page.locator('#telefono').fill(n);
+      await expect(page.locator('[data-phone-echo]'), n).toBeHidden();
+      await submitBtn(page).click();
+      await expect(page.locator('#err-telefono'), n).toBeVisible();
+    }
+    expect(posted).toBe(0);
+    // Los móviles reales de 6xx y 71x a 74x pasan, con espacios o sin ellos.
+    for (const [n, shown] of [
+      ['722 55 31 90', '+34 722 553 190'],
+      ['655444333', '+34 655 444 333'],
+      ['612000444', '+34 612 000 444'],
+    ] as const) {
+      await page.locator('#telefono').fill(n);
+      await expect(page.locator('[data-phone-echo-value]'), n).toHaveText(shown);
+      await expect(page.locator('#err-telefono'), n).toBeHidden();
+    }
+    await ctx.close();
+  });
+
+  test('+44 7700 900123 pasa y se normaliza a E.164; "+34 633 41 78 29" pegado también', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, vp);
@@ -1485,11 +1501,11 @@ test.describe('Formulario', () => {
     await page.locator('#telefono').focus();
     await page.evaluate(() => {
       const el = document.querySelector<HTMLInputElement>('#telefono')!;
-      el.value = '+34 612 34 56 78';
+      el.value = '+34 633 41 78 29';
       el.dispatchEvent(new Event('paste'));
       el.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    await expect(page.locator('#telefono')).toHaveValue('612 34 56 78');
+    await expect(page.locator('#telefono')).toHaveValue('633 41 78 29');
     await expect(page.locator('#prefijo')).toHaveValue('+34');
     await page.locator('#telefono').fill('+44 7700 900123');
     await page.locator('#consentimiento_salud').check();
@@ -1628,7 +1644,7 @@ test.describe('Formulario', () => {
         zona: 'Otro',
         detalle: 'abc',
         nombre: 'A',
-        telefono: '61234567',
+        telefono: '63341782',
         consentimiento_salud: false,
         website: '',
         started_at: old,
@@ -1697,11 +1713,11 @@ test.describe('Formulario', () => {
 
 test.describe('Barra CTA fija', () => {
   const vp = VIEWPORTS[3];
-  /** El CTA del hero queda detrás de la cabecera y el formulario aún no asoma. */
-  const scrollPastHeroCta = (page: Page) =>
+  /** Pasado el formulario (va justo debajo del hero): el vídeo arriba de la pantalla. */
+  const scrollPastForm = (page: Page) =>
     page.evaluate(() => {
-      const cta = document.querySelector('[data-hero-cta]')!.getBoundingClientRect();
-      window.scrollTo({ top: cta.top + window.scrollY + 10, behavior: 'instant' });
+      const top = document.getElementById('video')!.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: top + 10, behavior: 'instant' });
     });
   const visible = (page: Page) =>
     page
@@ -1719,8 +1735,11 @@ test.describe('Barra CTA fija', () => {
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
     expect(await visible(page)).toBe(false);
-    // Entre el hero y el formulario (que ahora va justo después de "¿Qué te duele?").
-    await scrollPastHeroCta(page);
+    // Con el formulario en pantalla (justo debajo del hero) no aparece; pasado el formulario, sí.
+    await page.locator('#valoracion').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(600);
+    expect(await visible(page)).toBe(false);
+    await scrollPastForm(page);
     await expect.poll(() => visible(page)).toBe(true);
     await page.locator('#valoracion [data-form-root]').scrollIntoViewIfNeeded();
     await expect.poll(() => visible(page)).toBe(false);
@@ -1746,7 +1765,7 @@ test.describe('Barra CTA fija', () => {
     const page = await ctx.newPage();
     await page.goto('/', { waitUntil: 'networkidle' });
     await expect(page.locator('#cookie-banner')).toBeVisible();
-    await scrollPastHeroCta(page);
+    await scrollPastForm(page);
     await expect.poll(() => visible(page)).toBe(true);
     await page.waitForTimeout(600);
     const pos = await page.evaluate(() => ({
@@ -1768,7 +1787,9 @@ test.describe('Barra CTA fija', () => {
     await ctx.close();
   });
 
-  test('aparece en cuanto el CTA del hero queda detrás de la cabecera', async ({ browser }) => {
+  test('con el CTA del hero ya detrás de la cabecera, no aparece mientras el formulario está en pantalla', async ({
+    browser,
+  }) => {
     const ctx = await newCtx(browser, vp);
     await setConsent(ctx, CONSENT_REJECTED);
     const page = await ctx.newPage();
@@ -1776,12 +1797,12 @@ test.describe('Barra CTA fija', () => {
     const ctaTop = await page
       .locator('[data-hero-cta]')
       .evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
-    // CTA todavía visible bajo la cabecera: sin barra.
-    await page.evaluate((y) => window.scrollTo(0, y - 200), ctaTop);
-    await page.waitForTimeout(400);
-    expect(await visible(page)).toBe(false);
-    // CTA detrás de la cabecera (aún dentro de la ventana): barra visible.
+    // CTA detrás de la cabecera, con el formulario ya asomando: sin barra (el formulario es el CTA).
     await page.evaluate((y) => window.scrollTo(0, y + 10), ctaTop);
+    await page.waitForTimeout(600);
+    expect(await visible(page)).toBe(false);
+    // Pasado el formulario, la barra.
+    await scrollPastForm(page);
     await expect.poll(() => visible(page)).toBe(true);
     await ctx.close();
   });
@@ -2232,7 +2253,6 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     const ids = await page.locator('main > section[id]').evaluateAll((els) => els.map((e) => e.id));
     expect(ids).toEqual([
       'inicio',
-      'zonas',
       'valoracion',
       'video',
       'por-que',
@@ -2249,9 +2269,7 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       );
     expect(ctas).toEqual([
       ['hero', 'hero_video'],
-      // "¿Qué te duele?": las tarjetas son botones y su cierre enlaza al formulario.
-      [],
-      // El formulario.
+      // "¿Qué te duele?" con el formulario.
       [],
       ['vsl'],
       ['compare'],
@@ -2370,15 +2388,13 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       'Soy Gerard Barrantes, fisioterapeuta y atleta de CrossFit.',
       '+120 atletas recuperados',
       'Gerard Barrantes Fundador de RehabilityWOD',
-      'Cuéntame qué te pasa.',
-      'Rellénalo en 30 segundos y únete a los más de 120 atletas recuperados.',
+      'Elige la zona y empieza tu valoración. 30 segundos.',
       'Paso 1 de 4',
       '¿Qué te duele?',
       'Cuéntame un poco más.',
       '¿Cómo te llamas?',
       '¿A qué número te escribo?',
       'Acepto la política de privacidad (se abre en una pestaña nueva) y consiento el uso de mis datos de salud para valorar mi caso.',
-      '¿Otra duda? Déjame tu WhatsApp y te la resuelvo',
       'Preguntas frecuentes',
       '¿Cómo me vas a ayudar si no me tratas en persona?',
       '¿Cómo sé si esto es para mí?',
@@ -2485,7 +2501,7 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
     await ctx.close();
   });
 
-  test('formulario arriba: #valoracion empieza antes de 2,5 pantallas en 390x844, justo tras "¿Qué te duele?"', async ({
+  test('formulario arriba: "¿Qué te duele?" con el formulario empieza justo debajo del hero (antes de 1,5 pantallas en 390x844)', async ({
     browser,
   }) => {
     const ctx = await newCtx(browser, VIEWPORTS[3]);
@@ -2507,9 +2523,9 @@ test.describe('Estructura y copy (secciones 5 y 7)', () => {
       type: 'form-top-390',
       description: `${Math.round(m.section)} px (${(m.section / m.h).toFixed(2)} pantallas)`,
     });
-    expect(m.prev).toBe('zonas');
-    expect(m.section / m.h).toBeLessThanOrEqual(2.5);
-    expect(m.form / m.h).toBeLessThanOrEqual(2.5);
+    expect(m.prev).toBe('inicio');
+    expect(m.section / m.h).toBeLessThanOrEqual(1.5);
+    expect(m.form / m.h).toBeLessThanOrEqual(2);
     // Un solo formulario.
     expect(m.forms).toBe(1);
     // Todos los enlaces internos al formulario (CTA, "Saltar al formulario", cierre, footer)

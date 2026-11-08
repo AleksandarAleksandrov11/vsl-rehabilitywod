@@ -363,7 +363,7 @@ try {
   await page.getByRole('button', { name: 'Continuar' }).click();
   await page.locator('#nombre').fill('Laura');
   await page.getByRole('button', { name: 'Continuar' }).click();
-  await page.locator('#telefono').fill('612 345 678');
+  await page.locator('#telefono').fill('633 417 829');
   await page.locator('#consentimiento_salud').check();
   // Tiempo humano: el antispam descarta los envíos de menos de 3 s.
   await page.waitForTimeout(3200);
@@ -398,7 +398,7 @@ try {
   check('Nombre', byHeader['Nombre'] === 'Laura', byHeader['Nombre']);
   check(
     'Teléfono en formato internacional (como texto)',
-    byHeader['Teléfono'] === "'+34612345678",
+    byHeader['Teléfono'] === "'+34633417829",
     byHeader['Teléfono'],
   );
   check('Zona de dolor', byHeader['Zona de dolor'] === 'Rodilla', byHeader['Zona de dolor']);

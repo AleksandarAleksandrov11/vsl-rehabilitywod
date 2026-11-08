@@ -56,10 +56,10 @@ await step('Escribir nombre', () => page.locator('#nombre').pressSequentially('A
 await step('Continuar', () => page.getByRole('button', { name: 'Continuar' }).tap());
 await step('Abrir FAQ', () => page.locator('.faq-q').first().tap());
 await step('Hover/tap tarjeta', () => page.locator('.suena-card').first().tap());
-await step('Tarjeta "Codo" de "¿Qué te duele?" → paso 2', async () => {
-  await page.locator('#zonas').scrollIntoViewIfNeeded();
+await step('Zona "Codo" de "¿Qué te duele?" → paso 2', async () => {
+  await page.locator('#valoracion').scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
-  await page.getByRole('button', { name: 'Codo: empezar la valoración' }).tap();
+  await page.locator('#lead-form label.chip').filter({ hasText: 'Codo' }).tap();
 });
 // El vídeo es el reproductor de YouTube (iframe de otro origen): sus clics no son de esta web.
 const worst = Math.max(...steps.map((s) => s.maxMs));

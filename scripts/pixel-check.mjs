@@ -220,7 +220,7 @@ try {
   await page.getByRole('button', { name: 'Saltar este paso' }).click();
   await page.locator('#nombre').fill('Prueba Pixel');
   await page.getByRole('button', { name: 'Continuar' }).click();
-  await page.locator('#telefono').fill('600 000 000');
+  await page.locator('#telefono').fill('600 123 987');
   await page.locator('#consentimiento_salud').check();
   await page.waitForTimeout(3200); // tiempo humano (antispam de 3 s)
   await page.locator('[data-submit]').click();
@@ -245,7 +245,7 @@ try {
   );
   check(
     'Lead con advanced matching: teléfono, nombre y país cifrados (init antes del Lead)',
-    lead?.['ud[ph]'] === sha('34600000000') &&
+    lead?.['ud[ph]'] === sha('34600123987') &&
       lead?.['ud[fn]'] === sha('prueba') &&
       lead?.['ud[country]'] === sha('es'),
   );
@@ -283,7 +283,7 @@ try {
   const capiBlob = JSON.stringify(capi ?? {});
   check(
     'API de conversiones: sin zona, detalle, nombre ni teléfono en claro',
-    !/Codo|zona|detalle|Prueba|600000000/i.test(capiBlob),
+    !/Codo|zona|detalle|Prueba|600123987/i.test(capiBlob),
   );
 
   // Retirar el consentimiento desde el footer.
