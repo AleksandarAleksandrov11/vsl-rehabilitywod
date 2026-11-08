@@ -4,10 +4,10 @@ Landing de captación para **RehabilityWOD** (fisioterapia online para atletas d
 [vsl.rehabilitywod.com](https://vsl.rehabilitywod.com). Un solo objetivo: que el atleta rellene el
 formulario de valoración.
 
-- Secciones, en este orden: hero con cinta de datos, «¿Qué te duele?» (zonas), formulario de
-  valoración, vídeo, por qué, cómo funciona, opiniones y quién está detrás, preguntas frecuentes,
-  banda de cierre y footer. El formulario va justo después de las zonas para que se vea pronto: en
-  un móvil de 390x844 empieza a 1,95 pantallas del inicio (antes, a 8,3).
+- Secciones, en este orden: hero con cinta de datos, «¿Qué te duele?» con el formulario (una sola
+  sección, el paso 1 son las zonas), vídeo, por qué, cómo funciona, opiniones y quién está detrás,
+  preguntas frecuentes, banda de cierre y footer. El formulario va justo debajo del hero: en un
+  móvil de 390x844 la sección empieza a 1 pantalla del inicio (antes, a 8,3).
 - Landing de anuncios: todas las páginas llevan `noindex` y no hay sitemap.
 - Formulario de 4 pasos, uno por pantalla, que también funciona sin JavaScript.
 - Cada solicitud se guarda en Google Sheets (`/api/lead` → Google Apps Script) y se avisa por email.
@@ -139,7 +139,7 @@ Con la extensión **Meta Pixel Helper** o con **Events Manager → Probar evento
 1. Abre la web en una ventana de incógnito: no debe detectarse nada.
 2. Pulsa **Aceptar** en el banner de cookies → `PageView`, sin recargar.
 3. Dale al play del vídeo → `VideoPlay` (evento personalizado).
-4. Toca el formulario o una tarjeta de «¿Qué te duele?» → `FormStart` (una vez por sesión).
+4. Toca el formulario (elige una zona) → `FormStart` (una vez por sesión).
 5. Completa el paso 1 → `ViewContent` (`content_name: Formulario`) y `FormStep` (`step: 1`); cada
    paso, su `FormStep` una vez por sesión. Un error de validación → `FormError` (`step`, `field`).
 6. Envía el formulario → `Lead` con un `eventID`, el mismo que aparece en la última columna de la
@@ -226,7 +226,7 @@ src/
                          privacidad y cookies (noindex, follow, como la home), 404,
                          og.jpg (imagen OG generada en el build), robots.txt, api/lead.ts,
                          api/lead-capi.ts, api/event-capi.ts
-  components/            Header, Hero, ZonesSection, StatsTicker, VslSection, WhySection, HowItWorks,
+  components/            Header, Hero, StatsTicker, VslSection, WhySection, HowItWorks,
                          Testimonials, AboutGerard, ValoracionSection, LeadForm, ZoneIcon, Faq,
                          ClosingBand, Footer, StickyCta, CookieBanner,
                          CtaButton, SectionCta, SplitWords, Wordmark, TitularData
@@ -275,12 +275,11 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
   siempre. Un `utm_content` desconocido no anula una campaña reconocida. Sin parpadeo ni
   renderizado en servidor; los antetítulos largos caben en una línea a 390 px. Con `mofu3.0`
   además queda marcado «Hombro» en el paso 1.
-- **Sección «¿Qué te duele?»** (`ZonesSection.astro`, justo después del hero): 8 tarjetas grandes,
-  una por zona del formulario (2 columnas en móvil, 4 × 2 en escritorio) con la figura de
-  `ZoneIcon`. Al pulsar una, el formulario la marca y abre el paso 2 (cuenta como paso 1
-  completado). El cierre, «¿Otra duda? Déjame tu WhatsApp y te la resuelvo», lleva al formulario
-  con «Otro» y el paso 2 abierto. Con `mofu3.0`, «Hombro» aparece destacado con «Tu zona». En el
-  hero, junto a los botones, «+120 atletas recuperados» (también en la cinta de datos).
+- **Sección «¿Qué te duele?»** (`ValoracionSection.astro`, justo debajo del hero): el título, «Elige
+  la zona y empieza tu valoración. 30 segundos.» y el formulario. El paso 1 son las 8 zonas, con su
+  figura (2 columnas en móvil, 4 × 2 en escritorio); al tocar una, el formulario la marca y pasa al
+  paso 2. Con `mofu3.0` queda marcado «Hombro». En el hero, junto a los botones, «+120 atletas
+  recuperados» (también en la cinta de datos).
 - **`security.checkOrigin: false` en Astro.** El `checkOrigin` de Astro 5 reconstruye la URL como
   `localhost` en Vercel y rechazaría el formulario sin JavaScript. `/api/lead` y `/api/lead-capi`
   hacen su propia comprobación de origen.
@@ -333,7 +332,11 @@ vercel.json              Cabeceras de seguridad, CSP, caché y redirecciones
   resto con `max-age=0, must-revalidate`.
 - **Formulario**: `autocomplete` `given-name` en el nombre y `tel-country-code` + `tel-national` en
   el teléfono (prefijo +34 por defecto, validado: «+» y de 1 a 4 cifras; los prefijos extranjeros
-  valen), con `inputmode="tel"`. Un número pegado con +34 pasa el prefijo a su casilla. Errores con
+  valen), con `inputmode="tel"`. Teléfono (`src/lib/lead.ts`, mismas reglas en navegador y
+  servidor): móvil español de verdad (6xx o 71x a 74x; no valen fijos ni rangos sin asignar) y se
+  rechazan los números de relleno (una sola cifra, escaleras como 612345678 o bloques repetidos
+  como 612612612). Debajo del campo se muestra el número en grupos («Te escribiré al +34 633 417
+  829») para que se vea una cifra mal tecleada. Un número pegado con +34 pasa el prefijo a su casilla. Errores con
   `aria-describedby`, foco en el campo y aviso en la región `data-live`. Si falla la red se muestra
   el error, se conserva todo lo escrito para reintentar y el enlace de WhatsApp lleva todos los
   datos. En móvil el botón dice «Enviar y abrir WhatsApp».
@@ -417,14 +420,12 @@ capturas en `qa/screenshots/anuncios/`) en Safari de iOS y en el
 navegador integrado de Instagram (necesita WebKit: `npx playwright install webkit` y
 `npx playwright install-deps webkit`; sin él solo prueba Instagram en Android).
 
-Última medición (2 de noviembre de 2026, 5 pasadas, con el formulario justo después de las
-zonas): Lighthouse 99 en móvil y 100 en escritorio en rendimiento (100 en accesibilidad y buenas
-prácticas; 69 en SEO, a propósito, por el `noindex`), LCP 1,9 s en móvil con 4G lenta simulada
-(0,55 s en escritorio), CLS 0 y TBT entre 15 y 70 ms según la pasada (la primera, en frío, 361 ms).
-Peso que mide Lighthouse: 161 KB en móvil (antes 170 KB: carga el fondo del formulario, 16 KB, en
-vez de la portada del vídeo, 37 KB, que ahora queda más abajo) y 271 KB en escritorio (antes
-244 KB: el fondo del formulario, 26 KB, ahora cerca del inicio). Latencia de interacción con la
-CPU 4 veces más lenta (`node scripts/inp.mjs`, 28 de octubre): la peor, tocar una zona del
+Última medición (8 de noviembre de 2026, 5 pasadas, con «¿Qué te duele?» y el formulario en una
+sola sección bajo el hero): Lighthouse 99 en móvil y 100 en escritorio en rendimiento (100 en
+accesibilidad y buenas prácticas; 69 en SEO, a propósito, por el `noindex`), LCP 1,9 s en móvil con
+4G lenta simulada (0,55 s en escritorio), CLS 0 y TBT entre 4 y 21 ms (la primera pasada, en frío,
+157 ms). Peso que mide Lighthouse: 180 KB en móvil y 270 KB en escritorio. Latencia de interacción
+con la CPU 4 veces más lenta (`node scripts/inp.mjs`, 28 de octubre): la peor, tocar una zona del
 formulario, entre 200 y 270 ms en esta máquina (en una máquina más rápida, 152 ms). Los
 informes anteriores al banner compacto están en `qa/lighthouse/antes/` y las capturas del banner
 antes y después en `qa/screenshots/banner-antes-despues/`.
