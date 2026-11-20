@@ -13,7 +13,7 @@ import CircleAlert from '@lucide/astro/icons/circle-alert';
 import ArrowLeft from '@lucide/astro/icons/arrow-left';
 import ArrowRight from '@lucide/astro/icons/arrow-right';
 import ZoneIcon from './ZoneIcon.astro';
-import { ZONAS, LIMITS } from '../lib/lead';
+import { ZONAS, LIMITS, ENTRENA_OPCIONES } from '../lib/lead';
 import { CONFIG } from '../config';
 
 // Orden visual de arriba abajo del cuerpo (los valores no cambian). Todas las opciones miden
@@ -275,6 +275,48 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
         </label>
       </div>
       <p class="field-error" id="err-consentimiento" data-error="consentimiento" hidden>
+        <CircleAlert size={16} stroke-width={1.75} aria-hidden="true" />
+        <span></span>
+      </p>
+
+      <!-- Pregunta de filtro: justo antes del botón de envío. -->
+      <div
+        class="entrena"
+        role="radiogroup"
+        aria-labelledby="entrena-q"
+        aria-required="true"
+        aria-describedby="err-entrena"
+        data-entrena
+      >
+        <p class="entrena-q" id="entrena-q">
+          ¿Entrenas CrossFit actualmente?
+        </p>
+        {ENTRENA_OPCIONES.map((opcion, i) => (
+          <label class="choice">
+            <input
+              type="radio"
+              name="entrena_crossfit"
+              value={opcion}
+              required={i === 0 ? true : undefined}
+              class="chip-input"
+            />
+            <span class="choice-text">{opcion}</span>
+            <span class="chip-check" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="14" height="14" focusable="false">
+                <path
+                  d="m5 12.5 4.5 4.5L19 7.5"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                ></path>
+              </svg>
+            </span>
+          </label>
+        ))}
+      </div>
+      <p class="field-error" id="err-entrena" data-error="entrena" hidden>
         <CircleAlert size={16} stroke-width={1.75} aria-hidden="true" />
         <span></span>
       </p>
@@ -616,6 +658,69 @@ const zonas = [...ZONAS].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
   }
 
   .chip:has(.chip-input:focus-visible) {
+    outline: 2px solid var(--brand-bright);
+    outline-offset: 3px;
+  }
+
+  /* Pregunta de filtro del último paso: opciones de una columna con el estilo de las zonas. */
+  .entrena {
+    display: grid;
+    gap: 8px;
+    margin-top: 18px;
+  }
+
+  .entrena-q {
+    margin: 0 0 2px;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--ink-on-dark);
+  }
+
+  .choice {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 56px;
+    padding: 10px 40px 10px 16px;
+    border: 1px solid var(--hair-on-dark);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    font-size: 1rem;
+    font-weight: 560;
+    line-height: 1.25;
+    cursor: pointer;
+    transition:
+      border-color 0.3s var(--ease),
+      background-color 0.3s var(--ease),
+      transform 0.25s var(--ease);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .choice:active {
+    transform: scale(0.98);
+  }
+
+  @media (hover: hover) {
+    .choice:hover {
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  .choice .chip-check {
+    right: 14px;
+  }
+
+  .choice:has(.chip-input:checked) {
+    border-color: var(--brand-bright);
+    background: rgba(5, 148, 103, 0.12);
+  }
+
+  .choice:has(.chip-input:checked) .chip-check {
+    transform: scale(1);
+  }
+
+  .choice:has(.chip-input:focus-visible) {
     outline: 2px solid var(--brand-bright);
     outline-offset: 3px;
   }

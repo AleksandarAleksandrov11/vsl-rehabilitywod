@@ -129,13 +129,15 @@ type StandardEvent = 'PageView' | 'ViewContent' | 'Lead' | 'Contact';
 type CustomEvent = 'FormStart' | 'FormStep' | 'FormError' | 'VideoPlay';
 type AllowedEvent = StandardEvent | CustomEvent;
 const CUSTOM_EVENTS: readonly AllowedEvent[] = ['FormStart', 'FormStep', 'FormError', 'VideoPlay'];
-export type FormField = 'zona' | 'detalle' | 'nombre' | 'telefono' | 'consentimiento' | 'envio';
+export type FormField =
+  'zona' | 'detalle' | 'nombre' | 'telefono' | 'consentimiento' | 'entrena' | 'envio';
 const FIELDS: readonly FormField[] = [
   'zona',
   'detalle',
   'nombre',
   'telefono',
   'consentimiento',
+  'entrena',
   'envio',
 ];
 type SafeParams = {

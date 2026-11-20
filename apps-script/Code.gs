@@ -18,7 +18,7 @@ var DEFAULT_NOTIFY_EMAIL = 'aaswebmarketing@gmail.com';
 var TIMEZONE = 'Europe/Madrid';
 var DATE_FORMAT = 'dd/MM/yyyy HH:mm';
 
-// Columnas de la hoja "Leads" (A → S). Las 11 primeras son las que se leen a diario:
+// Columnas de la hoja "Leads" (A → R). Las 11 primeras son las que se leen a diario:
 // cuándo, quién, qué le pasa y de qué anuncio de Meta viene.
 var HEADERS = [
   'Fecha y hora', // A
@@ -38,10 +38,11 @@ var HEADERS = [
   'Consent. salud', // O
   'Consent. marketing', // P
   'Event ID', // Q
+  'Entrena CrossFit', // R (pregunta de filtro; las hojas anteriores la reciben en ensureEntrenaColumn_)
 ];
 
 var LAST_COL = HEADERS.length;
-var COL = { fecha: 1, telefono: 3, detalle: 5, estado: 11, notas: 12, eventId: 17 };
+var COL = { fecha: 1, telefono: 3, detalle: 5, estado: 11, notas: 12, eventId: 17, entrena: 18 };
 
 var ESTADOS = ['Nuevo', 'Contactado', 'Videollamada agendada', 'Cliente', 'Descartado'];
 var ESTADO_COLORES = {
@@ -54,7 +55,7 @@ var ESTADO_COLORES = {
 
 // Anchos de columna (px) para que la hoja se lea bien desde el primer día.
 var COLUMN_WIDTHS = [
-  135, 140, 140, 130, 320, 110, 110, 160, 160, 140, 170, 240, 200, 100, 110, 130, 280,
+  135, 140, 140, 130, 320, 110, 110, 160, 160, 140, 170, 240, 200, 100, 110, 130, 280, 200,
 ];
 
 /* ------------------------------------------------------------------ */
@@ -203,11 +204,30 @@ function buildRow_(lead, fecha) {
     lead.consentimiento_salud ? 'Sí' : 'No',
     lead.consentimiento_marketing ? 'Sí' : 'No',
     lead.event_id,
+    lead.entrena_crossfit,
   ].map(sanitize_);
+}
+
+/**
+ * Hojas creadas antes de la pregunta de filtro: añade solo el encabezado «Entrena CrossFit» al final
+ * (columna R), con el formato del encabezado de al lado. No toca ninguna otra columna ni fila, y si
+ * R1 ya tiene algo no lo cambia.
+ */
+function ensureEntrenaColumn_(sheet) {
+  var col = COL.entrena;
+  if (col > sheet.getMaxColumns())
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), col - sheet.getMaxColumns());
+  var head = sheet.getRange(1, col);
+  if (String(head.getValue()) !== '') return;
+  head.setValue(HEADERS[col - 1]);
+  sheet.getRange(1, col - 1).copyTo(head, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+  sheet.setColumnWidth(col, COLUMN_WIDTHS[col - 1]);
+  sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).setVerticalAlignment('top');
 }
 
 function appendLead_(lead, fecha) {
   var sheet = getSheet_();
+  ensureEntrenaColumn_(sheet);
   var row = buildRow_(lead, fecha);
   var next = sheet.getLastRow() + 1;
   if (next > sheet.getMaxRows()) {
@@ -307,6 +327,7 @@ function normalizeLead_(d) {
     detalle: str_(d.detalle, 500),
     nombre: str_(d.nombre, 60),
     telefono: str_(d.telefono, 20),
+    entrena_crossfit: str_(d.entrena_crossfit, 60),
     consentimiento_salud: d.consentimiento_salud === true || d.consentimiento_salud === 'true',
     consentimiento_marketing:
       d.consentimiento_marketing === true || d.consentimiento_marketing === 'true',
@@ -345,6 +366,7 @@ function notify_(lead, to) {
     'WhatsApp: ' + wa,
     'Zona de dolor: ' + lead.zona,
     'Qué le pasa: ' + (lead.detalle || '(sin detalle)'),
+    'Entrena CrossFit: ' + (lead.entrena_crossfit || '(sin respuesta)'),
     '',
     'Consentimiento datos de salud: ' + (lead.consentimiento_salud ? 'Sí' : 'No'),
     'Consentimiento marketing: ' + (lead.consentimiento_marketing ? 'Sí' : 'No'),
@@ -380,6 +402,7 @@ function notify_(lead, to) {
       ['Teléfono', lead.telefono],
       ['Zona de dolor', lead.zona],
       ['Qué le pasa', lead.detalle || '(sin detalle)'],
+      ['Entrena CrossFit', lead.entrena_crossfit || '(sin respuesta)'],
       ['Consent. salud', lead.consentimiento_salud ? 'Sí' : 'No'],
       ['Consent. marketing', lead.consentimiento_marketing ? 'Sí' : 'No'],
       ['utm_source', lead.utm_source],
@@ -437,6 +460,7 @@ function testLead() {
     detalle: 'PRUEBA: fila de test creada desde el editor de Apps Script.',
     nombre: 'Prueba',
     telefono: '+34600000000',
+    entrena_crossfit: 'Sí, entreno CrossFit',
     consentimiento_salud: true,
     consentimiento_marketing: false,
     utm_source: 'test',

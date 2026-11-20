@@ -16,6 +16,15 @@ export const ZONAS = [
 
 export type Zona = (typeof ZONAS)[number];
 
+/** Pregunta de filtro del último paso: «¿Entrenas CrossFit actualmente?» (el texto de la opción es el valor). */
+export const ENTRENA_OPCIONES = [
+  'Sí, entreno CrossFit',
+  'Entreno otra cosa (fuerza, gimnasio...)',
+  'Ahora mismo no entreno',
+] as const;
+
+export type Entrena = (typeof ENTRENA_OPCIONES)[number];
+
 export const LIMITS = {
   detalleMax: 500,
   detalleMinOtro: 5,
@@ -28,6 +37,7 @@ export const MESSAGES = {
   zona: 'Elige una opción para continuar.',
   detalleOtro: 'Cuéntame en pocas palabras qué te pasa (mínimo 5 caracteres).',
   detalleMax: 'Máximo 500 caracteres.',
+  entrena: 'Elige una opción para poder enviarlo.',
   nombre: 'Escribe tu nombre (de 2 a 60 caracteres).',
   telefono: 'Revisa tu móvil: 9 cifras y empieza por 6 o 7. Si es de otro país, cambia el prefijo.',
   prefijo: 'Revisa el prefijo: «+» y de 1 a 4 cifras (por ejemplo, +34).',
@@ -41,6 +51,9 @@ export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-
 
 export const isZona = (value: unknown): value is Zona =>
   typeof value === 'string' && (ZONAS as readonly string[]).includes(value);
+
+export const isEntrena = (value: unknown): value is Entrena =>
+  typeof value === 'string' && (ENTRENA_OPCIONES as readonly string[]).includes(value);
 
 /** Quita espacios de más y caracteres de control. */
 export const cleanText = (value: unknown, max = 1000): string =>
@@ -137,6 +150,7 @@ export type LeadPayload = {
   detalle: string;
   nombre: string;
   telefono: string;
+  entrena_crossfit: Entrena;
   consentimiento_salud: boolean;
   consentimiento_marketing: boolean;
   utm_source: string;

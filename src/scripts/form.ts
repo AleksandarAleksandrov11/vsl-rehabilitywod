@@ -20,6 +20,7 @@
 import {
   LIMITS,
   MESSAGES,
+  isEntrena,
   isZona,
   formatPhone,
   normalizePhone,
@@ -50,7 +51,7 @@ const WA_MAX_CHARS = 600;
 const SUBMIT_LABEL = 'Enviar y valorar mi caso';
 const SUBMIT_LABEL_WA = 'Enviar y abrir WhatsApp';
 
-type ErrorKey = 'zona' | 'detalle' | 'nombre' | 'telefono' | 'consentimiento';
+type ErrorKey = 'zona' | 'detalle' | 'nombre' | 'telefono' | 'consentimiento' | 'entrena';
 
 function detectDevice(): LeadPayload['device'] {
   const ua = navigator.userAgent;
@@ -125,6 +126,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   const telefono = form.querySelector<HTMLInputElement>('#telefono');
   const prefijo = form.querySelector<HTMLInputElement>('#prefijo');
   const consent = form.querySelector<HTMLInputElement>('#consentimiento_salud');
+  const entrenaGroup = form.querySelector<HTMLElement>('[data-entrena]');
   const honeypot = form.querySelector<HTMLInputElement>('#website');
   const formErrorWa = form.querySelector<HTMLAnchorElement>('[data-form-error-wa]');
   const done = root.querySelector<HTMLElement>('[data-form-done]');
@@ -149,6 +151,8 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   let advanceTimer = 0;
   let leaveTimer = 0;
 
+  const entrenaValue = (): string =>
+    form.querySelector<HTMLInputElement>('input[name="entrena_crossfit"]:checked')?.value ?? '';
   const zonaValue = (): string =>
     form.querySelector<HTMLInputElement>('input[name="zona"]:checked')?.value ?? '';
 
@@ -159,6 +163,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     nombre,
     telefono,
     consentimiento: consent,
+    entrena: entrenaGroup,
   };
 
   function setError(key: ErrorKey, message: string | null): void {
@@ -218,8 +223,12 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
       return phoneOk;
     }
     const consentOk = consent?.checked === true;
-    if (show) setError('consentimiento', consentOk ? null : MESSAGES.consentimiento);
-    return consentOk;
+    const entrenaOk = isEntrena(entrenaValue());
+    if (show) {
+      setError('consentimiento', consentOk ? null : MESSAGES.consentimiento);
+      setError('entrena', entrenaOk ? null : MESSAGES.entrena);
+    }
+    return consentOk && entrenaOk;
   }
 
   /** Campo que falla en un paso (para FormError y form_error). */
@@ -227,7 +236,8 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
     if (step === 1) return 'zona';
     if (step === 2) return 'detalle';
     if (step === 3) return 'nombre';
-    return step === 4 ? 'telefono' : 'consentimiento';
+    if (step === 4) return 'telefono';
+    return consent?.checked === true ? 'entrena' : 'consentimiento';
   }
 
   function reportError(step: number, field: FormField, reason?: string): void {
@@ -250,7 +260,12 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
       );
     if (step === 2) return detalle;
     if (step === 3) return nombre;
-    return step === 4 ? telefono : consent;
+    if (step === 4) return telefono;
+    if (consent?.checked !== true) return consent;
+    return (
+      form.querySelector<HTMLInputElement>('input[name="entrena_crossfit"]:checked') ??
+      form.querySelector<HTMLInputElement>('input[name="entrena_crossfit"]')
+    );
   }
 
   // ---------- Confirmación (último paso) ----------
@@ -591,6 +606,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
   consent?.addEventListener('change', () => {
     if (consent.checked) setError('consentimiento', null);
   });
+  entrenaGroup?.addEventListener('change', () => setError('entrena', null));
 
   // ---------- Envío ----------
   function setSubmitting(on: boolean): void {
@@ -611,6 +627,7 @@ function init(root: HTMLElement, form: HTMLFormElement): void {
       detalle: (detalle?.value ?? '').trim().slice(0, LIMITS.detalleMax),
       nombre: (nombre?.value ?? '').trim().replace(/\s+/g, ' '),
       telefono: normalizePhone(telefono?.value ?? '', prefijo?.value ?? '+34') ?? '',
+      entrena_crossfit: entrenaValue() as LeadPayload['entrena_crossfit'],
       consentimiento_salud: consent?.checked === true,
       consentimiento_marketing: hasMarketingConsent(),
       utm_source: attribution.utm_source,

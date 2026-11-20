@@ -21,11 +21,13 @@ import {
   TRACKING_KEYS,
   UUID_RE,
   cleanText,
+  isEntrena,
   isZona,
   maskPhone,
   normalizePhone,
   validateDetalle,
   validateNombre,
+  type Entrena,
 } from '../../lib/lead';
 import { firstTime, sendLeadEvent, signLead } from '../../lib/capi';
 import { json, sameOrigin } from '../../lib/http';
@@ -68,6 +70,8 @@ type Lead = {
   detalle: string;
   nombre: string;
   telefono: string;
+  /** Pregunta de filtro (una de ENTRENA_OPCIONES). */
+  entrena_crossfit: Entrena;
   consentimiento_salud: boolean;
   consentimiento_marketing: boolean;
   utm_source: string;
@@ -89,13 +93,15 @@ function buildLead(raw: Raw): { lead?: Lead; fields: string[] } {
   const detalle = cleanText(raw.detalle, LIMITS.detalleMax + 1);
   const nombre = cleanText(raw.nombre, LIMITS.nombreMax + 1);
   const telefono = normalizePhone(cleanText(raw.telefono, 30), cleanText(raw.prefijo, 6) || '+34');
+  const entrena = cleanText(raw.entrena_crossfit, 60);
 
   if (!isZona(zona)) fields.push('zona');
   if (!validateDetalle(detalle, zona)) fields.push('detalle');
   if (!validateNombre(nombre)) fields.push('nombre');
   if (!telefono) fields.push('telefono');
+  if (!isEntrena(entrena)) fields.push('entrena_crossfit');
   if (!truthy(raw.consentimiento_salud)) fields.push('consentimiento_salud');
-  if (fields.length || !telefono) return { fields };
+  if (fields.length || !telefono || !isEntrena(entrena)) return { fields };
 
   const tracking = Object.fromEntries(
     TRACKING_KEYS.map((k) => [k, cleanText(raw[k], 200)]),
@@ -120,6 +126,7 @@ function buildLead(raw: Raw): { lead?: Lead; fields: string[] } {
       detalle,
       nombre,
       telefono,
+      entrena_crossfit: entrena,
       consentimiento_salud: true,
       // Solo el booleano true que envía el formulario cuando hay consentimiento de marketing.
       consentimiento_marketing: raw.consentimiento_marketing === true,
@@ -134,8 +141,8 @@ function buildLead(raw: Raw): { lead?: Lead; fields: string[] } {
 }
 
 /**
- * Cuerpo que recibe el Apps Script: el Lead y el secreto, nada más. No cambiar: la hoja y el aviso
- * por email dependen de estos campos (lo comprueban `npm run qa` y `npm run qa:sheets`).
+ * Cuerpo que recibe el Apps Script: el Lead y el secreto, nada más (incluye entrena_crossfit, la
+ * pregunta de filtro). No cambiar: la hoja y el aviso por email dependen de estos campos (lo comprueban `npm run qa` y `npm run qa:sheets`).
  */
 const appsScriptBody = (lead: Lead) => ({ ...lead, secret: LEAD_SECRET });
 
