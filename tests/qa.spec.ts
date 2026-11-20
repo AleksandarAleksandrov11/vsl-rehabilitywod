@@ -784,6 +784,7 @@ test.describe('fbc y API de conversiones', () => {
       detalle: 'Dolor rotuliano al bajar escaleras',
       nombre: 'Laura Prueba Gómez',
       telefono: '611223344',
+      entrena_crossfit: 'Sí, entreno CrossFit',
       consentimiento_salud: true,
       fbclid: 'IwAR0QaCapiPrueba456',
       started_at: Date.now() - 60_000,
@@ -1143,6 +1144,7 @@ test.describe('API de conversiones: código de "Probar eventos"', () => {
           zona: 'Hombro',
           nombre: 'Prueba Codigo',
           telefono: '611000999',
+          entrena_crossfit: 'Sí, entreno CrossFit',
           consentimiento_salud: true,
           consentimiento_marketing: true,
           event_id: eventId,
@@ -1242,6 +1244,7 @@ test.describe('Formulario', () => {
     await expect(page.locator('[data-summary-detalle-row]')).toBeHidden();
     await page.waitForTimeout(350);
     await page.locator('#consentimiento_salud').check();
+    await page.locator('label.choice').first().click();
     await page.waitForTimeout(3200); // tiempo humano (> 3 s desde el inicio)
 
     const vaq = await page.evaluate(() => JSON.stringify(window.vaq ?? []));
@@ -1304,6 +1307,7 @@ test.describe('Formulario', () => {
     await page.locator('#s5-title').waitFor();
     await page.waitForTimeout(350);
     await page.locator('#consentimiento_salud').check();
+    await page.locator('label.choice').first().click();
     await page.waitForTimeout(3200);
     await submitBtn(page).click();
     await expect(page.getByRole('button', { name: 'Reintentar el envío' })).toBeVisible();
@@ -1341,6 +1345,7 @@ test.describe('Formulario', () => {
     await page.locator('#s5-title').waitFor();
     await page.waitForTimeout(350);
     await page.locator('#consentimiento_salud').check();
+    await page.locator('label.choice').first().click();
     await page.waitForTimeout(3200);
     await submitBtn(page).click();
     await expect(page.locator('[data-form-error]')).toBeVisible();
@@ -1462,6 +1467,79 @@ test.describe('Formulario', () => {
     await ctx.close();
   });
 
+  test('pregunta de filtro «¿Entrenas CrossFit actualmente?»: obligatoria, 3 opciones, justo antes del botón de envío', async ({
+    browser,
+  }) => {
+    const ctx = await newCtx(browser, vp);
+    await setConsent(ctx, CONSENT_REJECTED);
+    const page = await ctx.newPage();
+    const posted: Array<Record<string, unknown>> = [];
+    page.on('request', (r) => {
+      if (r.url().endsWith('/api/lead') && r.method() === 'POST')
+        posted.push(JSON.parse(r.postData() ?? '{}'));
+    });
+    await openForm(page);
+    await chip(page, 'Hombro').click();
+    await page.getByRole('button', { name: 'Saltar este paso' }).click();
+    await page.locator('#nombre').fill('Prueba Filtro');
+    await page.keyboard.press('Enter');
+    await page.locator('#telefono').fill('633417829');
+    await page.getByRole('button', { name: 'Continuar' }).click();
+    await page.locator('#s5-title').waitFor();
+    await page.waitForTimeout(350);
+    // Texto, opciones y orden exactos; la pregunta va justo antes del botón de envío.
+    await expect(page.locator('#entrena-q')).toHaveText('¿Entrenas CrossFit actualmente?');
+    const labels = await page.locator('label.choice .choice-text').allTextContents();
+    expect(labels).toEqual([
+      'Sí, entreno CrossFit',
+      'Entreno otra cosa (fuerza, gimnasio...)',
+      'Ahora mismo no entreno',
+    ]);
+    const order = await page.evaluate(() => {
+      const y = (sel: string) => document.querySelector(sel)!.getBoundingClientRect().top;
+      return {
+        consent: y('#consentimiento_salud'),
+        question: y('#entrena-q'),
+        submit: y('[data-submit]'),
+        radios: [...document.querySelectorAll<HTMLInputElement>('input[name="entrena_crossfit"]')]
+          .length,
+        // Mismo estilo que las zonas: borde, radio y fondo.
+        choice: (() => {
+          const c = getComputedStyle(document.querySelector('label.choice')!);
+          const z = getComputedStyle(document.querySelector('label.chip')!);
+          return (
+            [c.borderRadius, c.borderTopWidth, c.fontWeight].join('|') ===
+            [z.borderRadius, z.borderTopWidth, z.fontWeight].join('|')
+          );
+        })(),
+      };
+    });
+    expect(order.consent).toBeLessThan(order.question);
+    expect(order.question).toBeLessThan(order.submit);
+    expect(order.radios).toBe(3);
+    expect(order.choice).toBe(true);
+    // Obligatoria: con la casilla marcada pero sin responder, no se envía y se avisa.
+    await page.locator('#consentimiento_salud').check();
+    await page.waitForTimeout(3300);
+    await submitBtn(page).click();
+    await expect(page.locator('#err-entrena')).toBeVisible();
+    await expect(page.locator('#err-entrena')).toHaveText('Elige una opción para poder enviarlo.');
+    await expect(page.locator('input[name="entrena_crossfit"]').first()).toBeFocused();
+    expect(posted).toHaveLength(0);
+    // Al elegir una opción el aviso desaparece; se envía y el cuerpo lleva la respuesta elegida.
+    await page.locator('label.choice', { hasText: 'Ahora mismo no entreno' }).click();
+    await expect(page.locator('#err-entrena')).toBeHidden();
+    await submitBtn(page).click();
+    await expect(page.locator('[data-form-done]')).toBeVisible();
+    expect(posted).toHaveLength(1);
+    expect(posted[0]!.entrena_crossfit).toBe('Ahora mismo no entreno');
+    // Y es lo que recibe el Apps Script (el contrato completo se comprueba en tests/leads.spec.ts).
+    const saved = readLeads().find((l) => l.nombre === 'Prueba Filtro');
+    expect(saved?.entrena_crossfit).toBe('Ahora mismo no entreno');
+    expect(contractProblems(saved!)).toEqual([]);
+    await ctx.close();
+  });
+
   test('teléfono: rechaza fijos, rangos sin asignar y números de relleno; muestra el número en grupos para revisarlo', async ({
     browser,
   }) => {
@@ -1544,6 +1622,7 @@ test.describe('Formulario', () => {
     await page.waitForTimeout(350);
     await expect(page.locator('[data-summary-phone]')).toHaveText('+447700900123');
     await page.locator('#consentimiento_salud').check();
+    await page.locator('label.choice').first().click();
     await page.waitForTimeout(3100);
     await submitBtn(page).click();
     await expect(page.locator('[data-form-done]')).toBeVisible();
@@ -1634,6 +1713,7 @@ test.describe('Formulario', () => {
     await page.locator('#s5-title').waitFor();
     await page.waitForTimeout(350);
     await page.locator('#consentimiento_salud').check();
+    await page.locator('label.choice').first().click();
     await page
       .locator('#website')
       .evaluate((el: HTMLInputElement) => (el.value = 'https://spam.example'));
@@ -1702,6 +1782,7 @@ test.describe('Formulario', () => {
       'detalle',
       'nombre',
       'telefono',
+      'entrena_crossfit',
       'consentimiento_salud',
     ]);
     const get = await request.get('/api/lead');
@@ -1733,6 +1814,7 @@ test.describe('Formulario', () => {
     await page.locator('#nombre').fill('Sin JS');
     await page.locator('#telefono').fill('655444333');
     await page.locator('#consentimiento_salud').check();
+    await page.locator('label.choice').first().click();
     await expect(submitBtn(page)).toHaveText('Enviar y valorar mi caso');
     await submitBtn(page).click();
     await page.waitForURL('**/gracias');

@@ -11,8 +11,10 @@ formulario de valoración.
 - Landing de anuncios: todas las páginas llevan `noindex` y no hay sitemap.
 - Formulario de 5 pasos, uno por pantalla (zona, detalle, nombre, móvil y confirmación), que también
   funciona sin JavaScript. El último paso, «Confirma tus datos», muestra lo escrito (zona, caso,
-  nombre y el móvil en grande y en grupos) con un «Cambiar» por dato, y es donde está la casilla
-  de la política de privacidad y los datos de salud, antes del botón de enviar.
+  nombre y el móvil en grande y en grupos) con un «Cambiar» por dato, y es donde están la casilla
+  de la política de privacidad y los datos de salud y, justo antes del botón de enviar, la pregunta
+  de filtro obligatoria «¿Entrenas CrossFit actualmente?» (tres opciones; el campo `entrena_crossfit`
+  va al Apps Script y se guarda en la columna R).
 - Cada solicitud se guarda en Google Sheets (`/api/lead` → Google Apps Script) y se avisa por email.
 - Sin salidas antes de enviar: ni WhatsApp, ni redes, ni email en la home. Tras enviar, la gracias
   sale en la propia tarjeta y WhatsApp se abre con el mensaje ya escrito (solo en móvil; en
@@ -75,7 +77,8 @@ Instalación paso a paso: [`apps-script/README-apps-script.md`](apps-script/READ
 
 Columnas de la pestaña **Leads**: fecha y hora, nombre, teléfono, zona de dolor, qué le pasa,
 `utm_source`, `utm_medium`, `utm_campaign`, `utm_content` y `utm_term`; después, estado
-(desplegable con color), notas y datos técnicos del envío. La pestaña **Resumen** cuenta los leads
+(desplegable con color), notas, datos técnicos del envío y, al final (columna R), «Entrena CrossFit»
+(la respuesta a la pregunta de filtro del formulario; vacía en los leads anteriores). La pestaña **Resumen** cuenta los leads
 de hoy, de los últimos 7 días, los pendientes de contactar y los totales por zona, campaña, anuncio
 y origen.
 

@@ -225,6 +225,7 @@ try {
   await page.locator('#s5-title').waitFor();
   await page.waitForTimeout(400);
   await page.locator('#consentimiento_salud').check();
+  await page.locator('label.choice').first().click();
   await page.waitForTimeout(3200); // tiempo humano (antispam de 3 s)
   await page.locator('[data-submit]').click();
   const thanks = await page

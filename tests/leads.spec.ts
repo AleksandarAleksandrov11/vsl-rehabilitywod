@@ -103,6 +103,7 @@ test.describe('Contrato con el Apps Script', () => {
     await p2.locator('#nombre').fill('Contrato SinJS');
     await p2.locator('#telefono').fill('611000222');
     await p2.locator('#consentimiento_salud').check({ force: true });
+    await p2.locator('#lead-form input[name="entrena_crossfit"]').first().check({ force: true });
     await submitBtn(p2).click();
     await p2.waitForURL('**/gracias');
     names.push('Contrato SinJS');
@@ -114,6 +115,7 @@ test.describe('Contrato con el Apps Script', () => {
         nombre: 'Contrato API',
         telefono: '611000333',
         consentimiento_salud: 'on',
+        entrena_crossfit: 'Sí, entreno CrossFit',
         consentimiento_marketing: 'true',
         started_at: Date.now() - 60_000,
         sig: 'x',
@@ -340,6 +342,7 @@ test.describe('/api/lead-capi', () => {
         zona: 'Muñeca',
         nombre: 'Capi Casos',
         telefono: '622000111',
+        entrena_crossfit: 'Sí, entreno CrossFit',
         consentimiento_salud: true,
         event_id: eventId,
         started_at: Date.now() - 60_000,
@@ -475,6 +478,7 @@ test('sin JS: Lead de servidor con el fbclid del Referer y redirección en ≤ 4
         nombre: 'Sin JS Meta',
         prefijo: '+34',
         telefono: '644000111',
+        entrena_crossfit: 'Sí, entreno CrossFit',
         consentimiento_salud: '1',
         website: '',
       }).toString(),
@@ -504,7 +508,7 @@ test('sin JS: Lead de servidor con el fbclid del Referer y redirección en ≤ 4
         'content-type': 'application/x-www-form-urlencoded',
         referer: `${qa.url}/?fbclid=PRUEBA123`,
       },
-      body: 'zona=Rodilla&nombre=Sin+JS+Fbc&prefijo=%2B34&telefono=655000111&consentimiento_salud=1',
+      body: 'zona=Rodilla&nombre=Sin+JS+Fbc&prefijo=%2B34&telefono=655000111&entrena_crossfit=Ahora+mismo+no+entreno&consentimiento_salud=1',
     });
     const ev = readJsonl('qa/.tmp/nojs-capi.jsonl').at(-1) as {
       data: Array<{ user_data: Record<string, unknown>; event_source_url: string }>;
@@ -988,6 +992,7 @@ test('capturas: zonas con el formulario, errores, gracias, footer, barra fija y 
     await expect(page.locator('#err-consentimiento')).toBeVisible();
     await shot(page, 'form-paso5-errores', '[data-form-root]');
     await page.locator('label[for="consentimiento_salud"]').click();
+    await page.locator('label.choice').first().click();
     await page.waitForTimeout(3200);
     let fail = true;
     await page.route('**/api/lead', (route) =>

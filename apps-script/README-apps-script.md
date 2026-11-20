@@ -116,7 +116,15 @@ en la hoja.
 
 ## 8. Si ya tenías una versión anterior
 
-Si la hoja ya tiene pestañas «Leads» y «Resumen» de una versión anterior, **bórralas** (clic derecho
+**Pregunta de filtro «¿Entrenas CrossFit actualmente?» (columna R).** Para añadirla **no borres
+nada**: pega el nuevo `Code.gs` y publica una nueva versión (paso 9). La primera vez que llegue un
+lead, el script añade solo el encabezado «Entrena CrossFit» en la columna R de la hoja que ya tienes
+(sin mover ni tocar las columnas A a Q ni los leads anteriores, que tendrán esa celda vacía). Hazlo
+antes de publicar la landing nueva o, si ya está publicada, cuanto antes: hasta entonces la
+respuesta no se guarda.
+
+Para el resto de cambios antiguos: si la hoja ya tiene pestañas «Leads» y «Resumen» de una versión
+muy anterior, **bórralas** (¡se pierden sus leads: cópialos antes!; clic derecho
 en la pestaña → Eliminar) y ejecuta `testLead`: se crean de nuevo con las columnas actuales. Si solo
 falla la pestaña Resumen, ejecuta la función `rebuildSummary`.
 
@@ -135,31 +143,33 @@ lugar de editar la existente, se crea una URL distinta.)
 `npm run qa:sheets` (tras `ASTRO_ADAPTER=node npx astro build`) ejecuta este mismo `Code.gs` en
 local con una hoja simulada, envía el formulario llegando con UTM de Meta y comprueba columna a
 columna la fila, la pestaña Resumen, el email, el envío sin JavaScript y el rechazo de un secreto
-incorrecto.
+incorrecto. También prueba una hoja ya existente de 17 columnas con leads: comprueba que solo se
+añade el encabezado R y que nada de A a Q cambia.
 
 ---
 
 ## Qué guarda cada columna
 
-| Columna              | Qué es                                                                                                 |
-| -------------------- | ------------------------------------------------------------------------------------------------------ |
-| A Fecha y hora       | Día y hora (Madrid) de la solicitud. Es una fecha real: se ordena y filtra                             |
-| B Nombre             | Nombre                                                                                                 |
-| C Teléfono           | En formato internacional, p. ej. `+34612345678`                                                        |
-| D Zona de dolor      | Hombro, Codo, Muñeca, Espalda / lumbar, Cadera, Rodilla, Tobillo / pie u Otro                          |
-| E Qué le pasa        | Lo que ha escrito sobre su caso (puede estar vacío salvo si elige «Otro»)                              |
-| F utm_source         | Plataforma: `fb`, `ig`, `msg` o `an` con los parámetros del paso 7                                     |
-| G utm_medium         | `paid_social`                                                                                          |
-| H utm_campaign       | Nombre de la campaña                                                                                   |
-| I utm_content        | Nombre del anuncio                                                                                     |
-| J utm_term           | Nombre del conjunto de anuncios                                                                        |
-| K Estado             | Desplegable con color para tu seguimiento. Empieza en «Nuevo»                                          |
-| L Notas              | Libre, para ti                                                                                         |
-| M Landing            | Página en la que rellenó el formulario                                                                 |
-| N Dispositivo        | mobile, tablet o desktop                                                                               |
-| O Consent. salud     | Si aceptó el tratamiento de sus datos de salud (siempre «Sí»)                                          |
-| P Consent. marketing | Si aceptó las cookies de Meta                                                                          |
-| Q Event ID           | Identificador del envío: es el mismo `eventID` del evento Lead del Pixel (y de la API de conversiones) |
+| Columna              | Qué es                                                                                                                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A Fecha y hora       | Día y hora (Madrid) de la solicitud. Es una fecha real: se ordena y filtra                                                                                                               |
+| B Nombre             | Nombre                                                                                                                                                                                   |
+| C Teléfono           | En formato internacional, p. ej. `+34612345678`                                                                                                                                          |
+| D Zona de dolor      | Hombro, Codo, Muñeca, Espalda / lumbar, Cadera, Rodilla, Tobillo / pie u Otro                                                                                                            |
+| E Qué le pasa        | Lo que ha escrito sobre su caso (puede estar vacío salvo si elige «Otro»)                                                                                                                |
+| F utm_source         | Plataforma: `fb`, `ig`, `msg` o `an` con los parámetros del paso 7                                                                                                                       |
+| G utm_medium         | `paid_social`                                                                                                                                                                            |
+| H utm_campaign       | Nombre de la campaña                                                                                                                                                                     |
+| I utm_content        | Nombre del anuncio                                                                                                                                                                       |
+| J utm_term           | Nombre del conjunto de anuncios                                                                                                                                                          |
+| K Estado             | Desplegable con color para tu seguimiento. Empieza en «Nuevo»                                                                                                                            |
+| L Notas              | Libre, para ti                                                                                                                                                                           |
+| M Landing            | Página en la que rellenó el formulario                                                                                                                                                   |
+| N Dispositivo        | mobile, tablet o desktop                                                                                                                                                                 |
+| O Consent. salud     | Si aceptó el tratamiento de sus datos de salud (siempre «Sí»)                                                                                                                            |
+| P Consent. marketing | Si aceptó las cookies de Meta                                                                                                                                                            |
+| Q Event ID           | Identificador del envío: es el mismo `eventID` del evento Lead del Pixel (y de la API de conversiones)                                                                                   |
+| R Entrena CrossFit   | Respuesta a «¿Entrenas CrossFit actualmente?»: «Sí, entreno CrossFit», «Entreno otra cosa (fuerza, gimnasio...)» o «Ahora mismo no entreno». Vacía en los leads anteriores a la pregunta |
 
 ## Problemas frecuentes
 

@@ -56,6 +56,10 @@ class Range {
     this.sheet.set(this.row, this.col, v);
     return this;
   }
+  copyTo() {
+    this.sheet.copied += 1;
+    return this;
+  }
   setFormula(f) {
     this.sheet.set(this.row, this.col, f);
     return this;
@@ -107,6 +111,9 @@ class Sheet {
     this.formats = new Map();
     this.validation = new Map();
     this.conditional = [];
+    this.maxCols = 26;
+    this.copied = 0;
+    this.widths = new Map();
   }
   set(r, c, v) {
     this.cells.set(`${r}:${c}`, v);
@@ -122,6 +129,15 @@ class Sheet {
   }
   getMaxRows() {
     return 1000;
+  }
+  getMaxColumns() {
+    return this.maxCols;
+  }
+  insertColumnsAfter(after, n) {
+    this.maxCols = Math.max(this.maxCols, after + n);
+  }
+  setColumnWidth(c, w) {
+    this.widths.set(c, w);
   }
   getRange(a, b, c, d) {
     if (typeof a === 'string') return new Range(this, ...parseA1(a));
@@ -140,7 +156,7 @@ class Sheet {
     this.conditional = rules;
   }
 }
-for (const m of ['setFrozenRows', 'setRowHeight', 'setColumnWidth']) Sheet.prototype[m] = () => {};
+for (const m of ['setFrozenRows', 'setRowHeight']) Sheet.prototype[m] = () => {};
 
 const builder = (kind) => {
   const spec = { kind };
@@ -178,6 +194,7 @@ function makeGoogle(props) {
       getActiveSpreadsheet: () => ss,
       newDataValidation: () => builder('validation'),
       newConditionalFormatRule: () => builder('conditional'),
+      CopyPasteType: { PASTE_FORMAT: 'PASTE_FORMAT' },
       flush() {},
     },
     PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props[k] ?? null }) },
@@ -217,6 +234,7 @@ const CONTRACT = {
   detalle: 'string',
   nombre: 'string',
   telefono: 'string',
+  entrena_crossfit: 'string',
   consentimiento_salud: 'true',
   consentimiento_marketing: 'boolean',
   utm_source: 'string',
@@ -232,6 +250,11 @@ const CONTRACT = {
   started_at: 'number|null',
   secret: 'string',
 };
+const ENTRENA = [
+  'Sí, entreno CrossFit',
+  'Entreno otra cosa (fuerza, gimnasio...)',
+  'Ahora mismo no entreno',
+];
 const ZONAS = [
   'Hombro',
   'Codo',
@@ -261,6 +284,8 @@ function contractProblems(body) {
     if (!ok) out.push(`${k} no es ${type}`);
   }
   if (!ZONAS.includes(body.zona)) out.push(`zona ${body.zona}`);
+  if (!ENTRENA.includes(body.entrena_crossfit))
+    out.push(`entrena_crossfit ${body.entrena_crossfit}`);
   if (!['mobile', 'tablet', 'desktop', ''].includes(body.device)) out.push(`device ${body.device}`);
   return out;
 }
@@ -368,6 +393,8 @@ try {
   await page.locator('#s5-title').waitFor();
   await page.waitForTimeout(400);
   await page.locator('#consentimiento_salud').check();
+  // Pregunta de filtro: justo antes del botón de envío.
+  await page.locator('label.choice', { hasText: 'Entreno otra cosa' }).click();
   // Tiempo humano: el antispam descarta los envíos de menos de 3 s.
   await page.waitForTimeout(3200);
   await page.locator('[data-submit]').click();
@@ -414,6 +441,16 @@ try {
     check(k, byHeader[k] === v, byHeader[k]);
   }
   check('Estado empieza en «Nuevo»', byHeader['Estado'] === 'Nuevo');
+  check(
+    'Nueva columna final «Entrena CrossFit» con la respuesta',
+    HEADERS.at(-1) === 'Entrena CrossFit' &&
+      byHeader['Entrena CrossFit'] === 'Entreno otra cosa (fuerza, gimnasio...)',
+    byHeader['Entrena CrossFit'],
+  );
+  check(
+    'Son 18 columnas: A-Q como antes y R nueva',
+    HEADERS.length === 18 && HEADERS[16] === 'Event ID',
+  );
   check('Consentimiento de salud registrado', byHeader['Consent. salud'] === 'Sí');
   check(
     'Event ID (el mismo que el Lead del Pixel)',
@@ -443,6 +480,13 @@ try {
 
   const mail = gas.mails.at(-1);
   check(
+    'El email de aviso incluye la respuesta (texto y HTML)',
+    !!mail &&
+      mail.body.includes('Entrena CrossFit: Entreno otra cosa (fuerza, gimnasio...)') &&
+      mail.htmlBody.includes('Entrena CrossFit') &&
+      mail.htmlBody.includes('Entreno otra cosa (fuerza, gimnasio...)'),
+  );
+  check(
     'Email de aviso con nombre y zona',
     !!mail && mail.subject === 'Nuevo lead: Laura · Rodilla' && mail.to === 'avisos@example.com',
     mail?.subject,
@@ -456,6 +500,9 @@ try {
   await p2.locator('#nombre').fill('Pau');
   await p2.locator('#telefono').fill('+34 699 111 222');
   await p2.locator('#consentimiento_salud').check({ force: true });
+  await p2
+    .locator('#lead-form input[name="entrena_crossfit"][value="Ahora mismo no entreno"]')
+    .check({ force: true });
   await p2.locator('[data-submit]').click();
   await p2.waitForURL(/\/gracias/, { timeout: 15000 });
   const nojsBody = bodies.at(-1);
@@ -468,9 +515,102 @@ try {
   const row3 = leads().row(3, HEADERS.length);
   check(
     'Sin JavaScript también guarda la fila',
-    row3[1] === 'Pau' && row3[3] === 'Hombro',
-    `${row3[1]} · ${row3[3]}`,
+    row3[1] === 'Pau' && row3[3] === 'Hombro' && row3[17] === 'Ahora mismo no entreno',
+    `${row3[1]} · ${row3[3]} · ${row3[17]}`,
   );
+
+  // 2b) La API exige la respuesta: sin ella o con un valor raro no se guarda nada.
+  const countBefore = leads().getLastRow();
+  const apiLead = (extra) => ({
+    zona: 'Codo',
+    detalle: '',
+    nombre: 'Api Filtro',
+    telefono: '633417829',
+    consentimiento_salud: true,
+    started_at: Date.now() - 10000,
+    submitted_at: Date.now(),
+    ...extra,
+  });
+  const post = (body) =>
+    fetch(`${SITE}/api/lead`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: SITE },
+      body: JSON.stringify(body),
+    }).then(async (r) => ({ status: r.status, json: await r.json() }));
+  const sinCampo = await post(apiLead({}));
+  const raro = await post(apiLead({ entrena_crossfit: 'Quizá' }));
+  check(
+    'La API rechaza el envío sin la respuesta o con un valor que no es una opción (422)',
+    sinCampo.status === 422 &&
+      sinCampo.json.fields.includes('entrena_crossfit') &&
+      raro.status === 422 &&
+      leads().getLastRow() === countBefore,
+    `${sinCampo.status} / ${raro.status}`,
+  );
+  const buena = await post(apiLead({ entrena_crossfit: ENTRENA[0] }));
+  check(
+    'Con una opción válida, la API guarda y devuelve ok',
+    buena.status === 200 && buena.json.ok === true && leads().getLastRow() === countBefore + 1,
+  );
+
+  // 2c) Hoja que ya existe (17 columnas, con leads): solo se añade el encabezado R; nada más se toca.
+  const legacy = makeGoogle({ LEAD_SECRET: SECRET, NOTIFY_EMAIL: 'avisos@example.com' });
+  const OLD = HEADERS.slice(0, 17);
+  const oldSheet = legacy.ss.insertSheet('Leads');
+  oldSheet.maxCols = 17;
+  oldSheet.getRange(1, 1, 1, 17).setValues([OLD]);
+  const oldRow = (n) =>
+    OLD.map((_, i) => (i === 1 ? `Antiguo ${n}` : i === 2 ? `+3460000000${n}` : `v${n}-${i}`));
+  oldSheet.getRange(2, 1, 1, 17).setValues([oldRow(1)]);
+  oldSheet.getRange(3, 1, 1, 17).setValues([oldRow(2)]);
+  const snap = (sh, rows) => rows.map((r) => sh.row(r, 17).join('|'));
+  const antes = snap(oldSheet, [1, 2, 3]);
+  const send = (g, extra) =>
+    g.context.doPost({
+      postData: {
+        contents: JSON.stringify({
+          secret: SECRET,
+          nombre: 'Migra',
+          zona: 'Codo',
+          telefono: '+34633417829',
+          consentimiento_salud: true,
+          event_id: crypto.randomUUID(),
+          ...extra,
+        }),
+      },
+    });
+  const r1 = JSON.parse(send(legacy, { entrena_crossfit: ENTRENA[0] }).content);
+  check(
+    'Hoja existente: el lead se guarda, R1 pasa a «Entrena CrossFit» y R4 lleva la respuesta',
+    r1.ok === true &&
+      oldSheet.get(1, 18) === 'Entrena CrossFit' &&
+      oldSheet.get(4, 18) === ENTRENA[0] &&
+      oldSheet.get(4, 2) === 'Migra',
+  );
+  check(
+    'Hoja existente: columnas A-Q y leads anteriores intactos; sus celdas de R siguen vacías',
+    JSON.stringify(snap(oldSheet, [1, 2, 3])) === JSON.stringify(antes) &&
+      oldSheet.get(2, 18) === '' &&
+      oldSheet.get(3, 18) === '' &&
+      oldSheet.maxCols >= 18,
+  );
+  const dos = JSON.parse(send(legacy, { entrena_crossfit: ENTRENA[2] }).content);
+  check(
+    'Hoja existente: el encabezado se añade una sola vez y el segundo lead va a la fila 5',
+    dos.ok === true && oldSheet.get(5, 18) === ENTRENA[2] && oldSheet.copied === 1,
+  );
+  const viejaLanding = JSON.parse(send(legacy, {}).content);
+  check(
+    'Una landing antigua (sin el campo) sigue guardando; la columna queda vacía',
+    viejaLanding.ok === true && oldSheet.get(6, 2) === 'Migra' && oldSheet.get(6, 18) === '',
+  );
+  const propia = makeGoogle({ LEAD_SECRET: SECRET });
+  const hojaR = propia.ss.insertSheet('Leads');
+  hojaR.maxCols = 20;
+  hojaR.getRange(1, 1, 1, 17).setValues([OLD]);
+  hojaR.getRange(1, 18).setValue('Algo mío');
+  send(propia, { entrena_crossfit: ENTRENA[1] });
+  check('Si R1 ya tiene algo, no se sobrescribe', hojaR.get(1, 18) === 'Algo mío');
 
   // 3) Secreto incorrecto: el script no escribe nada.
   const before = leads().getLastRow();

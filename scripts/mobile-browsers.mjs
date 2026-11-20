@@ -219,6 +219,7 @@ try {
     await page.locator('#s5-title').waitFor();
     await page.waitForTimeout(400);
     await page.locator('#consentimiento_salud').check();
+    await page.locator('label.choice').first().click();
     await page.waitForTimeout(3200);
     const label = (await page.locator('[data-submit-label]').textContent())?.trim();
     check(

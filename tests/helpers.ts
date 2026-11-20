@@ -235,6 +235,7 @@ export async function fillForm(
   await page.locator('#s5-title').waitFor();
   await page.waitForTimeout(350);
   await page.locator('#consentimiento_salud').check();
+  await page.locator('label.choice').first().click();
   await page.waitForTimeout(3200); // tiempo humano (> 3 s desde el inicio)
 }
 
@@ -252,11 +253,17 @@ export const ZONAS_QA = [
   'Tobillo / pie',
   'Otro',
 ];
+export const ENTRENA_QA = [
+  'Sí, entreno CrossFit',
+  'Entreno otra cosa (fuerza, gimnasio...)',
+  'Ahora mismo no entreno',
+];
 export const CONTRACT_KEYS = [
   'zona',
   'detalle',
   'nombre',
   'telefono',
+  'entrena_crossfit',
   'consentimiento_salud',
   'consentimiento_marketing',
   'utm_source',
@@ -284,6 +291,8 @@ export function contractProblems(body: Record<string, unknown>): string[] {
     if (!['consentimiento_salud', 'consentimiento_marketing', 'started_at'].includes(k)) str(k);
   }
   if (!ZONAS_QA.includes(String(body.zona))) out.push(`zona fuera de las 8: ${body.zona}`);
+  if (!ENTRENA_QA.includes(String(body.entrena_crossfit)))
+    out.push(`entrena_crossfit no es una de las 3 opciones: ${body.entrena_crossfit}`);
   if (body.consentimiento_salud !== true) out.push('consentimiento_salud no es true');
   if (typeof body.consentimiento_marketing !== 'boolean')
     out.push('consentimiento_marketing no es booleano');
